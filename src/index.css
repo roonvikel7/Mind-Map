@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #faf7f2;
+  color: #1c1917;
+}
+
+/* Estilos de fondo del lienzo infinito */
+.canvas-bg-dots {
+  background-image: radial-gradient(rgba(120, 113, 108, 0.24) 1.35px, transparent 1.35px);
+}
+
+.canvas-bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(120, 113, 108, 0.11) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(120, 113, 108, 0.11) 1px, transparent 1px);
+}
+
+.canvas-bg-clean {
+  background-image: none;
+}
+
+/* Barras de desplazamiento cálidas y discretas */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d6d0c4;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b5ad9e;
+}
+
+/* Sombras y transiciones suaves estilo estudio EdrawMax */
+.edraw-node-shadow {
+  box-shadow:
+    0 4px 14px -3px rgba(28, 25, 23, 0.08),
+    0 2px 5px -2px rgba(28, 25, 23, 0.05);
+}
+
+.edraw-node-shadow-selected {
+  box-shadow:
+    0 10px 26px -4px rgba(28, 25, 23, 0.15),
+    0 4px 10px -2px rgba(28, 25, 23, 0.08);
+}
+
+.edraw-panel-shadow {
+  box-shadow:
+    0 10px 30px -6px rgba(28, 25, 23, 0.09),
+    0 2px 8px -2px rgba(28, 25, 23, 0.04);
+}
+
+.dragging-canvas {
+  cursor: grabbing !important;
+}
