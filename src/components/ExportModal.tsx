@@ -57,18 +57,21 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     setTimeout(() => setStatusMsg(null), 3200);
   };
 
-  const handleRaster = async (fmt: 'png' | 'jpg') => {
+  const handleRaster = async (fmt: 'png' | 'jpg', tier: '8k' | '4k' | 'standard' = '8k') => {
     try {
-      setBusyFormat(fmt);
+      setBusyFormat(`${fmt}-${tier}`);
       await exportAsRasterFile(project, fmt, {
         transparentBg,
         includeGrid,
         includeHeader,
+        qualityTier: tier,
       });
       notifySuccess(
         fmt === 'png'
-          ? 'Imagen PNG Ultra HD (3x) descargada correctamente.'
-          : 'Imagen JPG de alta calidad descargada correctamente.'
+          ? tier === '8k'
+            ? '¡Imagen PNG 8K Ultra Resolución descargada con máxima nitidez!'
+            : 'Imagen PNG 4K Ultra HD descargada correctamente.'
+          : 'Imagen JPG 8K descargada correctamente.'
       );
     } catch (err) {
       console.error(err);
@@ -174,14 +177,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </div>
 
               {previewData && (
-                <div className="pt-2 border-t border-stone-200/80 text-[11px] text-stone-500">
-                  Lienzo base: <strong>{previewData.width} × {previewData.height} px</strong>
-                  <br />
-                  PNG Retina 3x:{' '}
-                  <strong>
-                    {Math.min(10800, previewData.width * 3)} ×{' '}
-                    {Math.min(10800, previewData.height * 3)} px
-                  </strong>
+                <div className="pt-2 border-t border-stone-200/80 text-[11px] text-stone-500 space-y-0.5">
+                  <div>Lienzo base: <strong>{previewData.width} × {previewData.height} px</strong></div>
+                  <div>
+                    Resolución 8K UHD:{' '}
+                    <strong className="text-orange-700 font-extrabold">
+                      {Math.min(14000, Math.round(previewData.width * Math.max(2, Math.min(8, 7680 / Math.max(previewData.width, previewData.height)))))} ×{' '}
+                      {Math.min(14000, Math.round(previewData.height * Math.max(2, Math.min(8, 7680 / Math.max(previewData.width, previewData.height)))))} px
+                    </strong>{' '}
+                    (ultra nitidez para zoom)
+                  </div>
                 </div>
               )}
             </div>
@@ -200,22 +205,52 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               Selecciona el Formato de Descarga Directa
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* PNG 3x */}
+              {/* PNG 8K UHD */}
               <button
                 type="button"
                 disabled={busyFormat !== null}
-                onClick={() => handleRaster('png')}
-                className="flex items-center gap-3 p-3.5 rounded-2xl border border-orange-200 bg-orange-50/60 hover:bg-orange-100/70 text-left transition-all"
+                onClick={() => handleRaster('png', '8k')}
+                className="flex items-center gap-3 p-3.5 rounded-2xl border-2 border-orange-400 bg-orange-50/80 hover:bg-orange-100/80 text-left transition-all shadow-sm"
               >
-                <div className="w-10 h-10 rounded-xl bg-orange-600 text-white flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-600 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm">
                   <FileImage className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-extrabold text-stone-900">
-                    {busyFormat === 'png' ? 'Generando PNG...' : 'Imagen PNG Ultra HD (3x)'}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-extrabold text-stone-900">
+                      {busyFormat === 'png-8k' ? 'Generando PNG 8K...' : 'PNG 8K Ultra Resolución'}
+                    </span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-orange-600 text-white">
+                      8K UHD
+                    </span>
                   </div>
-                  <div className="text-[11px] text-stone-600">
-                    Máxima nitidez para presentaciones y documentos
+                  <div className="text-[11px] text-stone-600 mt-0.5 leading-snug">
+                    Máxima nitidez (hasta 7680px+). Zoom cristalino sin pixelado.
+                  </div>
+                </div>
+              </button>
+
+              {/* PNG 4K */}
+              <button
+                type="button"
+                disabled={busyFormat !== null}
+                onClick={() => handleRaster('png', '4k')}
+                className="flex items-center gap-3 p-3.5 rounded-2xl border border-stone-200 bg-white hover:bg-stone-50 text-left transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <FileImage className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-extrabold text-stone-900">
+                      {busyFormat === 'png-4k' ? 'Generando PNG 4K...' : 'PNG 4K Ultra HD'}
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+                      4K
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-stone-500 mt-0.5 leading-snug">
+                    Excelente balance para presentaciones y diapositivas
                   </div>
                 </div>
               </button>
@@ -233,15 +268,20 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 }}
                 className="flex items-center gap-3 p-3.5 rounded-2xl border border-stone-200 bg-white hover:bg-stone-50 text-left transition-all"
               >
-                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                   <FileCode className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-extrabold text-stone-900">
-                    Vector Escalable (.SVG)
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-extrabold text-stone-900">
+                      Vector Escalable (.SVG)
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      Infinito
+                    </span>
                   </div>
-                  <div className="text-[11px] text-stone-500">
-                    Calidad infinita editable en Illustrator, Figma o Inkscape
+                  <div className="text-[11px] text-stone-500 mt-0.5 leading-snug">
+                    Calidad infinita matemática editable en Illustrator, Figma o Canva
                   </div>
                 </div>
               </button>
@@ -262,28 +302,33 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   <div className="text-xs font-extrabold text-stone-900">
                     Documento PDF / Imprimir
                   </div>
-                  <div className="text-[11px] text-stone-500">
-                    Lámina horizontal A4/Carta 100% vectorial sin pixelado
+                  <div className="text-[11px] text-stone-500 mt-0.5 leading-snug">
+                    Lámina horizontal A4/Carta 100% vectorial sin pérdida
                   </div>
                 </div>
               </button>
 
-              {/* JPG Alta Calidad */}
+              {/* JPG 8K */}
               <button
                 type="button"
                 disabled={busyFormat !== null}
-                onClick={() => handleRaster('jpg')}
+                onClick={() => handleRaster('jpg', '8k')}
                 className="flex items-center gap-3 p-3.5 rounded-2xl border border-stone-200 bg-white hover:bg-stone-50 text-left transition-all"
               >
                 <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
                   <FileImage className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-extrabold text-stone-900">
-                    {busyFormat === 'jpg' ? 'Generando JPG...' : 'Imagen JPG Compacta'}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-extrabold text-stone-900">
+                      {busyFormat === 'jpg-8k' ? 'Generando JPG 8K...' : 'JPG 8K Ultra Definición'}
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                      JPG 8K
+                    </span>
                   </div>
-                  <div className="text-[11px] text-stone-500">
-                    Fondo sólido cálido ideal para compartir rápido
+                  <div className="text-[11px] text-stone-500 mt-0.5 leading-snug">
+                    Fondo sólido cálido con resolución 8K para compartir
                   </div>
                 </div>
               </button>

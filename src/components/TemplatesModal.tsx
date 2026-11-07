@@ -2,6 +2,7 @@ import React from 'react';
 import { LayoutTemplate, ArrowRight, X } from 'lucide-react';
 import { TEMPLATE_CARDS, TemplateCard } from '../utils/templates';
 import { EDRAW_THEMES } from '../utils/themes';
+import { TemplateThumbnail } from './TemplateThumbnail';
 
 interface TemplatesModalProps {
   isOpen: boolean;
@@ -59,9 +60,18 @@ export const TemplatesModal: React.FC<TemplatesModalProps> = ({
                   onSelectTemplate(card);
                   onClose();
                 }}
-                className="group flex flex-col justify-between p-4 rounded-2xl border border-stone-200/90 hover:border-orange-300 bg-white hover:bg-orange-50/30 text-left transition-all shadow-sm hover:shadow"
+                className="group flex flex-col justify-between p-4 rounded-2xl border border-stone-200/90 hover:border-orange-300 bg-white hover:bg-orange-50/20 text-left transition-all shadow-sm hover:shadow-md"
               >
                 <div>
+                  {/* Miniatura / Previsualización visual del diseño geométrico */}
+                  <div className="mb-3">
+                    <TemplateThumbnail
+                      type={card.type}
+                      theme={card.theme}
+                      title={card.title}
+                    />
+                  </div>
+
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200/80 text-[10.5px] font-bold text-amber-800">
                       <span>{card.icon}</span>
@@ -80,7 +90,7 @@ export const TemplatesModal: React.FC<TemplatesModalProps> = ({
                   <h3 className="text-sm font-extrabold text-stone-800 group-hover:text-orange-700 transition-colors">
                     {card.title}
                   </h3>
-                  <p className="text-xs text-stone-500 mt-1 leading-relaxed">
+                  <p className="text-xs text-stone-500 mt-1 leading-relaxed line-clamp-2">
                     {card.description}
                   </p>
                 </div>

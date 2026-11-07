@@ -14,6 +14,10 @@ export interface ExportSvgOptions {
   includeHeader?: boolean;
 }
 
+export interface RasterExportOptions extends ExportSvgOptions {
+  qualityTier?: '8k' | '4k' | 'standard';
+}
+
 function escapeXml(str: string): string {
   return (str || '')
     .replace(/&/g, '&amp;')
@@ -399,11 +403,11 @@ export function exportAsSvgFile(project: OrganizerProject, options: ExportSvgOpt
   triggerBlobDownload(blob, `${sanitizeFileName(project.title)}.svg`);
 }
 
-/** Rasteriza el SVG autónomo a PNG Ultra HD (3x Retina) o JPG en un <canvas> fuera de pantalla */
+/** Rasteriza el SVG autónomo a PNG Ultra HD (8K UHD, 4K o estándar) o JPG con máxima nitidez para zoom */
 export async function exportAsRasterFile(
   project: OrganizerProject,
   format: 'png' | 'jpg',
-  options: ExportSvgOptions = {}
+  options: RasterExportOptions = {}
 ): Promise<void> {
   const effectiveOpts: ExportSvgOptions = {
     ...options,
@@ -412,9 +416,14 @@ export async function exportAsRasterFile(
   const { svg, width, height } = generateStandaloneSvg(project, effectiveOpts);
   const theme = getThemeConfig(project.theme);
 
-  // Escala Retina 3x garantizando no exceder el límite máximo de píxeles del navegador
-  const maxSafePixels = 10800;
-  const scale = Math.min(3, maxSafePixels / Math.max(width, height, 1));
+  // Escala calibrada para máxima nitidez en zoom (8K = hasta 7680px+, 4K = 3840px+)
+  const tier = options.qualityTier || '8k';
+  const targetDimension = tier === '8k' ? 7680 : tier === '4k' ? 3840 : 2160;
+  const maxSafePixels = 14000;
+  const maxSide = Math.max(width, height, 1);
+  const scaleByTarget = targetDimension / maxSide;
+  const scale = Math.max(2, Math.min(8, scaleByTarget, maxSafePixels / maxSide));
+
   const canvasW = Math.max(1, Math.round(width * scale));
   const canvasH = Math.max(1, Math.round(height * scale));
 
@@ -428,11 +437,17 @@ export async function exportAsRasterFile(
         const canvas = document.createElement('canvas');
         canvas.width = canvasW;
         canvas.height = canvasH;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', {
+          alpha: Boolean(effectiveOpts.transparentBg),
+        });
         if (!ctx) {
           reject(new Error('No se pudo inicializar el contexto gráfico 2D'));
           return;
         }
+
+        // Activación de la máxima calidad de interpolación y renderizado
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
 
         if (format === 'jpg' || !effectiveOpts.transparentBg) {
           ctx.fillStyle = theme.canvasBg;
@@ -442,7 +457,7 @@ export async function exportAsRasterFile(
         ctx.drawImage(img, 0, 0, canvasW, canvasH);
 
         const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
-        const quality = format === 'jpg' ? 0.95 : undefined;
+        const quality = format === 'jpg' ? 0.98 : undefined;
 
         canvas.toBlob(
           blob => {
@@ -450,7 +465,8 @@ export async function exportAsRasterFile(
               reject(new Error('No se pudo generar el archivo de imagen'));
               return;
             }
-            triggerBlobDownload(blob, `${sanitizeFileName(project.title)}.${format}`);
+            const suffix = tier === '8k' ? '-8k' : tier === '4k' ? '-4k' : '';
+            triggerBlobDownload(blob, `${sanitizeFileName(project.title)}${suffix}.${format}`);
             resolve();
           },
           mime,

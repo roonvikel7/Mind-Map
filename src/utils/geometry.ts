@@ -596,10 +596,43 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
         const y1 = from.y + from.height / 2;
         const x2 = to.x;
         const y2 = to.y - to.height / 2 - 4;
+        const dy = y2 - y1;
+        const cOffset = Math.max(32, Math.abs(dy) * 0.48) * Math.sign(dy || 1);
         const d =
           style === 'straight'
             ? `M ${r2(x1)} ${r2(y1)} L ${r2(x2)} ${r2(y2)}`
             : cubicVertical(x1, y1, x2, y2);
+
+        // Si hay varios hijos hermanos que parten del mismo nodo padre,
+        // escalonar el parámetro t para que las etiquetas no se alineen en la misma cota Y
+        // y se ubiquen más cerca del destino donde la apertura horizontal es más ancha.
+        const siblingKids = (childrenMap.get(from.id) || []).filter(cid => nodeMap.has(cid));
+        const sIndex = siblingKids.indexOf(to.id);
+        const sCount = siblingKids.length;
+
+        let t = 0.52;
+        if (sCount > 1) {
+          // Escalonado suave alternado entre 0.44 y 0.64
+          t = sIndex % 2 === 0 ? 0.44 : 0.64;
+        }
+
+        const oneMinusT = 1 - t;
+        const p0x = x1, p0y = y1;
+        const p1x = x1, p1y = y1 + cOffset;
+        const p2x = x2, p2y = y2 - cOffset;
+        const p3x = x2, p3y = y2;
+
+        const lx =
+          Math.pow(oneMinusT, 3) * p0x +
+          3 * Math.pow(oneMinusT, 2) * t * p1x +
+          3 * oneMinusT * Math.pow(t, 2) * p2x +
+          Math.pow(t, 3) * p3x;
+
+        const ly =
+          Math.pow(oneMinusT, 3) * p0y +
+          3 * Math.pow(oneMinusT, 2) * t * p1y +
+          3 * oneMinusT * Math.pow(t, 2) * p2y +
+          Math.pow(t, 3) * p3y;
 
         paths.push({
           id: e.id,
@@ -610,8 +643,8 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
           strokeWidth: 2.15,
           arrowEnd: { x: x2, y: y2 + 2, angleDeg: 90, color: branchColor },
           label: e.label || 'se relaciona con',
-          labelX: (x1 + x2) / 2,
-          labelY: (y1 + y2) / 2,
+          labelX: lx,
+          labelY: ly,
         });
       } else if (project.type === 'flowchart') {
         const fromShape = resolveEffectiveShape(from, from.depth || 0, 'flowchart', project.theme);
@@ -718,6 +751,9 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
     });
   }
 
+  // Des-colisión inteligente de etiquetas de conectores y proposiciones para que jamás se monten entre sí
+  resolveLabelCollisions(paths);
+
   return {
     paths,
     timelineBadges,
@@ -733,4 +769,61 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
       height: Math.max(120, maxY - minY),
     },
   };
+}
+
+/**
+ * Separa dinámicamente cualquier par de etiquetas/píldoras de conectores
+ * que se encuentren a menos distancia de su ancho/alto, eliminando solapamientos.
+ */
+function resolveLabelCollisions(paths: RenderedPathItem[]) {
+  const labeled = paths.filter(
+    p => p.label && p.labelX !== undefined && p.labelY !== undefined
+  );
+  if (labeled.length <= 1) return;
+
+  for (let iter = 0; iter < 6; iter++) {
+    let moved = false;
+    for (let i = 0; i < labeled.length; i++) {
+      for (let j = i + 1; j < labeled.length; j++) {
+        const a = labeled[i];
+        const b = labeled[j];
+        const wA = Math.max(90, (a.label?.length || 10) * 7.5 + 24);
+        const wB = Math.max(90, (b.label?.length || 10) * 7.5 + 24);
+        const hA = 28;
+        const hB = 28;
+
+        const dx = b.labelX! - a.labelX!;
+        const dy = b.labelY! - a.labelY!;
+        const minGapX = (wA + wB) / 2 + 10;
+        const minGapY = (hA + hB) / 2 + 6;
+
+        const overlapX = minGapX - Math.abs(dx);
+        const overlapY = minGapY - Math.abs(dy);
+
+        if (overlapX > 0 && overlapY > 0) {
+          moved = true;
+          if (overlapY <= overlapX) {
+            const shiftY = overlapY / 2 + 1;
+            if (dy >= 0) {
+              a.labelY! -= shiftY;
+              b.labelY! += shiftY;
+            } else {
+              a.labelY! += shiftY;
+              b.labelY! -= shiftY;
+            }
+          } else {
+            const shiftX = overlapX / 2 + 2;
+            if (dx >= 0) {
+              a.labelX! -= shiftX;
+              b.labelX! += shiftX;
+            } else {
+              a.labelX! += shiftX;
+              b.labelX! -= shiftX;
+            }
+          }
+        }
+      }
+    }
+    if (!moved) break;
+  }
 }

@@ -194,13 +194,13 @@ export function applyLayout(
       layoutFishbone(root.id, nodeMap, visibleChildren);
       break;
     case 'tree':
-      layoutVerticalTree(root.id, nodeMap, visibleChildren, 78, 34);
+      layoutVerticalTree(root.id, nodeMap, visibleChildren, 98, 58);
       break;
     case 'concept':
-      layoutVerticalTree(root.id, nodeMap, visibleChildren, 114, 48);
+      layoutVerticalTree(root.id, nodeMap, visibleChildren, 150, 88);
       break;
     case 'flowchart':
-      layoutVerticalTree(root.id, nodeMap, visibleChildren, 98, 62);
+      layoutVerticalTree(root.id, nodeMap, visibleChildren, 120, 80);
       break;
     case 'timeline':
       layoutTimeline(root.id, nodeMap, visibleChildren);
@@ -223,6 +223,9 @@ export function applyLayout(
     }
   }
   parkHiddenSubtrees(root.id, root.x, root.y);
+
+  // Evitar estrictamente la sobreposición de cuadros entre cualquier nodo visible
+  preventNodeCollisions(nodes, hiddenIds);
 
   // 7. Sincronizar aristas jerárquicas y sus colores/etiquetas semánticas
   const existingEdgeKey = new Set<string>();
@@ -962,4 +965,83 @@ function layoutTimeline(
   nodeMap.forEach(n => {
     n.x += shiftX;
   });
+}
+
+/**
+ * Garantiza de forma estricta que ningún cuadro/nodo se sobreponga a otro
+ * en ningún organizador visual, manteniendo márgenes de separación física limpia.
+ */
+function preventNodeCollisions(
+  nodes: OrganizerNode[],
+  hiddenIds: Set<string>
+) {
+  const visible = nodes.filter(n => !hiddenIds.has(n.id));
+  if (visible.length <= 1) return;
+
+  const minGap = 26; // Separación mínima entre bordes de cualquier par de nodos
+
+  for (let iter = 0; iter < 8; iter++) {
+    let hadCollision = false;
+
+    for (let i = 0; i < visible.length; i++) {
+      for (let j = i + 1; j < visible.length; j++) {
+        const a = visible[i];
+        const b = visible[j];
+
+        const halfWa = a.width / 2;
+        const halfHa = a.height / 2;
+        const halfWb = b.width / 2;
+        const halfHb = b.height / 2;
+
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+
+        const requiredDistX = halfWa + halfWb + minGap;
+        const requiredDistY = halfHa + halfHb + minGap;
+
+        const overlapX = requiredDistX - Math.abs(dx);
+        const overlapY = requiredDistY - Math.abs(dy);
+
+        // Si hay solapamiento simultáneo en X y en Y, los cuadros se están tocando o montando
+        if (overlapX > 0 && overlapY > 0) {
+          hadCollision = true;
+
+          // Separar por el eje con menor penetración
+          if (overlapY <= overlapX) {
+            const shiftY = overlapY / 2 + 1;
+            if (a.isRoot) {
+              b.y += dy >= 0 ? shiftY * 2 : -shiftY * 2;
+            } else if (b.isRoot) {
+              a.y += dy >= 0 ? -shiftY * 2 : shiftY * 2;
+            } else {
+              if (dy >= 0) {
+                a.y -= shiftY;
+                b.y += shiftY;
+              } else {
+                a.y += shiftY;
+                b.y -= shiftY;
+              }
+            }
+          } else {
+            const shiftX = overlapX / 2 + 1;
+            if (a.isRoot) {
+              b.x += dx >= 0 ? shiftX * 2 : -shiftX * 2;
+            } else if (b.isRoot) {
+              a.x += dx >= 0 ? -shiftX * 2 : shiftX * 2;
+            } else {
+              if (dx >= 0) {
+                a.x -= shiftX;
+                b.x += shiftX;
+              } else {
+                a.x += shiftX;
+                b.x -= shiftX;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (!hadCollision) break;
+  }
 }
