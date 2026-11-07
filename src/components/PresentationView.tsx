@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Maximize2, X } from 'lucide-react';
 import { OrganizerNode, OrganizerProject } from '../types/organizer';
 import { generateStandaloneSvg } from '../utils/exporter';
@@ -29,6 +29,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
   project,
 }) => {
   const [step, setStep] = useState(0);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const theme = getThemeConfig(project.theme);
 
   const slides = useMemo<SlideItem[]>(() => {
@@ -106,52 +107,77 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
   return (
     <div
       style={{ backgroundColor: theme.canvasBg }}
-      className="fixed inset-0 z-50 flex flex-col select-none"
+      className="fixed inset-0 z-50 h-[100dvh] flex flex-col select-none"
+      onTouchStart={e => {
+        const t = e.touches[0];
+        if (t) touchStartRef.current = { x: t.clientX, y: t.clientY };
+      }}
+      onTouchEnd={e => {
+        if (!touchStartRef.current) return;
+        const t = e.changedTouches[0];
+        if (!t) return;
+        const dx = t.clientX - touchStartRef.current.x;
+        const dy = t.clientY - touchStartRef.current.y;
+        touchStartRef.current = null;
+        if (Math.abs(dx) > 52 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+          if (dx < 0) {
+            setStep(s => Math.min(slides.length - 1, s + 1));
+          } else {
+            setStep(s => Math.max(0, s - 1));
+          }
+        }
+      }}
     >
-      {/* Cabecera limpia */}
-      <div className="h-14 px-6 border-b border-stone-200/80 bg-white/85 backdrop-blur-md flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <span className="px-2.5 py-1 rounded-full bg-orange-100 text-orange-800 text-xs font-extrabold">
-            Diapositiva {step + 1} de {slides.length}
+      {/* Cabecera limpia responsiva */}
+      <div className="h-14 px-3 sm:px-6 border-b border-stone-200/80 bg-white/85 backdrop-blur-md flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="px-2.5 py-1 rounded-full bg-orange-100 text-orange-800 text-[11px] sm:text-xs font-extrabold shrink-0">
+            {step + 1} / {slides.length}
           </span>
-          <span className="text-sm font-bold text-stone-800">{project.title}</span>
+          <span className="text-xs sm:text-sm font-bold text-stone-800 truncate">
+            {project.title}
+          </span>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shrink-0"
         >
           <X className="w-4 h-4" />
-          <span>Salir (Esc)</span>
+          <span className="hidden sm:inline">Salir (Esc)</span>
+          <span className="sm:hidden">Salir</span>
         </button>
       </div>
 
       {/* Cuerpo de presentación */}
-      <div className="flex-1 overflow-y-auto p-6 md:p-12 flex items-center justify-center">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 flex items-center justify-center">
         {current.isOverview ? (
-          <div className="w-full max-w-6xl h-full flex flex-col items-center justify-center gap-4">
+          <div className="w-full max-w-6xl h-full flex flex-col items-center justify-center gap-3">
             <img
               src={svgPreview}
               alt={project.title}
-              className="max-h-[72vh] max-w-full object-contain rounded-3xl border border-stone-200/90 bg-white p-3 edraw-panel-shadow"
+              className="max-h-[70dvh] max-w-full object-contain rounded-2xl sm:rounded-3xl border border-stone-200/90 bg-white p-2 sm:p-3 edraw-panel-shadow"
             />
+            <span className="sm:hidden text-[11px] text-stone-400 font-medium">
+              Desliza a la izquierda para recorrer cada rama
+            </span>
           </div>
         ) : (
-          <div className="w-full max-w-3xl rounded-3xl bg-white border border-stone-200/90 edraw-panel-shadow p-8 md:p-10 space-y-6">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3.5">
+          <div className="w-full max-w-3xl rounded-2xl sm:rounded-3xl bg-white border border-stone-200/90 edraw-panel-shadow p-5 sm:p-8 md:p-10 space-y-5 my-auto">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <div
                   style={{ backgroundColor: current.color }}
-                  className="w-12 h-12 rounded-2xl text-white flex items-center justify-center text-2xl shadow-sm"
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl text-white flex items-center justify-center text-xl sm:text-2xl shadow-sm shrink-0"
                 >
                   {current.icon || '📌'}
                 </div>
-                <div>
-                  <h2 className="text-2xl font-extrabold text-stone-900">
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-2xl font-extrabold text-stone-900 break-words">
                     {current.title}
                   </h2>
                   {current.subtitle && (
-                    <p className="text-sm font-medium text-stone-500 mt-0.5">
+                    <p className="text-xs sm:text-sm font-medium text-stone-500 mt-0.5">
                       {current.subtitle}
                     </p>
                   )}
@@ -179,20 +205,20 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
             </div>
 
             {current.notes && (
-              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/70 text-sm text-stone-700 leading-relaxed">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/60 border border-amber-200/70 text-xs sm:text-sm text-stone-700 leading-relaxed">
                 {current.notes}
               </div>
             )}
 
             {current.children.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 pt-1">
                 {current.children.map(sub => (
                   <div
                     key={sub.id}
                     style={{ borderLeftColor: current.color }}
-                    className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/80 border-l-4"
+                    className="p-3.5 sm:p-4 rounded-2xl bg-stone-50/90 border border-stone-200/80 border-l-4"
                   >
-                    <div className="flex items-center gap-2 font-bold text-stone-800 text-sm">
+                    <div className="flex items-center gap-2 font-bold text-stone-800 text-xs sm:text-sm">
                       {sub.icon && <span>{sub.icon}</span>}
                       <span>{sub.text}</span>
                     </div>
@@ -210,7 +236,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-stone-400 italic">
+              <p className="text-xs sm:text-sm text-stone-400 italic">
                 Rama enfocada sin subtemas adicionales.
               </p>
             )}
@@ -219,22 +245,22 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
       </div>
 
       {/* Controles inferiores */}
-      <div className="h-16 px-6 bg-white/90 border-t border-stone-200/80 flex items-center justify-between">
+      <div className="h-14 sm:h-16 px-3 sm:px-6 bg-white/90 border-t border-stone-200/80 flex items-center justify-between gap-2 shrink-0">
         <button
           type="button"
           onClick={() => setStep(0)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100"
         >
           <Maximize2 className="w-3.5 h-3.5" />
-          <span>Vista General</span>
+          <span className="hidden xs:inline sm:inline">Panorama</span>
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             type="button"
             disabled={step === 0}
             onClick={() => setStep(s => Math.max(0, s - 1))}
-            className="flex items-center gap-1 px-4 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 disabled:opacity-40 text-xs font-bold text-stone-700"
+            className="flex items-center gap-1 px-3 sm:px-4 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 disabled:opacity-40 text-xs font-bold text-stone-700"
           >
             <ChevronLeft className="w-4 h-4" />
             <span>Anterior</span>
@@ -243,15 +269,15 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
             type="button"
             disabled={step >= slides.length - 1}
             onClick={() => setStep(s => Math.min(slides.length - 1, s + 1))}
-            className="flex items-center gap-1 px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-40 text-xs font-bold text-white"
+            className="flex items-center gap-1 px-3 sm:px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-40 text-xs font-bold text-white"
           >
             <span>Siguiente</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="text-xs text-stone-400 hidden sm:block">
-          Usa las flechas ← → para avanzar
+        <div className="text-xs text-stone-400 hidden md:block">
+          Usa las flechas ← → o desliza para avanzar
         </div>
       </div>
     </div>

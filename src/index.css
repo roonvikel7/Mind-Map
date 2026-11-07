@@ -17,12 +17,27 @@ body,
   padding: 0;
   width: 100%;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
+  overscroll-behavior: none;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #faf7f2;
   color: #1c1917;
+}
+
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.canvas-touch-surface {
+  touch-action: none;
+  -webkit-touch-callout: none;
 }
 
 /* Estilos de fondo del lienzo infinito */

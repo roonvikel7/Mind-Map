@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ChevronDown,
   Download,
+  FilePlus2,
   FolderOpen,
   GitCompareArrows,
   Image as ImageIcon,
   LayoutTemplate,
+  MoreHorizontal,
   PanelLeft,
   PanelRight,
   Play,
@@ -81,6 +83,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [projectsMenuOpen, setProjectsMenuOpen] = useState(false);
   const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -88,10 +92,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   const projectsBtnRef = useRef<HTMLButtonElement | null>(null);
   const typeMenuRef = useRef<HTMLDivElement | null>(null);
   const typeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const toolsMenuRef = useRef<HTMLDivElement | null>(null);
+  const toolsBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  // Cerrar menús desplegables inmediatamente cuando el usuario hace clic afuera o pulsa Escape
+  // Cerrar cualquier menú desplegable inmediatamente al tocar/clicar afuera o presionar Escape
   useEffect(() => {
-    if (!typeMenuOpen && !projectsMenuOpen) return;
+    if (!typeMenuOpen && !projectsMenuOpen && !toolsMenuOpen) return;
 
     const handleGlobalPointerDown = (e: MouseEvent | PointerEvent) => {
       const target = e.target as Node;
@@ -113,36 +119,77 @@ export const Navbar: React.FC<NavbarProps> = ({
       ) {
         setProjectsMenuOpen(false);
       }
+      if (
+        toolsMenuOpen &&
+        toolsMenuRef.current &&
+        !toolsMenuRef.current.contains(target) &&
+        toolsBtnRef.current &&
+        !toolsBtnRef.current.contains(target)
+      ) {
+        setToolsMenuOpen(false);
+      }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setTypeMenuOpen(false);
         setProjectsMenuOpen(false);
+        setToolsMenuOpen(false);
       }
     };
 
-    // Usar capture = true para interceptar antes de que otros contenedores llamen a stopPropagation
     window.addEventListener('pointerdown', handleGlobalPointerDown, true);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('pointerdown', handleGlobalPointerDown, true);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [typeMenuOpen, projectsMenuOpen]);
+  }, [typeMenuOpen, projectsMenuOpen, toolsMenuOpen]);
 
   const currentTypeMeta =
     ORGANIZER_TYPES_META.find(m => m.type === project.type) || ORGANIZER_TYPES_META[0];
 
+  const closeAllMenus = () => {
+    setProjectsMenuOpen(false);
+    setTypeMenuOpen(false);
+    setToolsMenuOpen(false);
+  };
+
   return (
-    <header className="h-14 shrink-0 bg-white/95 backdrop-blur-md border-b border-stone-200/90 px-3 flex items-center justify-between gap-2 z-40 select-none">
-      {/* Izquierda: Panel izquierdo, Marca, Selector de Proyectos y Título */}
-      <div className="flex items-center gap-2 min-w-0">
+    <header className="h-14 shrink-0 bg-white/95 backdrop-blur-md border-b border-stone-200/90 px-1.5 sm:px-3.5 flex items-center justify-between gap-1 sm:gap-2 z-50 select-none">
+      {/* Inputs ocultos de archivos */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        onChange={e => {
+          const f = e.target.files?.[0];
+          if (f) onImportJsonFile(f);
+          e.currentTarget.value = '';
+        }}
+      />
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (file && onAddImageFile) {
+            onAddImageFile(file);
+          }
+          if (e.target) e.target.value = '';
+        }}
+      />
+
+      {/* BLOQUE IZQUIERDO: Panel Izquierdo, Marca, Proyectos y Título */}
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0 md:shrink md:min-w-0">
         <button
           type="button"
           onClick={onToggleLeft}
-          title={leftOpen ? 'Ocultar panel izquierdo' : 'Mostrar panel de símbolos y esquema'}
-          className={`p-2 rounded-xl border transition-colors ${
+          title={leftOpen ? 'Ocultar panel de formas y esquema' : 'Abrir panel de formas, marcas y esquema'}
+          className={`p-1.5 sm:p-2 rounded-xl border transition-colors shrink-0 ${
             leftOpen
               ? 'bg-orange-50 border-orange-200 text-orange-700'
               : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
@@ -151,13 +198,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           <PanelLeft className="w-4 h-4" />
         </button>
 
-        {/* Marca Synapse Studio */}
-        <div className="flex items-center gap-2 pr-1">
+        {/* Marca Synapse Studio (visible desde sm para armonía en móvil) */}
+        <div className="hidden sm:flex items-center gap-2 pr-0.5 shrink-0">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
             S
           </div>
-          <div className="hidden xl:flex flex-col leading-none">
-            <span className="text-[13.5px] font-extrabold tracking-tight text-stone-800">
+          <div className="hidden 2xl:flex flex-col leading-none">
+            <span className="text-[13px] font-extrabold tracking-tight text-stone-800">
               Synapse
             </span>
             <span className="text-[10px] font-semibold text-orange-600">
@@ -166,32 +213,48 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Menú de Proyectos */}
-        <div className="relative">
+        {/* Selector de Proyectos Guardados */}
+        <div className="relative shrink-0">
           <button
             ref={projectsBtnRef}
             type="button"
             onClick={() => {
-              setProjectsMenuOpen(v => !v);
-              setTypeMenuOpen(false);
+              const next = !projectsMenuOpen;
+              closeAllMenus();
+              setProjectsMenuOpen(next);
             }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-stone-100/90 hover:bg-stone-200/70 border border-stone-200/80 text-xs font-semibold text-stone-700 transition-colors"
+            title="Mis mapas, renombrar proyecto, crear nuevo o importar"
+            className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-stone-100/90 hover:bg-stone-200/70 border border-stone-200/80 text-xs font-semibold text-stone-700 transition-colors"
           >
-            <FolderOpen className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-            <span className="max-w-[130px] truncate hidden sm:inline">
+            <FolderOpen className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-600 shrink-0" />
+            <span className="hidden sm:inline max-w-[120px] truncate">
               Mis Mapas ({projects.length})
             </span>
-            <ChevronDown className="w-3.5 h-3.5 text-stone-400" />
+            <ChevronDown className="hidden sm:block w-3.5 h-3.5 text-stone-400 shrink-0" />
           </button>
 
           {projectsMenuOpen && (
             <div
               ref={projectsMenuRef}
-              className="absolute left-0 mt-2 w-80 rounded-2xl bg-white border border-stone-200 edraw-panel-shadow p-2 z-50 animate-in fade-in duration-100"
+              className="fixed left-3 right-3 top-[60px] sm:absolute sm:left-0 sm:right-auto sm:top-full sm:mt-2 sm:w-80 rounded-2xl bg-white border border-stone-200 edraw-panel-shadow p-2.5 z-50 max-h-[78dvh] flex flex-col"
             >
-              <div className="flex items-center justify-between px-2 py-1.5 border-b border-stone-100 mb-1">
+              {/* Campo de título accesible dentro del menú en pantallas móviles */}
+              <div className="md:hidden pb-2.5 mb-2 border-b border-stone-100">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">
+                  Título del Mapa Actual
+                </label>
+                <input
+                  type="text"
+                  value={project.title}
+                  onChange={e => onUpdateTitle(e.target.value)}
+                  placeholder="Título del proyecto..."
+                  className="w-full px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 focus:bg-white focus:border-orange-400 text-base font-bold text-stone-800 outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-between px-1.5 py-1 border-b border-stone-100 mb-1.5 shrink-0">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                  Proyectos Guardados
+                  Mis Proyectos ({projects.length})
                 </span>
                 <div className="flex items-center gap-1">
                   <button
@@ -216,7 +279,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         onCreateNewProject('mindmap');
                       }
                     }}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-semibold"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-semibold"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Nuevo</span>
@@ -224,107 +287,130 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               </div>
 
-                <div className="max-h-72 overflow-y-auto space-y-1 pr-0.5">
-                  {projects.map(p => {
-                    const meta = ORGANIZER_TYPES_META.find(m => m.type === p.type);
-                    const active = p.id === project.id;
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => {
-                          onSelectProject(p.id);
-                          setProjectsMenuOpen(false);
-                        }}
-                        className={`group flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-colors ${
-                          active
-                            ? 'bg-orange-50 border border-orange-200/80 text-orange-900'
-                            : 'hover:bg-stone-50 text-stone-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-base shrink-0">
-                            {meta?.emoji || '📌'}
-                          </span>
-                          <div className="min-w-0">
-                            <div className="text-xs font-bold truncate">
-                              {p.title}
-                            </div>
-                            <div className="text-[10px] text-stone-400">
-                              {meta?.shortLabel} • {p.nodes.length} nodos
-                            </div>
+              <div className="overflow-y-auto space-y-1 pr-0.5 flex-1">
+                {projects.map(p => {
+                  const meta = ORGANIZER_TYPES_META.find(m => m.type === p.type);
+                  const active = p.id === project.id;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => {
+                        onSelectProject(p.id);
+                        setProjectsMenuOpen(false);
+                      }}
+                      className={`group flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-colors ${
+                        active
+                          ? 'bg-orange-50 border border-orange-200/80 text-orange-900'
+                          : 'hover:bg-stone-50 text-stone-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base shrink-0">
+                          {meta?.emoji || '📌'}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold truncate">
+                            {p.title}
+                          </div>
+                          <div className="text-[10px] text-stone-400">
+                            {meta?.shortLabel} • {p.nodes.length} nodos
                           </div>
                         </div>
-
-                        {projects.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={e => {
-                              e.stopPropagation();
-                              onDeleteProject(p.id);
-                            }}
-                            title="Eliminar proyecto"
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {projects.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            onDeleteProject(p.id);
+                          }}
+                          title="Eliminar proyecto"
+                          className="opacity-75 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 transition-all shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+            </div>
           )}
         </div>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json,application/json"
-          className="hidden"
-          onChange={e => {
-            const f = e.target.files?.[0];
-            if (f) onImportJsonFile(f);
-            e.currentTarget.value = '';
-          }}
-        />
-
-        {/* Título Editable en Vivo */}
+        {/* Título Editable en Vivo (visible en tablet y escritorio) */}
         <input
           type="text"
           value={project.title}
           onChange={e => onUpdateTitle(e.target.value)}
           placeholder="Título del proyecto..."
-          className="w-36 md:w-52 px-2.5 py-1 rounded-lg bg-transparent hover:bg-stone-100 focus:bg-white focus:ring-2 focus:ring-orange-400/40 focus:border-orange-300 border border-transparent text-xs font-bold text-stone-800 outline-none transition-all truncate"
+          className="hidden md:block w-36 lg:w-48 xl:w-56 px-2.5 py-1 rounded-lg bg-transparent hover:bg-stone-100 focus:bg-white focus:ring-2 focus:ring-orange-400/40 focus:border-orange-300 border border-transparent text-xs font-bold text-stone-800 outline-none transition-all truncate"
         />
       </div>
 
-      {/* Centro: Selector Estructural de 8 Diagramas + Historial + Relación Cruzada */}
-      <div className="flex items-center gap-1.5">
+      {/* BLOQUE CENTRAL: Selector de los 9 Motores Estructurales + Deshacer/Rehacer */}
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
         <div className="relative">
           <button
             ref={typeBtnRef}
             type="button"
             onClick={() => {
-              setTypeMenuOpen(v => !v);
-              setProjectsMenuOpen(false);
+              const next = !typeMenuOpen;
+              closeAllMenus();
+              setTypeMenuOpen(next);
             }}
-            title="Cambiar estructura geométrica del organizador"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50/90 hover:bg-amber-100/80 border border-amber-200/90 text-xs font-bold text-amber-950 transition-colors"
+            title="Cambiar tipo de organizador visual (9 motores)"
+            className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1.5 rounded-xl bg-amber-50/90 hover:bg-amber-100/80 border border-amber-200/90 text-xs font-bold text-amber-950 transition-colors"
           >
-            <span>{currentTypeMeta.emoji}</span>
-            <span className="hidden lg:inline">{currentTypeMeta.shortLabel}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-amber-700" />
+            <span className="text-sm leading-none">{currentTypeMeta.emoji}</span>
+            <span className="hidden md:inline">{currentTypeMeta.shortLabel}</span>
+            <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-700 shrink-0" />
           </button>
 
           {typeMenuOpen && (
             <div
               ref={typeMenuRef}
-              className="absolute left-1/2 -translate-x-1/2 mt-2 w-80 rounded-2xl bg-white border border-stone-200 edraw-panel-shadow p-2 z-50 animate-in fade-in duration-100"
+              className="fixed left-3 right-3 top-[60px] sm:absolute sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:top-full sm:mt-2 sm:w-80 rounded-2xl bg-white border border-stone-200 edraw-panel-shadow p-2 z-50 max-h-[78dvh] flex flex-col"
             >
-              <div className="px-2 py-1 text-[10.5px] font-bold uppercase tracking-wider text-stone-400">
-                Transformar Estructura (9 Motores)
+              <div className="px-2 py-1 flex items-center justify-between border-b border-stone-100 mb-1 shrink-0">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-stone-400">
+                  Transformar Estructura (9 Motores)
+                </span>
               </div>
-              <div className="grid grid-cols-1 gap-1 mt-1">
+
+              {project.type === 'cartographic' && onChangeCartographicDirection && (
+                <div className="mx-1 mb-1.5 p-2 rounded-xl bg-orange-50/80 border border-orange-200/80 flex items-center justify-between gap-2 shrink-0">
+                  <span className="text-[11px] font-bold text-orange-950">
+                    Sentido de los 8 Ejes:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChangeCartographicDirection(
+                        project.cartographicDirection === 'counterclockwise'
+                          ? 'clockwise'
+                          : 'counterclockwise'
+                      )
+                    }
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-orange-200 text-[11px] font-bold text-orange-800 shadow-sm"
+                  >
+                    {project.cartographicDirection === 'counterclockwise' ? (
+                      <>
+                        <RotateCcw className="w-3 h-3 text-orange-600" />
+                        <span>Antihorario</span>
+                      </>
+                    ) : (
+                      <>
+                        <RotateCw className="w-3 h-3 text-orange-600" />
+                        <span>Horario</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              <div className="overflow-y-auto grid grid-cols-1 gap-1 pr-0.5">
                 {ORGANIZER_TYPES_META.map(item => {
                   const active = item.type === project.type;
                   return (
@@ -341,7 +427,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           : 'hover:bg-stone-50 text-stone-700'
                       }`}
                     >
-                      <span className="text-lg leading-none mt-0.5">
+                      <span className="text-lg leading-none mt-0.5 shrink-0">
                         {item.emoji}
                       </span>
                       <div className="min-w-0">
@@ -358,7 +444,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* Conmutador Rápido Horario / Antihorario para Cartografía Conceptual */}
+        {/* Conmutador Rápido Horario / Antihorario en escritorio cuando es Cartografía */}
         {project.type === 'cartographic' && onChangeCartographicDirection && (
           <button
             type="button"
@@ -371,20 +457,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             }
             title={
               project.cartographicDirection === 'counterclockwise'
-                ? 'Giro de los 8 Ejes: Antihorario (haz clic para cambiar a Horario)'
-                : 'Giro de los 8 Ejes: Horario (haz clic para cambiar a Antihorario)'
+                ? 'Giro Antihorario (clic para Horario)'
+                : 'Giro Horario (clic para Antihorario)'
             }
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200/90 text-xs font-bold text-orange-900 transition-colors shadow-sm"
+            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200/90 text-xs font-bold text-orange-900 transition-colors"
           >
             {project.cartographicDirection === 'counterclockwise' ? (
               <>
                 <RotateCcw className="w-3.5 h-3.5 text-orange-600" />
-                <span className="hidden sm:inline">Antihorario</span>
+                <span>Antihorario</span>
               </>
             ) : (
               <>
                 <RotateCw className="w-3.5 h-3.5 text-orange-600" />
-                <span className="hidden sm:inline">Horario</span>
+                <span>Horario</span>
               </>
             )}
           </button>
@@ -397,7 +483,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             disabled={!canUndo}
             onClick={onUndo}
             title="Deshacer (Ctrl+Z)"
-            className="p-1.5 rounded-lg text-stone-600 hover:bg-white disabled:opacity-35 disabled:hover:bg-transparent transition-all"
+            className="p-1 sm:p-1.5 rounded-lg text-stone-600 hover:bg-white active:bg-white disabled:opacity-35 disabled:hover:bg-transparent transition-all"
           >
             <Undo2 className="w-3.5 h-3.5" />
           </button>
@@ -406,106 +492,214 @@ export const Navbar: React.FC<NavbarProps> = ({
             disabled={!canRedo}
             onClick={onRedo}
             title="Rehacer (Ctrl+Y)"
-            className="p-1.5 rounded-lg text-stone-600 hover:bg-white disabled:opacity-35 disabled:hover:bg-transparent transition-all"
+            className="p-1 sm:p-1.5 rounded-lg text-stone-600 hover:bg-white active:bg-white disabled:opacity-35 disabled:hover:bg-transparent transition-all"
           >
             <Redo2 className="w-3.5 h-3.5" />
           </button>
         </div>
-
-        {/* Conector de Relación Cruzada */}
-        <button
-          type="button"
-          onClick={onToggleConnectMode}
-          title="Conectar dos nodos cualesquiera mediante una flecha de relación cruzada"
-          className={`hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
-            isConnectMode
-              ? 'bg-orange-600 border-orange-600 text-white shadow-sm'
-              : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
-          }`}
-        >
-          <GitCompareArrows className="w-3.5 h-3.5" />
-          <span className="hidden xl:inline">Relación</span>
-        </button>
-
-        {/* Insertar Imagen libre en el lienzo */}
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={e => {
-            const file = e.target.files?.[0];
-            if (file && onAddImageFile) {
-              onAddImageFile(file);
-            }
-            if (e.target) e.target.value = '';
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => imageInputRef.current?.click()}
-          title="Insertar imagen libremente en el mapa (PNG, JPG, SVG, WebP) o arrastra y suelta en el lienzo"
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-xs font-semibold text-stone-700 transition-colors shadow-sm"
-        >
-          <ImageIcon className="w-3.5 h-3.5 text-orange-600" />
-          <span className="hidden lg:inline">Imagen</span>
-        </button>
       </div>
 
-      {/* Derecha: IA, Plantillas, Presentación, Descargar/Exportar, Ajustes e Inspector */}
-      <div className="flex items-center gap-1.5">
+      {/* BLOQUE DERECHO: IA, Descargar, Menú Organizado de Estudio y Panel de Diseño */}
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        {/* Acción Principal: Generar con IA */}
         <button
           type="button"
           onClick={onOpenAiModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold shadow-sm transition-all"
+          title="Generar organizador inteligente con Google Gemini IA"
+          className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold shadow-sm transition-all"
         >
-          <Sparkles className="w-3.5 h-3.5" />
+          <Sparkles className="w-3.5 h-3.5 shrink-0" />
           <span className="hidden sm:inline">Generar IA</span>
+          <span className="hidden min-[360px]:inline sm:hidden">IA</span>
         </button>
 
+        {/* Accesos limpios en escritorio amplio (sin saturar pantallas pequeñas/medianas) */}
         <button
           type="button"
           onClick={onOpenTemplates}
-          title="Galería de plantillas listas"
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-xs font-semibold text-stone-700 transition-colors"
+          title="Galería de plantillas con previsualización"
+          className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-xs font-semibold text-stone-700 transition-colors"
         >
           <LayoutTemplate className="w-3.5 h-3.5 text-stone-600" />
-          <span className="hidden xl:inline">Plantillas</span>
+          <span>Plantillas</span>
         </button>
 
         <button
           type="button"
           onClick={onOpenPresentation}
-          title="Modo presentación paso a paso"
-          className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 transition-colors"
+          title="Modo presentación en diapositivas"
+          className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold text-emerald-800 transition-colors"
         >
           <Play className="w-3.5 h-3.5 fill-current" />
+          <span>Presentar</span>
         </button>
 
+        {/* Descargar / Exportar en 8K */}
         <button
           type="button"
           onClick={onOpenExport}
-          title="Descargar en PNG HD, SVG, PDF, HTML, Markdown o JSON"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shadow-sm transition-colors"
+          title="Descargar en PNG 8K UHD, SVG, PDF, HTML, Markdown o JSON"
+          className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shadow-sm transition-colors"
         >
-          <Download className="w-3.5 h-3.5" />
+          <Download className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
           <span className="hidden sm:inline">Descargar</span>
         </button>
 
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          title="Configuración de API de IA"
-          className="p-2 rounded-xl bg-white hover:bg-stone-100 border border-stone-200 text-stone-600 transition-colors"
-        >
-          <Settings className="w-3.5 h-3.5" />
-        </button>
+        {/* Menú Organizado "Más Herramientas" (evita sobrepoblación manteniendo 100% de funciones) */}
+        <div className="relative">
+          <button
+            ref={toolsBtnRef}
+            type="button"
+            onClick={() => {
+              const next = !toolsMenuOpen;
+              closeAllMenus();
+              setToolsMenuOpen(next);
+            }}
+            title="Más herramientas del estudio (Plantillas, Imagen, Relación, Presentación, Ajustes IA)"
+            className={`relative p-1.5 sm:p-2 rounded-xl border transition-colors ${
+              toolsMenuOpen || isConnectMode
+                ? 'bg-orange-50 border-orange-300 text-orange-700'
+                : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+            }`}
+          >
+            <MoreHorizontal className="w-4 h-4" />
+            {isConnectMode && (
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-orange-600 ring-2 ring-white" />
+            )}
+          </button>
 
+          {toolsMenuOpen && (
+            <div
+              ref={toolsMenuRef}
+              className="fixed left-3 right-3 top-[60px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72 rounded-2xl bg-white border border-stone-200 edraw-panel-shadow p-2 z-50 max-h-[80dvh] overflow-y-auto space-y-1.5"
+            >
+              {/* Sección 1: Crear y Explorar */}
+              <div>
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                  Crear y Explorar
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setToolsMenuOpen(false);
+                    if (onOpenCreateChooser) onOpenCreateChooser();
+                    else onCreateNewProject('mindmap');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-left text-xs font-semibold text-stone-700 transition-colors"
+                >
+                  <FilePlus2 className="w-4 h-4 text-orange-600 shrink-0" />
+                  <div>
+                    <div className="font-bold text-stone-800">Nuevo Mapa Limpio</div>
+                    <div className="text-[10.5px] text-stone-400">Escoger título y estructura</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setToolsMenuOpen(false);
+                    onOpenTemplates();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-left text-xs font-semibold text-stone-700 transition-colors"
+                >
+                  <LayoutTemplate className="w-4 h-4 text-amber-600 shrink-0" />
+                  <div>
+                    <div className="font-bold text-stone-800">Galería de Plantillas</div>
+                    <div className="text-[10.5px] text-stone-400">Diseños listos con vista previa</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setToolsMenuOpen(false);
+                    onOpenPresentation();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-emerald-50/60 text-left text-xs font-semibold text-stone-700 transition-colors"
+                >
+                  <Play className="w-4 h-4 text-emerald-600 fill-current shrink-0" />
+                  <div>
+                    <div className="font-bold text-stone-800">Modo Presentación</div>
+                    <div className="text-[10.5px] text-stone-400">Exponer rama por rama</div>
+                  </div>
+                </button>
+              </div>
+
+              <div className="border-t border-stone-100" />
+
+              {/* Sección 2: Elementos del Lienzo */}
+              <div>
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                  Lienzo y Conexiones
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setToolsMenuOpen(false);
+                    imageInputRef.current?.click();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-left text-xs font-semibold text-stone-700 transition-colors"
+                >
+                  <ImageIcon className="w-4 h-4 text-orange-600 shrink-0" />
+                  <div>
+                    <div className="font-bold text-stone-800">Insertar Imagen Libre</div>
+                    <div className="text-[10.5px] text-stone-400">Subir PNG, JPG, WebP o SVG</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setToolsMenuOpen(false);
+                    onToggleConnectMode();
+                  }}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold transition-colors ${
+                    isConnectMode
+                      ? 'bg-orange-50 text-orange-900 border border-orange-200'
+                      : 'hover:bg-stone-50 text-stone-700'
+                  }`}
+                >
+                  <GitCompareArrows className="w-4 h-4 text-amber-600 shrink-0" />
+                  <div>
+                    <div className="font-bold text-stone-800">
+                      {isConnectMode ? 'Cancelar Relación Cruzada' : 'Conectar Relación Cruzada'}
+                    </div>
+                    <div className="text-[10.5px] text-stone-400">
+                      Unir dos nodos cualesquiera
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              <div className="border-t border-stone-100" />
+
+              {/* Sección 3: Ajustes IA */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setToolsMenuOpen(false);
+                    onOpenSettings();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-left text-xs font-semibold text-stone-700 transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-stone-600 shrink-0" />
+                  <div>
+                    <div className="font-bold text-stone-800">Configuración Motor IA</div>
+                    <div className="text-[10.5px] text-stone-400">Clave API de Google Gemini</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Botón Panel Derecho: Temas y Formato */}
         <button
           type="button"
           onClick={onToggleRight}
-          title={rightOpen ? 'Ocultar inspector de formato' : 'Mostrar inspector de formato y temas'}
-          className={`p-2 rounded-xl border transition-colors ${
+          title={rightOpen ? 'Ocultar panel de diseño' : 'Abrir temas de color y formato'}
+          className={`p-1.5 sm:p-2 rounded-xl border transition-colors shrink-0 ${
             rightOpen
               ? 'bg-orange-50 border-orange-200 text-orange-700'
               : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'

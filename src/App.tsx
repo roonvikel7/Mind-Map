@@ -73,8 +73,8 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    // En pantallas pequeñas iniciar con paneles colapsados para dar máximo espacio al lienzo
-    if (window.innerWidth < 1100) {
+    // En pantallas pequeñas y tablets iniciar con paneles colapsados para dar 100% de aire al lienzo
+    if (window.innerWidth < 1024) {
       setLeftOpen(false);
       setRightOpen(false);
     }
@@ -86,7 +86,27 @@ export function App() {
     });
   }, []);
 
-  // Cerrar cualquier ventana o modal inmediatamente al presionar la tecla Escape
+  const handleToggleLeft = useCallback(() => {
+    setLeftOpen(prev => {
+      const next = !prev;
+      if (next && window.innerWidth < 1024) {
+        setRightOpen(false);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleToggleRight = useCallback(() => {
+    setRightOpen(prev => {
+      const next = !prev;
+      if (next && window.innerWidth < 1024) {
+        setLeftOpen(false);
+      }
+      return next;
+    });
+  }, []);
+
+  // Cerrar cualquier ventana, modal o drawer móvil al presionar la tecla Escape
   useEffect(() => {
     const handleGlobalEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -97,6 +117,10 @@ export function App() {
         if (settingsOpen) setSettingsOpen(false);
         if (notesNodeId) setNotesNodeId(null);
         if (editingEdge) setEditingEdge(null);
+        if (window.innerWidth < 1024) {
+          setLeftOpen(false);
+          setRightOpen(false);
+        }
       }
     };
     window.addEventListener('keydown', handleGlobalEsc);
@@ -585,7 +609,8 @@ export function App() {
           activeProject.type,
           activeProject.theme,
           apiSettings,
-          activeProject.title
+          activeProject.title,
+          activeProject.cartographicDirection || 'clockwise'
         );
         commitProjectPatch({ nodes, edges });
         showToast(
@@ -812,13 +837,14 @@ export function App() {
     const stamp = Date.now();
     const rootId = `root-${stamp}`;
     const isCartographic = type === 'cartographic';
+    const themeToUse: ThemeId = activeProject?.theme || 'vitality-warm';
     const cleanNodes: OrganizerNode[] = [
       {
         id: rootId,
         text: title,
         subtitle: isCartographic
           ? 'Cartografía Conceptual de Ocho Ejes'
-          : 'Haz doble clic para escribir o Tab para ramificar',
+          : 'Toca para editar o añadir subtemas',
         x: 0,
         y: 0,
         width: 180,
@@ -832,7 +858,7 @@ export function App() {
       cleanNodes,
       [],
       type,
-      'vitality-warm',
+      themeToUse,
       true
     );
 
@@ -840,7 +866,7 @@ export function App() {
       id: `proj-${stamp}`,
       title,
       type,
-      theme: 'vitality-warm',
+      theme: themeToUse,
       canvasBg: 'dots',
       rainbowBranches: true,
       nodes: relaid.nodes,
@@ -911,7 +937,7 @@ export function App() {
 
   if (!activeProject) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#FAF7F2] text-stone-700 gap-3">
+      <div className="h-[100dvh] w-screen flex flex-col items-center justify-center bg-[#FAF7F2] text-stone-700 gap-3">
         <div className="w-9 h-9 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
         <span className="text-xs font-bold tracking-wide text-stone-500">
           Preparando estudio visual...
@@ -928,7 +954,7 @@ export function App() {
     activeProject.nodes.find(n => n.id === notesNodeId) || null;
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#FAF7F2] text-stone-800 overflow-hidden font-sans">
+    <div className="h-[100dvh] w-screen flex flex-col bg-[#FAF7F2] text-stone-800 overflow-hidden font-sans">
       {/* Barra Superior Estudio EdrawMax */}
       <Navbar
         project={activeProject}
@@ -938,8 +964,8 @@ export function App() {
         canUndo={historyPast.length > 0}
         canRedo={historyFuture.length > 0}
         isConnectMode={Boolean(connectSourceId)}
-        onToggleLeft={() => setLeftOpen(v => !v)}
-        onToggleRight={() => setRightOpen(v => !v)}
+        onToggleLeft={handleToggleLeft}
+        onToggleRight={handleToggleRight}
         onSelectProject={id => {
           setActiveProjectId(id);
           saveActiveProjectId(id);
@@ -980,8 +1006,19 @@ export function App() {
         onOpenCreateChooser={() => setCreateChooserOpen(true)}
       />
 
-      {/* Área Central de 3 Columnas: Biblioteca Izquierda + Lienzo Infinito + Inspector Derecho */}
+      {/* Área Central: Biblioteca Izquierda + Lienzo Infinito + Inspector Derecho */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
+        {/* Fondo oscuro táctil en pantallas pequeñas/medianas para cerrar paneles al tocar afuera */}
+        {(leftOpen || rightOpen) && (
+          <div
+            onClick={() => {
+              setLeftOpen(false);
+              setRightOpen(false);
+            }}
+            className="lg:hidden fixed inset-0 top-14 bg-stone-900/25 backdrop-blur-[1px] z-30"
+          />
+        )}
+
         <LeftSidebar
           isOpen={leftOpen}
           project={activeProject}
@@ -1004,6 +1041,7 @@ export function App() {
           onUpdateNode={handleUpdateNode}
           onToggleCollapse={handleToggleCollapse}
           onAddImageFile={handleAddImageFile}
+          onClose={() => setLeftOpen(false)}
         />
 
         <Canvas
@@ -1066,11 +1104,12 @@ export function App() {
           onChangeCanvasBg={handleChangeCanvasBg}
           onExpandOrCollapseAll={handleExpandOrCollapseAll}
           onChangeCartographicDirection={handleChangeCartographicDirection}
+          onClose={() => setRightOpen(false)}
         />
 
         {/* Notificación flotante cálida */}
         {toast && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-stone-900 text-white text-xs font-bold shadow-lg pointer-events-none">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 max-w-[90vw] text-center px-4 py-2 rounded-full bg-stone-900 text-white text-xs font-bold shadow-lg pointer-events-none">
             {toast}
           </div>
         )}
@@ -1098,7 +1137,7 @@ export function App() {
               text: title,
               subtitle: isCartographic
                 ? 'Cartografía Conceptual de Ocho Ejes'
-                : 'Haz doble clic para escribir o Tab para ramificar',
+                : 'Toca para editar o añadir subtemas',
               icon: isCartographic ? undefined : '💡',
             };
             const relaid = applyLayout(

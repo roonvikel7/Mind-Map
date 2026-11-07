@@ -9,6 +9,7 @@ import {
   Plus,
   Shapes,
   Sparkles,
+  X,
 } from 'lucide-react';
 import { NodeShape, OrganizerNode, OrganizerProject } from '../types/organizer';
 import { CURATED_ICONS, PRIORITY_BADGES } from '../utils/themes';
@@ -25,6 +26,7 @@ interface LeftSidebarProps {
   onUpdateNode: (nodeId: string, updates: Partial<OrganizerNode>) => void;
   onToggleCollapse: (nodeId: string) => void;
   onAddImageFile?: (file: File) => void;
+  onClose?: () => void;
 }
 
 const SHAPE_OPTIONS: { shape: NodeShape; label: string; preview: string }[] = [
@@ -53,11 +55,18 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onUpdateNode,
   onToggleCollapse,
   onAddImageFile,
+  onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'insert' | 'marks' | 'outline'>('insert');
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
+
+  const closeIfMobile = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      onClose?.();
+    }
+  };
 
   const rootNode =
     project.nodes.find(n => n.isRoot) ||
@@ -114,7 +123,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               onAddChild(node.id);
             }}
             title="Añadir subtema aquí"
-            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-orange-100 text-orange-600 transition-opacity shrink-0"
+            className="opacity-75 sm:opacity-0 sm:group-hover:opacity-100 p-1 rounded hover:bg-orange-100 text-orange-600 transition-opacity shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
@@ -127,45 +136,58 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   };
 
   return (
-    <aside className="w-[268px] shrink-0 bg-white/95 backdrop-blur-md border-r border-stone-200/90 flex flex-col h-full z-30 select-none">
-      {/* Pestañas superiores estilo EdrawMax */}
-      <div className="grid grid-cols-3 gap-1 p-2 border-b border-stone-100 bg-stone-50/70">
-        <button
-          type="button"
-          onClick={() => setActiveTab('insert')}
-          className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-            activeTab === 'insert'
-              ? 'bg-white text-orange-700 shadow-sm border border-stone-200/80'
-              : 'text-stone-500 hover:text-stone-800'
-          }`}
-        >
-          <Shapes className="w-3.5 h-3.5" />
-          <span>Formas</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('marks')}
-          className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-            activeTab === 'marks'
-              ? 'bg-white text-orange-700 shadow-sm border border-stone-200/80'
-              : 'text-stone-500 hover:text-stone-800'
-          }`}
-        >
-          <Award className="w-3.5 h-3.5" />
-          <span>Marcas</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('outline')}
-          className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-            activeTab === 'outline'
-              ? 'bg-white text-orange-700 shadow-sm border border-stone-200/80'
-              : 'text-stone-500 hover:text-stone-800'
-          }`}
-        >
-          <ListTree className="w-3.5 h-3.5" />
-          <span>Esquema</span>
-        </button>
+    <aside className="fixed lg:static top-14 lg:top-0 bottom-0 left-0 z-40 w-[280px] max-w-[86vw] lg:w-[268px] shrink-0 bg-white/95 backdrop-blur-md border-r border-stone-200/90 flex flex-col lg:h-full shadow-2xl lg:shadow-none select-none">
+      {/* Pestañas superiores estilo EdrawMax + botón cerrar en móvil */}
+      <div className="flex items-center gap-1 p-2 border-b border-stone-100 bg-stone-50/70">
+        <div className="grid grid-cols-3 gap-1 flex-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('insert')}
+            className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+              activeTab === 'insert'
+                ? 'bg-white text-orange-700 shadow-sm border border-stone-200/80'
+                : 'text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <Shapes className="w-3.5 h-3.5" />
+            <span>Formas</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('marks')}
+            className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+              activeTab === 'marks'
+                ? 'bg-white text-orange-700 shadow-sm border border-stone-200/80'
+                : 'text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5" />
+            <span>Marcas</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('outline')}
+            className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+              activeTab === 'outline'
+                ? 'bg-white text-orange-700 shadow-sm border border-stone-200/80'
+                : 'text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <ListTree className="w-3.5 h-3.5" />
+            <span>Esquema</span>
+          </button>
+        </div>
+
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            title="Cerrar panel"
+            className="lg:hidden p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Contenido de cada pestaña */}
@@ -174,13 +196,16 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           <>
             {/* Acciones rápidas de inserción */}
             <div>
-              <div className="text-[10.5px] font-bold uppercase tracking-wider text-stone-400 mb-2">
-                Insertar en «{targetNode?.text.slice(0, 20)}»
+              <div className="text-[10.5px] font-bold uppercase tracking-wider text-stone-400 mb-2 truncate">
+                Insertar en «{targetNode?.text.slice(0, 22)}»
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 <button
                   type="button"
-                  onClick={() => targetNode && onAddChild(targetNode.id)}
+                  onClick={() => {
+                    if (targetNode) onAddChild(targetNode.id);
+                    closeIfMobile();
+                  }}
                   className="flex flex-col items-center gap-1 p-2.5 rounded-xl bg-orange-50/80 hover:bg-orange-100/80 border border-orange-200/80 text-orange-900 text-xs font-bold transition-colors"
                 >
                   <Plus className="w-4 h-4 text-orange-600" />
@@ -188,7 +213,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => targetNode && onAddSibling(targetNode.id)}
+                  onClick={() => {
+                    if (targetNode) onAddSibling(targetNode.id);
+                    closeIfMobile();
+                  }}
                   className="flex flex-col items-center gap-1 p-2.5 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 text-xs font-bold transition-colors"
                 >
                   <GitBranchPlus className="w-4 h-4 text-stone-600" />
@@ -196,7 +224,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={onStartCrossLink}
+                  onClick={() => {
+                    onStartCrossLink();
+                    closeIfMobile();
+                  }}
                   className="flex flex-col items-center gap-1 p-2.5 rounded-xl bg-amber-50/70 hover:bg-amber-100/80 border border-amber-200 text-amber-900 text-xs font-bold transition-colors"
                 >
                   <GitCompareArrows className="w-4 h-4 text-amber-600" />
@@ -204,7 +235,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => targetNode && onExpandAi(targetNode)}
+                  onClick={() => {
+                    if (targetNode) onExpandAi(targetNode);
+                    closeIfMobile();
+                  }}
                   className="flex flex-col items-center gap-1 p-2.5 rounded-xl bg-purple-50/70 hover:bg-purple-100/80 border border-purple-200 text-purple-900 text-xs font-bold transition-colors"
                 >
                   <Sparkles className="w-4 h-4 text-purple-600" />
@@ -222,6 +256,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   const file = e.target.files?.[0];
                   if (file && onAddImageFile) {
                     onAddImageFile(file);
+                    closeIfMobile();
                   }
                   if (e.target) e.target.value = '';
                 }}
@@ -269,7 +304,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </div>
               {!selectedNode && (
                 <p className="mt-2 text-[11px] text-stone-400">
-                  Haz clic en cualquier nodo del lienzo para cambiar su geometría.
+                  Toca cualquier nodo del lienzo para cambiar su geometría.
                 </p>
               )}
             </div>
@@ -283,7 +318,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 Selecciona un nodo en el mapa para añadirle marcas de prioridad, progreso o símbolos visuales.
               </div>
             ) : (
-              <div className="text-[11px] font-semibold text-stone-500">
+              <div className="text-[11px] font-semibold text-stone-500 truncate">
                 Editando marcas de:{' '}
                 <span className="font-bold text-stone-800">{selectedNode.text}</span>
               </div>

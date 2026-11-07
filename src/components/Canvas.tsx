@@ -1,10 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
+  FileText,
+  GitBranchPlus,
+  GitCompareArrows,
   LayoutGrid,
   Map as MapIcon,
   Maximize2,
   Minus,
+  Pencil,
   Plus,
+  Sparkles,
+  Trash2,
   X,
 } from 'lucide-react';
 import { OrganizerNode, OrganizerProject } from '../types/organizer';
@@ -87,17 +93,32 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [pan, setPan] = useState({ x: 520, y: 340 });
   const [isPanning, setIsPanning] = useState(false);
   const [spacePressed, setSpacePressed] = useState(false);
-  const [showMinimap, setShowMinimap] = useState(true);
+  const [showMinimap, setShowMinimap] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 768 : true
+  );
   const [mouseWorldPos, setMouseWorldPos] = useState<{ x: number; y: number } | null>(null);
   const [isDraggingFileOver, setIsDraggingFileOver] = useState(false);
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const nodeToolbarRef = useRef<HTMLDivElement | null>(null);
 
   const zoomRef = useRef(zoom);
   const panRef = useRef(pan);
   zoomRef.current = zoom;
   panRef.current = pan;
 
+  // Mapa de punteros activos para soporte multitáctil (Pinch-to-Zoom + Pan con 2 dedos)
+  const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchStateRef = useRef<{
+    initialDist: number;
+    initialZoom: number;
+    worldMidX: number;
+    worldMidY: number;
+  } | null>(null);
+
   const dragStateRef = useRef<{
     mode: 'none' | 'pan' | 'node' | 'image' | 'resize-image';
+    pointerId?: number;
+    pointerType?: string;
     startClientX: number;
     startClientY: number;
     initialPanX: number;
@@ -123,6 +144,51 @@ export const Canvas: React.FC<CanvasProps> = ({
   const theme = getThemeConfig(project.theme);
   const scene = useMemo(() => buildProjectSceneGeometry(project), [project]);
 
+  const selectedNode = useMemo(
+    () =>
+      selectedNodeId
+        ? scene.visibleNodes.find(n => n.id === selectedNodeId) || null
+        : null,
+    [selectedNodeId, scene.visibleNodes]
+  );
+
+  useEffect(() => {
+    if (editingNodeId && editingNodeId !== selectedNodeId) {
+      setEditingNodeId(null);
+    }
+  }, [selectedNodeId, editingNodeId]);
+
+  // Posicionar la barra flotante contextual 1:1 en pantalla garantizando que jamás se corte en bordes
+  useLayoutEffect(() => {
+    const tb = nodeToolbarRef.current;
+    const host = containerRef.current;
+    if (!tb || !host || !selectedNode) return;
+
+    const hostW = host.clientWidth;
+    const hostH = host.clientHeight;
+    const tbW = tb.offsetWidth;
+    const tbH = tb.offsetHeight || 38;
+
+    const cx = pan.x + selectedNode.x * zoom;
+    const halfH = ((selectedNode.height || 48) * zoom) / 2;
+    const topEdge = pan.y + selectedNode.y * zoom - halfH;
+    const bottomEdge = pan.y + selectedNode.y * zoom + halfH;
+
+    const clampedLeft = Math.max(
+      8,
+      Math.min(Math.max(8, hostW - tbW - 8), cx - tbW / 2)
+    );
+    const idealTop = topEdge - tbH - 10;
+    const maxSafeTop = Math.max(8, hostH - 66 - tbH);
+    const clampedTop =
+      idealTop >= 8
+        ? Math.min(maxSafeTop, idealTop)
+        : Math.max(8, Math.min(maxSafeTop, bottomEdge + 10));
+
+    tb.style.left = `${Math.round(clampedLeft)}px`;
+    tb.style.top = `${Math.round(clampedTop)}px`;
+  }, [selectedNode, pan.x, pan.y, zoom, editingNodeId, connectSourceId, isPanning]);
+
   const childrenExistSet = useMemo(() => {
     const s = new Set<string>();
     project.nodes.forEach(n => {
@@ -131,7 +197,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     return s;
   }, [project.nodes]);
 
-  /** Ajusta automáticamente el zoom y el centrado para encuadrar todo el diagrama con aire */
+  /** Ajusta automáticamente el zoom y el centrado para encuadrar todo el diagrama según la pantalla */
   const fitToScreen = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -139,12 +205,13 @@ export const Canvas: React.FC<CanvasProps> = ({
     if (rect.width < 80 || rect.height < 80) return;
 
     const { minX, maxX, minY, maxY, width, height } = scene.bounds;
-    const padW = 140;
-    const padH = 140;
+    const isMobile = rect.width < 640;
+    const padW = isMobile ? 48 : 130;
+    const padH = isMobile ? 96 : 130;
 
-    const scaleX = (rect.width - padW) / Math.max(width, 220);
-    const scaleY = (rect.height - padH) / Math.max(height, 150);
-    const idealZoom = Math.min(1.08, Math.max(0.28, Math.min(scaleX, scaleY)));
+    const scaleX = (rect.width - padW) / Math.max(width, 200);
+    const scaleY = (rect.height - padH) / Math.max(height, 140);
+    const idealZoom = Math.min(1.08, Math.max(0.22, Math.min(scaleX, scaleY)));
 
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
@@ -152,17 +219,112 @@ export const Canvas: React.FC<CanvasProps> = ({
     setZoom(idealZoom);
     setPan({
       x: rect.width / 2 - centerX * idealZoom,
-      y: rect.height / 2 - centerY * idealZoom,
+      y: (rect.height - (isMobile ? 20 : 0)) / 2 - centerY * idealZoom,
     });
   }, [scene.bounds]);
 
+  const prevNodeCountRef = useRef<number>(project.nodes.length);
+  const lastContainerSizeRef = useRef<{ w: number; h: number } | null>(null);
+
   // Encuadrar suavemente al cambiar de proyecto o de tipo de estructura
   useEffect(() => {
+    prevNodeCountRef.current = project.nodes.length;
     const raf = requestAnimationFrame(() => {
       fitToScreen();
     });
     return () => cancelAnimationFrame(raf);
   }, [project.id, project.type]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Si el mapa pasa de tener solo el nodo central (1) a ramificarse (>1), re-encuadrar automáticamente
+  useEffect(() => {
+    const prevCount = prevNodeCountRef.current;
+    const currCount = project.nodes.length;
+    prevNodeCountRef.current = currCount;
+    if (prevCount <= 1 && currCount > 1) {
+      const raf = requestAnimationFrame(() => fitToScreen());
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [project.nodes.length, fitToScreen]);
+
+  // Al seleccionar o crear un nodo, asegurar que él y su barra flotante superior queden dentro del área visible
+  useEffect(() => {
+    if (!selectedNodeId || !containerRef.current) return;
+    if (dragStateRef.current.mode !== 'none') return;
+
+    const target = scene.visibleNodes.find(n => n.id === selectedNodeId);
+    if (!target) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    if (rect.width < 80 || rect.height < 80) return;
+
+    const z = zoomRef.current;
+    const px = panRef.current.x;
+    const py = panRef.current.y;
+
+    const halfW = ((target.width || 150) * z) / 2;
+    const halfH = ((target.height || 50) * z) / 2;
+    const cx = px + target.x * z;
+    const cy = py + target.y * z;
+
+    const marginX = 24;
+    const marginTop = 64; // espacio para la barra contextual flotante del nodo
+    const marginBottom = 72; // espacio para la barra de controles inferior
+
+    let shiftX = 0;
+    let shiftY = 0;
+
+    if (cx - halfW < marginX) {
+      shiftX = marginX - (cx - halfW);
+    } else if (cx + halfW > rect.width - marginX) {
+      shiftX = rect.width - marginX - (cx + halfW);
+    }
+
+    if (cy - halfH < marginTop) {
+      shiftY = marginTop - (cy - halfH);
+    } else if (cy + halfH > rect.height - marginBottom) {
+      shiftY = rect.height - marginBottom - (cy + halfH);
+    }
+
+    if (Math.abs(shiftX) > 2 || Math.abs(shiftY) > 2) {
+      setPan(prev => ({
+        x: prev.x + shiftX,
+        y: prev.y + shiftY,
+      }));
+    }
+  }, [selectedNodeId, scene.visibleNodes]);
+
+  // Mantener el centro visual cuando se abren/cierran los paneles laterales en escritorio o cambia el tamaño
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+
+    const ro = new ResizeObserver(entries => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      if (width < 80 || height < 80) return;
+      const prev = lastContainerSizeRef.current;
+      lastContainerSizeRef.current = { w: width, h: height };
+      if (prev && (Math.abs(width - prev.w) > 4 || Math.abs(height - prev.h) > 4)) {
+        setPan(p => ({
+          x: p.x + (width - prev.w) / 2,
+          y: p.y + (height - prev.h) / 2,
+        }));
+      }
+    });
+
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Reencuadrar suavemente si rota la pantalla en móvil/tablet
+  useEffect(() => {
+    const handleOrientation = () => {
+      setTimeout(() => fitToScreen(), 120);
+    };
+    window.addEventListener('orientationchange', handleOrientation);
+    return () => window.removeEventListener('orientationchange', handleOrientation);
+  }, [fitToScreen]);
 
   /** Zoom centrado exactamente sobre un punto de la pantalla */
   const applyZoomAtPoint = useCallback((factor: number, clientX?: number, clientY?: number) => {
@@ -186,6 +348,28 @@ export const Canvas: React.FC<CanvasProps> = ({
     });
   }, []);
 
+  /** Inicializa el estado matemático de pellizco con 2 dedos */
+  const startPinchGesture = useCallback(() => {
+    const el = containerRef.current;
+    if (!el || activePointersRef.current.size < 2) return;
+    const pts = Array.from(activePointersRef.current.values());
+    const p1 = pts[0];
+    const p2 = pts[1];
+    const rect = el.getBoundingClientRect();
+    const midX = (p1.x + p2.x) / 2 - rect.left;
+    const midY = (p1.y + p2.y) / 2 - rect.top;
+    const dist = Math.max(20, Math.hypot(p2.x - p1.x, p2.y - p1.y));
+
+    pinchStateRef.current = {
+      initialDist: dist,
+      initialZoom: zoomRef.current,
+      worldMidX: (midX - panRef.current.x) / zoomRef.current,
+      worldMidY: (midY - panRef.current.y) / zoomRef.current,
+    };
+    dragStateRef.current.mode = 'none';
+    setIsPanning(false);
+  }, []);
+
   // Bloqueo total del zoom nativo del navegador en rueda/trackpad y zoom fluido interno 60fps
   useEffect(() => {
     const el = containerRef.current;
@@ -195,7 +379,6 @@ export const Canvas: React.FC<CanvasProps> = ({
       e.preventDefault();
       e.stopPropagation();
 
-      // Si hay desplazamiento horizontal explícito de touchpad (dos dedos a los lados sin Ctrl)
       if (!e.ctrlKey && !e.metaKey && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8 && Math.abs(e.deltaX) > 2) {
         setPan(prev => ({
           x: prev.x - e.deltaX,
@@ -212,7 +395,6 @@ export const Canvas: React.FC<CanvasProps> = ({
         return;
       }
 
-      // Rueda del ratón o pellizco de touchpad -> Zoom centrado en el cursor
       const sensitivity = e.ctrlKey ? 0.009 : 0.0016;
       const factor = Math.exp(-e.deltaY * sensitivity);
       applyZoomAtPoint(factor, e.clientX, e.clientY);
@@ -331,32 +513,51 @@ export const Canvas: React.FC<CanvasProps> = ({
     selectedNodeId,
   ]);
 
-  // Manejo de arrastre de lienzo (Pan) y arrastre de nodos
-  const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0 || e.button === 1) {
-      if (connectSourceId) {
-        onCancelConnect();
-      }
-      onSelectNode(null);
-      onSelectEdge(null);
-      onSelectImage?.(null);
-      setIsPanning(true);
-      dragStateRef.current = {
-        mode: 'pan',
-        startClientX: e.clientX,
-        startClientY: e.clientY,
-        initialPanX: panRef.current.x,
-        initialPanY: panRef.current.y,
-      };
+  // Manejo de arrastre de lienzo (Pan) y gestos táctiles en el fondo
+  const handleCanvasPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 1) return;
+
+    activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Si hay 2 dedos apoyados, activar Pinch-to-Zoom + Pan simultáneo
+    if (activePointersRef.current.size >= 2) {
+      startPinchGesture();
+      return;
     }
+
+    if (connectSourceId) {
+      onCancelConnect();
+    }
+    onSelectNode(null);
+    onSelectEdge(null);
+    onSelectImage?.(null);
+    setIsPanning(true);
+    dragStateRef.current = {
+      mode: 'pan',
+      pointerId: e.pointerId,
+      pointerType: e.pointerType,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      initialPanX: panRef.current.x,
+      initialPanY: panRef.current.y,
+    };
   };
 
   const handleNodeStartDrag = useCallback(
-    (e: React.MouseEvent, node: OrganizerNode) => {
+    (e: React.PointerEvent, node: OrganizerNode) => {
+      activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (activePointersRef.current.size >= 2) {
+        startPinchGesture();
+        return;
+      }
+
       if (spacePressed) {
         setIsPanning(true);
         dragStateRef.current = {
           mode: 'pan',
+          pointerId: e.pointerId,
+          pointerType: e.pointerType,
           startClientX: e.clientX,
           startClientY: e.clientY,
           initialPanX: panRef.current.x,
@@ -367,6 +568,8 @@ export const Canvas: React.FC<CanvasProps> = ({
 
       dragStateRef.current = {
         mode: 'node',
+        pointerId: e.pointerId,
+        pointerType: e.pointerType,
         startClientX: e.clientX,
         startClientY: e.clientY,
         initialPanX: panRef.current.x,
@@ -378,17 +581,26 @@ export const Canvas: React.FC<CanvasProps> = ({
         hasMoved: false,
       };
     },
-    [spacePressed]
+    [spacePressed, startPinchGesture]
   );
 
   const handleImageStartDrag = useCallback(
-    (id: string, e: React.MouseEvent) => {
+    (id: string, e: React.PointerEvent) => {
+      activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (activePointersRef.current.size >= 2) {
+        startPinchGesture();
+        return;
+      }
+
       if (spacePressed) return;
       const img = project.images?.find(i => i.id === id);
       if (!img || img.locked) return;
 
       dragStateRef.current = {
         mode: 'image',
+        pointerId: e.pointerId,
+        pointerType: e.pointerType,
         startClientX: e.clientX,
         startClientY: e.clientY,
         initialPanX: panRef.current.x,
@@ -399,16 +611,25 @@ export const Canvas: React.FC<CanvasProps> = ({
         hasMoved: false,
       };
     },
-    [project.images, spacePressed]
+    [project.images, spacePressed, startPinchGesture]
   );
 
   const handleImageStartResize = useCallback(
-    (id: string, e: React.MouseEvent) => {
+    (id: string, e: React.PointerEvent) => {
+      activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (activePointersRef.current.size >= 2) {
+        startPinchGesture();
+        return;
+      }
+
       const img = project.images?.find(i => i.id === id);
       if (!img || img.locked) return;
 
       dragStateRef.current = {
         mode: 'resize-image',
+        pointerId: e.pointerId,
+        pointerType: e.pointerType,
         startClientX: e.clientX,
         startClientY: e.clientY,
         initialPanX: panRef.current.x,
@@ -419,11 +640,43 @@ export const Canvas: React.FC<CanvasProps> = ({
         hasMoved: false,
       };
     },
-    [project.images]
+    [project.images, startPinchGesture]
   );
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handlePointerMove = (e: PointerEvent) => {
+      if (activePointersRef.current.has(e.pointerId)) {
+        activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+
+      // Gesto multitáctil de 2 dedos: Pinch-to-Zoom + Pan simultáneo a 60fps
+      if (activePointersRef.current.size >= 2 && containerRef.current) {
+        if (!pinchStateRef.current) {
+          startPinchGesture();
+        }
+        const pinch = pinchStateRef.current;
+        if (pinch) {
+          const pts = Array.from(activePointersRef.current.values());
+          const p1 = pts[0];
+          const p2 = pts[1];
+          const rect = containerRef.current.getBoundingClientRect();
+          const midX = (p1.x + p2.x) / 2 - rect.left;
+          const midY = (p1.y + p2.y) / 2 - rect.top;
+          const dist = Math.max(16, Math.hypot(p2.x - p1.x, p2.y - p1.y));
+          const nextZoom = Math.min(
+            2.8,
+            Math.max(0.18, pinch.initialZoom * (dist / pinch.initialDist))
+          );
+
+          setZoom(nextZoom);
+          setPan({
+            x: midX - pinch.worldMidX * nextZoom,
+            y: midY - pinch.worldMidY * nextZoom,
+          });
+        }
+        return;
+      }
+
       if (connectSourceId && containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
         const wx = (e.clientX - rect.left - panRef.current.x) / zoomRef.current;
@@ -433,6 +686,9 @@ export const Canvas: React.FC<CanvasProps> = ({
 
       const st = dragStateRef.current;
       if (st.mode === 'none') return;
+      if (st.pointerId !== undefined && e.pointerId !== st.pointerId) return;
+
+      const moveThreshold = st.pointerType === 'touch' ? 6 : 3;
 
       if (st.mode === 'pan') {
         const dx = e.clientX - st.startClientX;
@@ -444,7 +700,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       } else if (st.mode === 'node' && st.nodeId) {
         const dxScreen = e.clientX - st.startClientX;
         const dyScreen = e.clientY - st.startClientY;
-        if (!st.hasMoved && Math.hypot(dxScreen, dyScreen) > 3) {
+        if (!st.hasMoved && Math.hypot(dxScreen, dyScreen) > moveThreshold) {
           st.hasMoved = true;
           onBeginDragHistory();
         }
@@ -456,9 +712,14 @@ export const Canvas: React.FC<CanvasProps> = ({
       } else if (st.mode === 'image' && st.imageId) {
         const dxScreen = e.clientX - st.startClientX;
         const dyScreen = e.clientY - st.startClientY;
-        const newX = (st.initialImageX || 0) + dxScreen / zoomRef.current;
-        const newY = (st.initialImageY || 0) + dyScreen / zoomRef.current;
-        onMoveImage?.(st.imageId, newX, newY);
+        if (!st.hasMoved && Math.hypot(dxScreen, dyScreen) > moveThreshold) {
+          st.hasMoved = true;
+        }
+        if (st.hasMoved) {
+          const newX = (st.initialImageX || 0) + dxScreen / zoomRef.current;
+          const newY = (st.initialImageY || 0) + dyScreen / zoomRef.current;
+          onMoveImage?.(st.imageId, newX, newY);
+        }
       } else if (st.mode === 'resize-image' && st.imageId) {
         const dxScreen = e.clientX - st.startClientX;
         const dyScreen = e.clientY - st.startClientY;
@@ -468,20 +729,61 @@ export const Canvas: React.FC<CanvasProps> = ({
       }
     };
 
-    const handleMouseUp = () => {
-      if (dragStateRef.current.mode !== 'none') {
+    const handlePointerEnd = (e: PointerEvent) => {
+      activePointersRef.current.delete(e.pointerId);
+
+      // Si veníamos de un pellizco de 2 dedos y queda 1 dedo apoyado, pasar suavemente a pan
+      if (pinchStateRef.current) {
+        if (activePointersRef.current.size < 2) {
+          pinchStateRef.current = null;
+          if (activePointersRef.current.size === 1) {
+            const [remId, remPos] = Array.from(activePointersRef.current.entries())[0];
+            setIsPanning(true);
+            dragStateRef.current = {
+              mode: 'pan',
+              pointerId: remId,
+              pointerType: 'touch',
+              startClientX: remPos.x,
+              startClientY: remPos.y,
+              initialPanX: panRef.current.x,
+              initialPanY: panRef.current.y,
+            };
+          } else {
+            dragStateRef.current.mode = 'none';
+            setIsPanning(false);
+          }
+        }
+        return;
+      }
+
+      if (
+        dragStateRef.current.mode !== 'none' &&
+        (dragStateRef.current.pointerId === undefined ||
+          dragStateRef.current.pointerId === e.pointerId)
+      ) {
         dragStateRef.current.mode = 'none';
         setIsPanning(false);
       }
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+    const handleWindowBlur = () => {
+      activePointersRef.current.clear();
+      pinchStateRef.current = null;
+      dragStateRef.current.mode = 'none';
+      setIsPanning(false);
     };
-  }, [connectSourceId, onBeginDragHistory, onMoveImage, onMoveNode, onResizeImage]);
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+    window.addEventListener('blur', handleWindowBlur);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [connectSourceId, onBeginDragHistory, onMoveImage, onMoveNode, onResizeImage, startPinchGesture]);
 
   // Soporte de pegado de imágenes desde portapapeles (Ctrl+V)
   useEffect(() => {
@@ -536,7 +838,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      onMouseDown={handleCanvasMouseDown}
+      onPointerDown={handleCanvasPointerDown}
       onDragOver={e => {
         e.preventDefault();
         e.stopPropagation();
@@ -578,7 +880,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             : `${gridPixelSize}px ${gridPixelSize}px`,
         backgroundPosition: `${pan.x}px ${pan.y}px`,
       }}
-      className={`relative flex-1 h-full overflow-hidden select-none ${bgPatternClass} ${
+      className={`canvas-touch-surface relative flex-1 h-full overflow-hidden select-none ${bgPatternClass} ${
         isPanning || spacePressed ? 'dragging-canvas' : 'cursor-grab'
       }`}
     >
@@ -595,19 +897,20 @@ export const Canvas: React.FC<CanvasProps> = ({
           </div>
         </div>
       )}
+
       {/* Banner interactivo cuando el usuario está trazando una Relación Cruzada */}
       {connectingFromNode && (
         <div
-          onMouseDown={e => e.stopPropagation()}
-          className="absolute top-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 px-4 py-2 rounded-full bg-orange-600 text-white text-xs font-semibold shadow-lg animate-fade-in"
+          onPointerDown={e => e.stopPropagation()}
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-[92vw] flex items-center gap-2 px-3.5 py-2 rounded-full bg-orange-600 text-white text-xs font-semibold shadow-lg"
         >
-          <span>
-            Conectando desde «{connectingFromNode.text}» — Haz clic en el nodo destino
+          <span className="truncate">
+            Conectando «{connectingFromNode.text}» — Toca el nodo destino
           </span>
           <button
             type="button"
             onClick={onCancelConnect}
-            className="p-0.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+            className="p-1 rounded-full bg-white/20 hover:bg-white/30 transition-colors shrink-0"
             title="Cancelar (Esc)"
           >
             <X className="w-3.5 h-3.5" />
@@ -670,6 +973,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             organizerType={project.type}
             themeId={project.theme}
             isSelected={selectedNodeId === node.id}
+            isEditingExternal={editingNodeId === node.id}
             isConnectSource={connectSourceId === node.id}
             isConnectMode={Boolean(connectSourceId)}
             descendantCount={scene.descendantCount.get(node.id) || 0}
@@ -686,39 +990,139 @@ export const Canvas: React.FC<CanvasProps> = ({
               onSelectEdge(null);
               onSelectNode(id);
             }}
+            onEditingChange={(id, editing) => setEditingNodeId(editing ? id : null)}
             onStartDrag={handleNodeStartDrag}
             onCommitText={onCommitNodeText}
             onToggleCollapse={onToggleCollapse}
             onCycleProgress={onCycleProgress}
             onAddChild={onAddChild}
-            onAddSibling={onAddSibling}
-            onExpandAi={onExpandAi}
             onOpenNotes={onOpenNotes}
-            onStartCrossLink={onStartCrossLink}
-            onDelete={onDeleteNode}
           />
         ))}
       </div>
 
-      {/* Minimapa de Radar Interactivo (Esquina Inferior Izquierda) */}
+      {/* Barra flotante contextual 1:1 en espacio de pantalla (legible a cualquier zoom y 0% recorte en bordes) */}
+      {selectedNode && !editingNodeId && !connectSourceId && !isPanning && (
+        <div
+          ref={nodeToolbarRef}
+          onPointerDown={e => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
+          style={{ left: 8, top: 8 }}
+          className="absolute z-30 max-w-[calc(100%-16px)] overflow-x-auto flex items-center gap-0.5 px-1.5 py-1 rounded-xl bg-white/95 backdrop-blur-md border border-stone-200/90 edraw-panel-shadow whitespace-nowrap select-none"
+        >
+          <button
+            type="button"
+            onClick={() => onAddChild(selectedNode.id)}
+            title="Añadir subtema (Tab)"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-stone-700 hover:bg-orange-50 hover:text-orange-700 active:bg-orange-100 transition-colors shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5 text-orange-600" />
+            <span>Subtema</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              // Si el zoom es muy lejano en móvil, acercar suavemente al nodo para escribir cómodo
+              if (zoomRef.current < 0.65 && containerRef.current) {
+                const rect = containerRef.current.getBoundingClientRect();
+                const targetZ = 0.85;
+                setZoom(targetZ);
+                setPan({
+                  x: rect.width / 2 - selectedNode.x * targetZ,
+                  y: Math.max(120, rect.height * 0.36) - selectedNode.y * targetZ,
+                });
+              }
+              setEditingNodeId(selectedNode.id);
+            }}
+            title="Editar texto del nodo (Doble clic / Doble toque)"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-stone-700 hover:bg-amber-50 hover:text-amber-800 active:bg-amber-100 transition-colors shrink-0"
+          >
+            <Pencil className="w-3 h-3 text-amber-600" />
+            <span>Editar</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onExpandAi(selectedNode)}
+            title="Expandir ideas automáticamente con IA"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-stone-700 hover:bg-purple-50 hover:text-purple-700 active:bg-purple-100 transition-colors shrink-0"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+            <span>IA</span>
+          </button>
+
+          {!(selectedNode.isRoot || (selectedNode.depth || 0) === 0) && (
+            <button
+              type="button"
+              onClick={() => onAddSibling(selectedNode.id)}
+              title="Añadir nodo hermano al mismo nivel (Enter)"
+              className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition-colors shrink-0"
+            >
+              <GitBranchPlus className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => onStartCrossLink(selectedNode.id)}
+            title="Trazar flecha de relación cruzada hacia otro nodo"
+            className="p-1.5 rounded-lg text-stone-600 hover:bg-amber-50 hover:text-amber-700 transition-colors shrink-0"
+          >
+            <GitCompareArrows className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onOpenNotes(selectedNode.id)}
+            title="Subtítulo, notas y enlace del nodo"
+            className="p-1.5 rounded-lg text-stone-600 hover:bg-blue-50 hover:text-blue-700 transition-colors shrink-0"
+          >
+            <FileText className="w-3.5 h-3.5" />
+          </button>
+
+          {!(selectedNode.isRoot || (selectedNode.depth || 0) === 0) && (
+            <button
+              type="button"
+              onClick={() => onDeleteNode(selectedNode.id)}
+              title="Eliminar rama (Supr)"
+              className="p-1.5 rounded-lg text-stone-500 hover:bg-red-50 hover:text-red-600 transition-colors shrink-0"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Minimapa de Radar Interactivo */}
       {showMinimap && scene.visibleNodes.length > 0 && (
         <div
-          onMouseDown={e => e.stopPropagation()}
-          className="absolute bottom-14 left-4 z-30 w-44 h-28 rounded-xl bg-white/90 backdrop-blur-md border border-stone-200/90 edraw-panel-shadow p-1.5 overflow-hidden pointer-events-auto"
+          onPointerDown={e => e.stopPropagation()}
+          className="absolute bottom-16 left-3 sm:bottom-14 sm:left-4 z-30 w-40 sm:w-44 h-28 rounded-xl bg-white/92 backdrop-blur-md border border-stone-200/90 edraw-panel-shadow p-1.5 overflow-hidden pointer-events-auto"
         >
           <div className="flex items-center justify-between px-1 mb-0.5">
             <span className="text-[9.5px] font-bold uppercase tracking-wider text-stone-400">
               Vista General
             </span>
-            <span className="text-[9.5px] font-semibold text-stone-400">
-              {scene.visibleNodes.length} nodos
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] font-semibold text-stone-400">
+                {scene.visibleNodes.length}n
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowMinimap(false)}
+                title="Ocultar minimapa"
+                className="p-0.5 rounded hover:bg-stone-100 text-stone-400 hover:text-stone-700"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </div>
           </div>
           <svg
             viewBox={`${scene.bounds.minX - 60} ${scene.bounds.minY - 60} ${
               scene.bounds.width + 120
             } ${scene.bounds.height + 120}`}
-            className="w-full h-[84px] rounded-lg"
+            className="w-full h-[82px] rounded-lg cursor-pointer"
             style={{ backgroundColor: theme.canvasBg }}
             onClick={e => {
               const svgRect = e.currentTarget.getBoundingClientRect();
@@ -775,10 +1179,10 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
 
-      {/* Guía inferior izquierda de atajos rápidos */}
+      {/* Guía inferior izquierda de atajos rápidos (solo escritorio amplio para armonía visual) */}
       <div
-        onMouseDown={e => e.stopPropagation()}
-        className="hidden md:flex absolute bottom-3 left-4 z-30 items-center gap-2 px-3 py-1.5 rounded-xl bg-white/90 backdrop-blur-md border border-stone-200/80 text-[11px] text-stone-600 shadow-sm"
+        onPointerDown={e => e.stopPropagation()}
+        className="hidden xl:flex absolute bottom-3 left-4 z-30 items-center gap-2 px-3 py-1.5 rounded-xl bg-white/90 backdrop-blur-md border border-stone-200/80 text-[11px] text-stone-600 shadow-sm"
       >
         <span className="px-1.5 py-0.5 rounded bg-stone-100 font-semibold text-stone-700">
           Tab
@@ -794,17 +1198,12 @@ export const Canvas: React.FC<CanvasProps> = ({
           Doble Clic
         </span>
         <span>Editar</span>
-        <span className="text-stone-300">•</span>
-        <span className="px-1.5 py-0.5 rounded bg-stone-100 font-semibold text-stone-700">
-          Rueda / Arrastrar
-        </span>
-        <span>Zoom y Lienzo</span>
       </div>
 
-      {/* Controles flotantes de navegación, encuadre y auto-alineación (Esquina Inferior Derecha) */}
+      {/* Controles flotantes de navegación, encuadre y auto-alineación (Adaptables Móvil/PC) */}
       <div
-        onMouseDown={e => e.stopPropagation()}
-        className="absolute bottom-3 right-4 z-30 flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-white/95 backdrop-blur-md border border-stone-200/90 edraw-panel-shadow"
+        onPointerDown={e => e.stopPropagation()}
+        className="absolute bottom-3 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-4 z-30 max-w-[calc(100vw-16px)] flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-2xl bg-white/95 backdrop-blur-md border border-stone-200/90 edraw-panel-shadow whitespace-nowrap"
       >
         <button
           type="button"
@@ -825,7 +1224,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           type="button"
           onClick={() => applyZoomAtPoint(0.85)}
           title="Alejar lienzo (Ctrl -)"
-          className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 transition-colors"
+          className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 active:bg-stone-200 transition-colors"
         >
           <Minus className="w-4 h-4" />
         </button>
@@ -840,7 +1239,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             setPan({ x: rect.width / 2, y: rect.height / 2 });
           }}
           title="Restablecer escala al 100%"
-          className="min-w-[48px] text-center text-xs font-bold text-stone-700 hover:text-orange-600 transition-colors"
+          className="min-w-[42px] sm:min-w-[48px] text-center text-[11px] sm:text-xs font-bold text-stone-700 hover:text-orange-600 transition-colors"
         >
           {Math.round(zoom * 100)}%
         </button>
@@ -849,7 +1248,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           type="button"
           onClick={() => applyZoomAtPoint(1.18)}
           title="Acercar lienzo (Ctrl +)"
-          className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 transition-colors"
+          className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 active:bg-stone-200 transition-colors"
         >
           <Plus className="w-4 h-4" />
         </button>
@@ -860,10 +1259,10 @@ export const Canvas: React.FC<CanvasProps> = ({
           type="button"
           onClick={fitToScreen}
           title="Encuadrar todo el organizador en pantalla (Tecla F)"
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-stone-700 hover:bg-stone-100 transition-colors"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-stone-700 hover:bg-stone-100 active:bg-stone-200 transition-colors"
         >
           <Maximize2 className="w-3.5 h-3.5 text-stone-600" />
-          <span className="hidden sm:inline">Encuadrar</span>
+          <span className="hidden md:inline">Encuadrar</span>
         </button>
 
         <button
@@ -873,10 +1272,11 @@ export const Canvas: React.FC<CanvasProps> = ({
             requestAnimationFrame(() => fitToScreen());
           }}
           title="Reordenar y alinear matemáticamente todas las ramas y conexiones"
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 text-xs font-bold transition-colors"
+          className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-800 border border-emerald-200/80 text-[11px] sm:text-xs font-bold transition-colors"
         >
-          <LayoutGrid className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Auto-Alinear</span>
+          <LayoutGrid className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+          <span className="hidden sm:inline">Auto-Alinear</span>
+          <span className="sm:hidden">Alinear</span>
         </button>
       </div>
     </div>

@@ -153,13 +153,19 @@ export function measureNodeDimensions(
     if (w > maxLineW) maxLineW = w;
   }
 
+  let subLinesCount = 0;
   if (node.subtitle) {
-    const subW = measureStringPx(node.subtitle, 11.5, 500);
-    if (subW > maxLineW) maxLineW = Math.min(subW, typo.maxTextWidth + 16);
+    const subMaxW = typo.maxTextWidth + 40;
+    const subLines = wrapTextLines(node.subtitle, subMaxW, 11.5, 500);
+    subLinesCount = subLines.length;
+    for (const sl of subLines) {
+      const sw = measureStringPx(sl, 11.5, 500);
+      if (sw > maxLineW) maxLineW = sw;
+    }
   }
 
-  // Margen de seguridad de 10px para evitar cualquier salto extra por kerning subpíxel
-  const textBlockW = Math.ceil(maxLineW) + 10;
+  // Margen de seguridad de 12px para evitar cualquier truncado por kerning subpíxel
+  const textBlockW = Math.ceil(maxLineW) + 12;
 
   const leftBadgesW =
     (node.icon ? 24 : 0) +
@@ -171,7 +177,8 @@ export function measureNodeDimensions(
     (node.hyperlink ? 18 : 0);
 
   const contentW = leftBadgesW + textBlockW + rightBadgesW;
-  const textBlockH = lines.length * typo.lineHeight + (node.subtitle ? 18 : 0);
+  const textBlockH =
+    lines.length * typo.lineHeight + (subLinesCount > 0 ? subLinesCount * 15 + 4 : 0);
 
   let width = Math.max(isRoot ? 152 : 114, Math.ceil(contentW + typo.padX * 2));
   let height = Math.max(

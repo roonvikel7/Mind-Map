@@ -20,36 +20,36 @@ export const TemplatesModal: React.FC<TemplatesModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4"
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-4xl rounded-3xl bg-white border border-stone-200 edraw-panel-shadow overflow-hidden flex flex-col max-h-[88vh]"
+        className="w-full max-w-4xl rounded-2xl sm:rounded-3xl bg-white border border-stone-200 edraw-panel-shadow overflow-hidden flex flex-col max-h-[92dvh]"
       >
-        <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/70">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center">
-              <LayoutTemplate className="w-5 h-5" />
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-stone-100 flex items-center justify-between gap-2 bg-stone-50/70 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <LayoutTemplate className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <h2 className="text-base font-extrabold text-stone-800">
-                Galería de Plantillas Profesionales EdrawMax
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-extrabold text-stone-800 truncate">
+                Galería de Plantillas Profesionales
               </h2>
-              <p className="text-xs text-stone-500">
-                8 estructuras geométricas listas con conexiones calibradas y temas cálidos
+              <p className="text-[11px] sm:text-xs text-stone-500 line-clamp-1">
+                8 estructuras geométricas listas con previsualización y temas cálidos
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
+            className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <div className="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {TEMPLATE_CARDS.map(card => {
             const themeObj = EDRAW_THEMES[card.theme];
             return (

@@ -1,5 +1,4 @@
 import { OrganizerProject, OrganizerType, ThemeId } from '../types/organizer';
-import { createDefaultProjects } from './templates';
 import { applyLayout } from './layouts';
 import { EDRAW_THEMES } from './themes';
 
@@ -27,6 +26,22 @@ export function createCleanInitialProject(
   const stamp = Date.now();
   const rootId = `root-${stamp}`;
   const isCartographic = type === 'cartographic';
+  const initialNodes = [
+    {
+      id: rootId,
+      text: title,
+      subtitle: isCartographic
+        ? 'Cartografía Conceptual de Ocho Ejes'
+        : 'Toca para editar o añadir subtemas',
+      x: 0,
+      y: 0,
+      width: 180,
+      height: 56,
+      isRoot: true,
+      icon: isCartographic ? undefined : '💡',
+    },
+  ];
+  const relaid = applyLayout(initialNodes, [], type, 'vitality-warm', true, 'clockwise');
   return {
     id: `proj-${stamp}`,
     title,
@@ -34,21 +49,7 @@ export function createCleanInitialProject(
     theme: 'vitality-warm',
     canvasBg: 'dots',
     rainbowBranches: true,
-    nodes: [
-      {
-        id: rootId,
-        text: title,
-        subtitle: isCartographic
-          ? 'Cartografía Conceptual de Ocho Ejes'
-          : 'Haz doble clic para escribir o Tab para ramificar',
-        x: 0,
-        y: 0,
-        width: 180,
-        height: 56,
-        isRoot: true,
-        icon: isCartographic ? undefined : '💡',
-      },
-    ],
+    nodes: relaid.nodes,
     edges: [],
     images: [],
     createdAt: stamp,

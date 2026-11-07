@@ -1203,7 +1203,8 @@ export async function expandNodeWithAi(
   type: OrganizerType,
   themeId: ThemeId = 'vitality-warm',
   apiSettings?: Partial<ApiSettings>,
-  projectTitle?: string
+  projectTitle?: string,
+  cartographicDirection: 'clockwise' | 'counterclockwise' = 'clockwise'
 ): Promise<{ nodes: OrganizerNode[]; edges: OrganizerEdge[]; count: number }> {
   // Construir contexto de linaje ascendente
   const lineage: string[] = [];
@@ -1275,7 +1276,14 @@ export async function expandNodeWithAi(
     });
   });
 
-  const relaid = applyLayout(newNodes, newEdges, type, themeId, false);
+  const relaid = applyLayout(
+    newNodes,
+    newEdges,
+    type,
+    themeId,
+    false,
+    cartographicDirection
+  );
   return {
     nodes: relaid.nodes,
     edges: relaid.edges,

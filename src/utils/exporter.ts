@@ -605,24 +605,24 @@ export function exportAsInteractiveHtml(project: OrganizerProject) {
 <html lang="es">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>${escapeXml(project.title)} • Visor Interactivo Synapse</title>
   <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: ${theme.canvasBg}; font-family: system-ui, -apple-system, sans-serif; user-select: none; }
-    #viewport { width: 100%; height: 100%; cursor: grab; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; overflow: hidden; background: ${theme.canvasBg}; font-family: system-ui, -apple-system, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
+    #viewport { width: 100%; height: 100%; cursor: grab; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; }
     #viewport:active { cursor: grabbing; }
-    #stage { transform-origin: center center; transition: transform 0.04s linear; }
-    .hud { position: fixed; top: 16px; left: 16px; background: rgba(255,255,255,0.94); border: 1px solid #E7E5E4; border-radius: 14px; padding: 10px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 14px; }
-    .hud h1 { margin: 0; font-size: 15px; color: #1C1917; }
-    .controls { position: fixed; bottom: 18px; right: 18px; background: rgba(255,255,255,0.95); border: 1px solid #E7E5E4; border-radius: 12px; padding: 6px; display: flex; gap: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-    button { border: 1px solid #E7E5E4; background: #FFF; color: #292524; border-radius: 8px; padding: 6px 11px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    #stage { transform-origin: center center; will-change: transform; }
+    .hud { position: fixed; top: 12px; left: 12px; right: 12px; max-width: fit-content; background: rgba(255,255,255,0.94); border: 1px solid #E7E5E4; border-radius: 14px; padding: 8px 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; z-index: 10; }
+    .hud h1 { margin: 0; font-size: 14px; color: #1C1917; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55vw; }
+    .controls { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.95); border: 1px solid #E7E5E4; border-radius: 14px; padding: 6px; display: flex; gap: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); z-index: 10; }
+    button { border: 1px solid #E7E5E4; background: #FFF; color: #292524; border-radius: 9px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
     button:hover { background: #F5F5F4; }
   </style>
 </head>
 <body>
   <div class="hud">
     <h1>${escapeXml(project.title)}</h1>
-    <span style="font-size:12px;color:#78716C;">Arrastra para mover • Rueda para zoom</span>
+    <span style="font-size:11px;color:#78716C;">Arrastra o pellizca para zoom</span>
   </div>
   <div id="viewport">
     <div id="stage">${svg}</div>
@@ -635,18 +635,51 @@ export function exportAsInteractiveHtml(project: OrganizerProject) {
   </div>
   <script>
     let scale = 1, tx = 0, ty = 0, dragging = false, sx = 0, sy = 0;
+    const pts = new Map();
+    let pinchDist = 0, pinchScale = 1;
     const stage = document.getElementById('stage');
     const vp = document.getElementById('viewport');
     const zlbl = document.getElementById('zlbl');
     function apply() {
-      stage.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+      stage.style.transform = 'translate3d(' + tx + 'px,' + ty + 'px,0) scale(' + scale + ')';
       zlbl.textContent = Math.round(scale * 100) + '%';
     }
-    function zoomBy(f) { scale = Math.min(4, Math.max(0.2, scale * f)); apply(); }
-    function resetView() { scale = 0.92; tx = 0; ty = 0; apply(); }
-    vp.addEventListener('mousedown', e => { dragging = true; sx = e.clientX - tx; sy = e.clientY - ty; });
-    window.addEventListener('mousemove', e => { if (!dragging) return; tx = e.clientX - sx; ty = e.clientY - sy; apply(); });
-    window.addEventListener('mouseup', () => { dragging = false; });
+    function zoomBy(f) { scale = Math.min(5, Math.max(0.18, scale * f)); apply(); }
+    function resetView() { scale = window.innerWidth < 640 ? 0.65 : 0.92; tx = 0; ty = 0; apply(); }
+    vp.addEventListener('pointerdown', e => {
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) {
+        const a = Array.from(pts.values());
+        pinchDist = Math.max(20, Math.hypot(a[1].x - a[0].x, a[1].y - a[0].y));
+        pinchScale = scale;
+        dragging = false;
+      } else if (pts.size === 1) {
+        dragging = true; sx = e.clientX - tx; sy = e.clientY - ty;
+      }
+    });
+    window.addEventListener('pointermove', e => {
+      if (pts.has(e.pointerId)) pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size >= 2) {
+        const a = Array.from(pts.values());
+        const d = Math.max(16, Math.hypot(a[1].x - a[0].x, a[1].y - a[0].y));
+        scale = Math.min(5, Math.max(0.18, pinchScale * (d / pinchDist)));
+        apply();
+        return;
+      }
+      if (!dragging) return;
+      tx = e.clientX - sx; ty = e.clientY - sy; apply();
+    });
+    function endPtr(e) {
+      pts.delete(e.pointerId);
+      if (pts.size === 1) {
+        const rem = Array.from(pts.values())[0];
+        dragging = true; sx = rem.x - tx; sy = rem.y - ty;
+      } else if (pts.size === 0) {
+        dragging = false;
+      }
+    }
+    window.addEventListener('pointerup', endPtr);
+    window.addEventListener('pointercancel', endPtr);
     vp.addEventListener('wheel', e => { e.preventDefault(); zoomBy(e.deltaY < 0 ? 1.1 : 0.9); }, { passive: false });
     resetView();
   </script>

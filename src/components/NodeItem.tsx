@@ -1,11 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Check,
   ExternalLink,
   FileText,
-  GitCompareArrows,
   Plus,
-  Sparkles,
-  Trash2,
 } from 'lucide-react';
 import { OrganizerNode, OrganizerType, ThemeId } from '../types/organizer';
 import { getNodeTypography, resolveEffectiveShape } from '../utils/measure';
@@ -20,21 +18,19 @@ interface NodeItemProps {
   organizerType: OrganizerType;
   themeId: ThemeId;
   isSelected: boolean;
+  isEditingExternal?: boolean;
   isConnectSource: boolean;
   isConnectMode: boolean;
   descendantCount: number;
   hasChildren: boolean;
   onSelect: (id: string) => void;
-  onStartDrag: (e: React.MouseEvent, node: OrganizerNode) => void;
+  onEditingChange?: (id: string, editing: boolean) => void;
+  onStartDrag: (e: React.PointerEvent, node: OrganizerNode) => void;
   onCommitText: (id: string, newText: string) => void;
   onToggleCollapse: (id: string) => void;
   onCycleProgress: (id: string) => void;
   onAddChild: (id: string) => void;
-  onAddSibling: (id: string) => void;
-  onExpandAi: (node: OrganizerNode) => void;
   onOpenNotes: (id: string) => void;
-  onStartCrossLink: (id: string) => void;
-  onDelete: (id: string) => void;
 }
 
 export const NodeItem: React.FC<NodeItemProps> = ({
@@ -42,24 +38,29 @@ export const NodeItem: React.FC<NodeItemProps> = ({
   organizerType,
   themeId,
   isSelected,
+  isEditingExternal,
   isConnectSource,
   isConnectMode,
   descendantCount,
   hasChildren,
   onSelect,
+  onEditingChange,
   onStartDrag,
   onCommitText,
   onToggleCollapse,
   onCycleProgress,
   onAddChild,
-  onExpandAi,
   onOpenNotes,
-  onStartCrossLink,
-  onDelete,
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
+  const [localEditing, setLocalEditing] = useState(false);
+  const isEditing = isEditingExternal ?? localEditing;
+  const setIsEditing = (next: boolean) => {
+    setLocalEditing(next);
+    onEditingChange?.(node.id, next);
+  };
   const [draftText, setDraftText] = useState(node.text);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const lastTapRef = useRef<number>(0);
 
   useEffect(() => {
     setDraftText(node.text);
@@ -184,6 +185,9 @@ export const NodeItem: React.FC<NodeItemProps> = ({
       ? '16px'
       : '12px';
 
+  const isSmallScreen =
+    typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
     <div
       data-node-id={node.id}
@@ -196,9 +200,22 @@ export const NodeItem: React.FC<NodeItemProps> = ({
         zIndex: isSelected ? 35 : isRoot ? 20 : 12,
       }}
       className="group select-none"
-      onMouseDown={e => {
-        if (e.button !== 0) return;
+      onPointerDown={e => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
         e.stopPropagation();
+
+        // Detectar doble toque rápido en pantallas táctiles para editar texto al instante
+        if (e.pointerType === 'touch' && !isConnectMode && !isEditing) {
+          const now = Date.now();
+          if (now - lastTapRef.current < 320) {
+            lastTapRef.current = 0;
+            onSelect(node.id);
+            setIsEditing(true);
+            return;
+          }
+          lastTapRef.current = now;
+        }
+
         onSelect(node.id);
         if (!isEditing && !isConnectMode) {
           onStartDrag(e, node);
@@ -211,57 +228,23 @@ export const NodeItem: React.FC<NodeItemProps> = ({
         }
       }}
     >
-      {/* Barra flotante rápida contextual estilo EdrawMax al seleccionar */}
-      {isSelected && !isEditing && !isConnectMode && (
+      {/* Botón flotante de confirmación cuando se edita texto (ideal para móvil y escritorio) */}
+      {isEditing && (
         <div
-          onMouseDown={e => e.stopPropagation()}
-          onClick={e => e.stopPropagation()}
-          className="absolute left-1/2 -translate-x-1/2 -top-11 flex items-center gap-1 px-2 py-1 rounded-xl bg-white/95 backdrop-blur-md border border-stone-200/90 edraw-panel-shadow z-50 whitespace-nowrap"
+          onPointerDown={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            saveEdit();
+          }}
+          className="absolute left-1/2 -translate-x-1/2 -top-10 z-50"
         >
           <button
             type="button"
-            onClick={() => onAddChild(node.id)}
-            title="Añadir subtema (Tab)"
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-stone-700 hover:bg-orange-50 hover:text-orange-700 transition-colors"
+            className="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-md"
           >
-            <Plus className="w-3.5 h-3.5 text-orange-600" />
-            <span>Subtema</span>
+            <Check className="w-3.5 h-3.5" />
+            <span>Listo</span>
           </button>
-          <button
-            type="button"
-            onClick={() => onExpandAi(node)}
-            title="Expandir ideas automáticamente con IA"
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-stone-700 hover:bg-purple-50 hover:text-purple-700 transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-            <span>IA</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onStartCrossLink(node.id)}
-            title="Trazar flecha de relación cruzada hacia otro nodo"
-            className="p-1.5 rounded-lg text-stone-600 hover:bg-amber-50 hover:text-amber-700 transition-colors"
-          >
-            <GitCompareArrows className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenNotes(node.id)}
-            title="Notas y enlace del nodo"
-            className="p-1.5 rounded-lg text-stone-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-          >
-            <FileText className="w-3.5 h-3.5" />
-          </button>
-          {!isRoot && (
-            <button
-              type="button"
-              onClick={() => onDelete(node.id)}
-              title="Eliminar rama (Supr)"
-              className="p-1.5 rounded-lg text-stone-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
         </div>
       )}
 
@@ -391,7 +374,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({
           {node.progress !== undefined && (
             <button
               type="button"
-              onMouseDown={e => e.stopPropagation()}
+              onPointerDown={e => e.stopPropagation()}
               onClick={e => {
                 e.stopPropagation();
                 onCycleProgress(node.id);
@@ -412,7 +395,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({
                 rows={Math.max(1, (node.lines || [node.text]).length)}
                 onChange={e => setDraftText(e.target.value)}
                 onBlur={saveEdit}
-                onMouseDown={e => e.stopPropagation()}
+                onPointerDown={e => e.stopPropagation()}
                 onKeyDown={e => {
                   e.stopPropagation();
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -424,7 +407,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({
                   }
                 }}
                 style={{
-                  fontSize: `${typo.fontSize}px`,
+                  fontSize: `${isSmallScreen ? Math.max(16, typo.fontSize) : typo.fontSize}px`,
                   fontWeight: typo.fontWeight,
                   lineHeight: `${typo.lineHeight}px`,
                   color: textColor,
@@ -451,7 +434,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({
                 style={{
                   color: isRoot ? 'rgba(255,255,255,0.86)' : theme.textSecondary,
                 }}
-                className="text-[11px] font-medium leading-tight mt-0.5 truncate"
+                className="text-[11px] font-medium leading-snug mt-0.5 break-words"
               >
                 {node.subtitle}
               </div>
@@ -464,13 +447,13 @@ export const NodeItem: React.FC<NodeItemProps> = ({
               {node.notes && (
                 <button
                   type="button"
-                  onMouseDown={e => e.stopPropagation()}
+                  onPointerDown={e => e.stopPropagation()}
                   onClick={e => {
                     e.stopPropagation();
                     onOpenNotes(node.id);
                   }}
                   title={node.notes}
-                  className={`p-0.5 rounded transition-opacity opacity-75 hover:opacity-100 ${
+                  className={`p-1 rounded transition-opacity opacity-80 hover:opacity-100 ${
                     isRoot ? 'text-white' : 'text-stone-500'
                   }`}
                 >
@@ -482,10 +465,10 @@ export const NodeItem: React.FC<NodeItemProps> = ({
                   href={node.hyperlink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onMouseDown={e => e.stopPropagation()}
+                  onPointerDown={e => e.stopPropagation()}
                   onClick={e => e.stopPropagation()}
                   title={node.hyperlink}
-                  className={`p-0.5 rounded transition-opacity opacity-75 hover:opacity-100 ${
+                  className={`p-1 rounded transition-opacity opacity-80 hover:opacity-100 ${
                     isRoot ? 'text-white' : 'text-blue-600'
                   }`}
                 >
@@ -501,7 +484,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({
       {hasChildren && !isConnectMode && (
         <button
           type="button"
-          onMouseDown={e => e.stopPropagation()}
+          onPointerDown={e => e.stopPropagation()}
           onClick={e => {
             e.stopPropagation();
             onToggleCollapse(node.id);
@@ -516,14 +499,14 @@ export const NodeItem: React.FC<NodeItemProps> = ({
             borderColor: branchColor,
             color: node.collapsed ? '#FFFFFF' : branchColor,
             ...(portDirection === 'right'
-              ? { right: '-13px', top: '50%', transform: 'translateY(-50%)' }
+              ? { right: '-14px', top: '50%', transform: 'translateY(-50%)' }
               : portDirection === 'left'
-              ? { left: '-13px', top: '50%', transform: 'translateY(-50%)' }
+              ? { left: '-14px', top: '50%', transform: 'translateY(-50%)' }
               : portDirection === 'bottom'
-              ? { bottom: '-13px', left: '50%', transform: 'translateX(-50%)' }
-              : { top: '-13px', left: '50%', transform: 'translateX(-50%)' }),
+              ? { bottom: '-14px', left: '50%', transform: 'translateX(-50%)' }
+              : { top: '-14px', left: '50%', transform: 'translateX(-50%)' }),
           }}
-          className={`absolute z-30 min-w-[20px] h-[20px] px-1 rounded-full border-2 text-[10px] font-bold flex items-center justify-center shadow-sm transition-opacity ${
+          className={`absolute z-30 min-w-[22px] h-[22px] px-1 rounded-full border-2 text-[10px] font-bold flex items-center justify-center shadow-sm transition-opacity ${
             node.collapsed || isSelected
               ? 'opacity-100'
               : 'opacity-0 group-hover:opacity-100'
@@ -533,11 +516,11 @@ export const NodeItem: React.FC<NodeItemProps> = ({
         </button>
       )}
 
-      {/* Botón rápido '+' al pasar el cursor en hojas sin hijos */}
+      {/* Botón rápido '+' al seleccionar o pasar el cursor en hojas sin hijos */}
       {!hasChildren && !isConnectMode && !isEditing && (
         <button
           type="button"
-          onMouseDown={e => e.stopPropagation()}
+          onPointerDown={e => e.stopPropagation()}
           onClick={e => {
             e.stopPropagation();
             onAddChild(node.id);
@@ -547,16 +530,18 @@ export const NodeItem: React.FC<NodeItemProps> = ({
             borderColor: branchColor,
             color: branchColor,
             ...(portDirection === 'right'
-              ? { right: '-12px', top: '50%', transform: 'translateY(-50%)' }
+              ? { right: '-13px', top: '50%', transform: 'translateY(-50%)' }
               : portDirection === 'left'
-              ? { left: '-12px', top: '50%', transform: 'translateY(-50%)' }
+              ? { left: '-13px', top: '50%', transform: 'translateY(-50%)' }
               : portDirection === 'bottom'
-              ? { bottom: '-12px', left: '50%', transform: 'translateX(-50%)' }
-              : { top: '-12px', left: '50%', transform: 'translateX(-50%)' }),
+              ? { bottom: '-13px', left: '50%', transform: 'translateX(-50%)' }
+              : { top: '-13px', left: '50%', transform: 'translateX(-50%)' }),
           }}
-          className="absolute z-30 w-5 h-5 rounded-full bg-white border-2 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 hover:scale-110 transition-all"
+          className={`absolute z-30 w-6 h-6 sm:w-5 sm:h-5 rounded-full bg-white border-2 flex items-center justify-center shadow-sm hover:scale-110 transition-all ${
+            isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}
         >
-          <Plus className="w-3 h-3" />
+          <Plus className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
         </button>
       )}
     </div>

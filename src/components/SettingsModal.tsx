@@ -80,41 +80,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4"
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-lg rounded-3xl bg-white border border-stone-200 edraw-panel-shadow overflow-hidden"
+        className="w-full max-w-lg rounded-2xl sm:rounded-3xl bg-white border border-stone-200 edraw-panel-shadow overflow-hidden flex flex-col max-h-[92dvh]"
       >
-        <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/70">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-stone-200/80 text-stone-700 flex items-center justify-center">
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-stone-100 flex items-center justify-between gap-2 bg-stone-50/70 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-stone-200/80 text-stone-700 flex items-center justify-center shrink-0">
               <Settings className="w-4 h-4" />
             </div>
-            <div>
-              <h3 className="text-sm font-extrabold text-stone-800">
+            <div className="min-w-0">
+              <h3 className="text-sm font-extrabold text-stone-800 truncate">
                 Configuración del Motor IA
               </h3>
-              <p className="text-[11px] text-stone-500">
-                Funciona al instante de forma local o conectado a Gemini / OpenAI
+              <p className="text-[11px] text-stone-500 line-clamp-1">
+                Funciona local o conectado a Google Gemini / OpenAI
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700"
+            className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="p-6 space-y-4">
+        <form onSubmit={handleSave} className="p-4 sm:p-6 overflow-y-auto space-y-4">
           <div>
             <label className="block text-xs font-bold text-stone-700 mb-1.5">
               Proveedor Predeterminado
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(
                 [
                   { id: 'local', label: 'Motor Local Instantáneo' },
@@ -158,7 +158,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </a>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="password"
                   value={settings.geminiApiKey}
@@ -166,14 +166,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     setSettings(s => ({ ...s, geminiApiKey: e.target.value }));
                     setTestResult(null);
                   }}
-                  placeholder="Pega aquí tu clave: AIzaSy..."
-                  className="flex-1 px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none text-xs font-mono"
+                  placeholder="Pega aquí tu clave de Gemini..."
+                  className="flex-1 px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none text-base sm:text-xs font-mono"
                 />
                 <button
                   type="button"
                   disabled={testingKey || !settings.geminiApiKey.trim()}
                   onClick={handleTestGemini}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-50 hover:bg-orange-100/90 border border-orange-200 text-orange-950 text-xs font-bold transition-all disabled:opacity-40 disabled:hover:bg-orange-50 shrink-0"
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-orange-50 hover:bg-orange-100/90 border border-orange-200 text-orange-950 text-xs font-bold transition-all disabled:opacity-40 disabled:hover:bg-orange-50 shrink-0"
                 >
                   {testingKey ? (
                     <>
@@ -216,7 +216,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   setSettings(s => ({ ...s, openaiApiKey: e.target.value }))
                 }
                 placeholder="sk-..."
-                className="w-full px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-400 outline-none text-xs"
+                className="w-full px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-400 outline-none text-base sm:text-xs"
               />
             </div>
           )}

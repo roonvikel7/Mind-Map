@@ -1,6 +1,6 @@
 import React from 'react';
 import { SceneVectorGeometry } from '../utils/geometry';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 
 interface EdgeRendererProps {
   scene: SceneVectorGeometry;
@@ -41,17 +41,24 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
 
         return (
           <g key={p.id}>
-            {/* Zona invisible ancha para facilitar clic en relaciones y conectores con etiqueta */}
+            {/* Zona invisible ancha para facilitar toque y clic en relaciones y conectores */}
             {p.edgeId && (
               <path
                 d={p.d}
                 fill="none"
                 stroke="transparent"
-                strokeWidth={14}
+                strokeWidth={20}
                 style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+                onPointerDown={e => {
+                  e.stopPropagation();
+                }}
                 onClick={e => {
                   e.stopPropagation();
-                  onSelectEdge(p.edgeId!);
+                  if (isSelected) {
+                    onEditEdgeLabel(p.edgeId!, p.label || '');
+                  } else {
+                    onSelectEdge(p.edgeId!);
+                  }
                 }}
                 onDoubleClick={e => {
                   e.stopPropagation();
@@ -100,24 +107,30 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
               p.labelX !== undefined &&
               p.labelY !== undefined && (
                 <foreignObject
-                  x={p.labelX - 95}
-                  y={p.labelY - 16}
-                  width={190}
-                  height={32}
+                  x={p.labelX - 105}
+                  y={p.labelY - 17}
+                  width={210}
+                  height={34}
                   style={{ overflow: 'visible', pointerEvents: 'none' }}
                 >
                   <div className="w-full h-full flex items-center justify-center">
                     <div
                       style={{ pointerEvents: 'auto' }}
+                      onPointerDown={e => e.stopPropagation()}
                       onClick={e => {
                         e.stopPropagation();
-                        if (p.edgeId) onSelectEdge(p.edgeId);
+                        if (!p.edgeId) return;
+                        if (isSelected) {
+                          onEditEdgeLabel(p.edgeId, p.label || '');
+                        } else {
+                          onSelectEdge(p.edgeId);
+                        }
                       }}
                       onDoubleClick={e => {
                         e.stopPropagation();
                         if (p.edgeId) onEditEdgeLabel(p.edgeId, p.label || '');
                       }}
-                      title="Doble clic para editar etiqueta"
+                      title="Toca o haz doble clic para editar etiqueta"
                       className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border shadow-sm transition-all cursor-pointer select-none whitespace-nowrap ${
                         isSelected
                           ? 'bg-orange-50 border-orange-500 text-orange-800 ring-2 ring-orange-200'
@@ -127,6 +140,19 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
                       }`}
                     >
                       <span>{p.label || '+ Etiqueta'}</span>
+                      {isSelected && p.edgeId && (
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            onEditEdgeLabel(p.edgeId!, p.label || '');
+                          }}
+                          title="Editar etiqueta"
+                          className="ml-0.5 p-0.5 rounded-full hover:bg-orange-200/70 text-orange-700"
+                        >
+                          <Pencil className="w-2.5 h-2.5" />
+                        </button>
+                      )}
                       {isSelected && p.isCrossLink && p.edgeId && (
                         <button
                           type="button"
@@ -135,7 +161,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
                             onDeleteEdge(p.edgeId!);
                           }}
                           title="Eliminar relación cruzada"
-                          className="ml-0.5 p-0.5 rounded-full hover:bg-red-100 text-red-600"
+                          className="p-0.5 rounded-full hover:bg-red-100 text-red-600"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>

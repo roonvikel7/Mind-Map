@@ -44,37 +44,37 @@ export const EdgeLabelModal: React.FC<EdgeLabelModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4"
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-md rounded-3xl bg-white border border-stone-200 edraw-panel-shadow overflow-hidden"
+        className="w-full max-w-md rounded-2xl sm:rounded-3xl bg-white border border-stone-200 edraw-panel-shadow overflow-hidden max-h-[92dvh] flex flex-col"
       >
-        <div className="px-5 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/70">
-          <div className="flex items-center gap-2">
-            <Tag className="w-4 h-4 text-orange-600" />
-            <h3 className="text-sm font-extrabold text-stone-800">
+        <div className="px-4 py-3.5 sm:px-5 sm:py-4 border-b border-stone-100 flex items-center justify-between gap-2 bg-stone-50/70 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <Tag className="w-4 h-4 text-orange-600 shrink-0" />
+            <h3 className="text-sm font-extrabold text-stone-800 truncate">
               Etiqueta o Proposición del Conector
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-stone-400 hover:text-stone-700"
+            className="p-1 rounded-lg text-stone-400 hover:text-stone-700 shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-4">
           <div>
             <input
               type="text"
-              autoFocus
+              autoFocus={typeof window !== 'undefined' && window.innerWidth >= 768}
               value={label}
               onChange={e => setLabel(e.target.value)}
               placeholder="Ej. se divide en, genera, impulsa..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none text-xs font-semibold text-stone-800"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none text-base sm:text-xs font-semibold text-stone-800"
             />
             <div className="flex flex-wrap gap-1.5 mt-2.5">
               {QUICK_CONNECTOR_WORDS.map(word => (

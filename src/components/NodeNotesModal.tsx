@@ -42,22 +42,22 @@ export const NodeNotesModal: React.FC<NodeNotesModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4"
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-lg rounded-3xl bg-white border border-stone-200 edraw-panel-shadow overflow-hidden"
+        className="w-full max-w-lg rounded-2xl sm:rounded-3xl bg-white border border-stone-200 edraw-panel-shadow overflow-hidden flex flex-col max-h-[92dvh]"
       >
-        <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/80">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-stone-100 flex items-center justify-between gap-2 bg-stone-50/80 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
               <FileText className="w-4 h-4" />
             </div>
-            <div>
-              <h3 className="text-sm font-extrabold text-stone-800">
+            <div className="min-w-0">
+              <h3 className="text-sm font-extrabold text-stone-800 truncate">
                 Ficha y Notas de «{node.text}»
               </h3>
-              <p className="text-[11px] text-stone-500">
+              <p className="text-[11px] text-stone-500 line-clamp-1">
                 Enriquece este nodo con contexto, subtítulo o enlace externo
               </p>
             </div>
@@ -65,13 +65,13 @@ export const NodeNotesModal: React.FC<NodeNotesModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+            className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4">
           <div>
             <label className="block text-xs font-bold text-stone-700 mb-1">
               Subtítulo visible bajo el texto
@@ -81,7 +81,7 @@ export const NodeNotesModal: React.FC<NodeNotesModalProps> = ({
               value={subtitle}
               onChange={e => setSubtitle(e.target.value)}
               placeholder="Ej. Responsable, Fecha, Resumen breve..."
-              className="w-full px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-400 outline-none text-xs text-stone-800"
+              className="w-full px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-400 outline-none text-base sm:text-xs text-stone-800"
             />
           </div>
 
@@ -95,7 +95,7 @@ export const NodeNotesModal: React.FC<NodeNotesModalProps> = ({
               value={hyperlink}
               onChange={e => setHyperlink(e.target.value)}
               placeholder="https://..."
-              className="w-full px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-400 outline-none text-xs text-stone-800"
+              className="w-full px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-400 outline-none text-base sm:text-xs text-stone-800"
             />
           </div>
 
@@ -104,11 +104,11 @@ export const NodeNotesModal: React.FC<NodeNotesModalProps> = ({
               Notas Explicativas
             </label>
             <textarea
-              rows={5}
+              rows={4}
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Escribe definiciones, fuentes, tareas pendientes o detalles adicionales..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 focus:border-orange-400 outline-none text-xs text-stone-800 resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 focus:border-orange-400 outline-none text-base sm:text-xs text-stone-800 resize-none"
             />
           </div>
 
