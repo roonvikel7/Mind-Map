@@ -63,36 +63,36 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
 
             {/* 8 Nodos Periféricos Numerados */}
             {/* 1. Top */}
-            <rect x="150" y="14" width="60" height="18" rx="6" fill="#FFFFFF" stroke={c0} strokeWidth="1.5" />
-            <text x="180" y="27" textAnchor="middle" fill={c0} fontSize="8.5" fontWeight="700">1. Noción</text>
+            <rect x="145" y="14" width="70" height="18" rx="6" fill="#FFFFFF" stroke={c0} strokeWidth="1.5" />
+            <text x="180" y="27" textAnchor="middle" fill={c0} fontSize="8" fontWeight="700">1. Ejemplo</text>
 
             {/* 2. Top-Right */}
             <rect x="260" y="22" width="68" height="18" rx="6" fill="#FFFFFF" stroke={c1} strokeWidth="1.5" />
-            <text x="294" y="35" textAnchor="middle" fill={c1} fontSize="8.5" fontWeight="700">2. Categoría</text>
+            <text x="294" y="35" textAnchor="middle" fill={c1} fontSize="8" fontWeight="700">2. Noción</text>
 
             {/* 3. Mid-Right */}
             <rect x="265" y="52" width="76" height="18" rx="6" fill="#FFFFFF" stroke={c2} strokeWidth="1.5" />
-            <text x="303" y="65" textAnchor="middle" fill={c2} fontSize="8.5" fontWeight="700">3. Característica</text>
+            <text x="303" y="65" textAnchor="middle" fill={c2} fontSize="8" fontWeight="700">3. Categoría</text>
 
             {/* 4. Mid2-Right */}
-            <rect x="265" y="80" width="70" height="18" rx="6" fill="#FFFFFF" stroke={c3} strokeWidth="1.5" />
-            <text x="300" y="93" textAnchor="middle" fill={c3} fontSize="8.5" fontWeight="700">4. Diferencias</text>
+            <rect x="265" y="80" width="72" height="18" rx="6" fill="#FFFFFF" stroke={c3} strokeWidth="1.5" />
+            <text x="301" y="93" textAnchor="middle" fill={c3} fontSize="8" fontWeight="700">4. Característica</text>
 
             {/* 5. Bottom-Right */}
             <rect x="255" y="108" width="66" height="18" rx="6" fill="#FFFFFF" stroke={c4} strokeWidth="1.5" />
-            <text x="288" y="121" textAnchor="middle" fill={c4} fontSize="8.5" fontWeight="700">5. División</text>
+            <text x="288" y="121" textAnchor="middle" fill={c4} fontSize="8" fontWeight="700">5. Diferencias</text>
 
             {/* 6. Bottom */}
             <rect x="145" y="112" width="70" height="18" rx="6" fill="#FFFFFF" stroke={c5} strokeWidth="1.5" />
-            <text x="180" y="125" textAnchor="middle" fill={c5} fontSize="8.5" fontWeight="700">6. Vinculación</text>
+            <text x="180" y="125" textAnchor="middle" fill={c5} fontSize="8" fontWeight="700">6. Subdivisión</text>
 
             {/* 7. Bottom-Left */}
             <rect x="35" y="98" width="70" height="18" rx="6" fill="#FFFFFF" stroke={c6} strokeWidth="1.5" />
-            <text x="70" y="111" textAnchor="middle" fill={c6} fontSize="8.5" fontWeight="700">7. Método</text>
+            <text x="70" y="111" textAnchor="middle" fill={c6} fontSize="8" fontWeight="700">7. Vinculación</text>
 
             {/* 8. Top-Left */}
             <rect x="35" y="32" width="70" height="18" rx="6" fill="#FFFFFF" stroke={c7} strokeWidth="1.5" />
-            <text x="70" y="45" textAnchor="middle" fill={c7} fontSize="8.5" fontWeight="700">8. Ejemplo</text>
+            <text x="70" y="45" textAnchor="middle" fill={c7} fontSize="8" fontWeight="700">8. Metodología</text>
           </g>
         )}
 

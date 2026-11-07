@@ -1,5 +1,12 @@
-import { OrganizerProject, OrganizerType, ThemeId } from '../types/organizer';
+import {
+  OrganizerEdge,
+  OrganizerNode,
+  OrganizerProject,
+  OrganizerType,
+  ThemeId,
+} from '../types/organizer';
 import { applyLayout } from './layouts';
+import { buildCartographicProjectNodes } from './templates';
 import { EDRAW_THEMES } from './themes';
 
 const STORAGE_KEY = 'synapse_edraw_projects_v8';
@@ -25,23 +32,32 @@ export function createCleanInitialProject(
 ): OrganizerProject {
   const stamp = Date.now();
   const rootId = `root-${stamp}`;
-  const isCartographic = type === 'cartographic';
-  const initialNodes = [
-    {
-      id: rootId,
-      text: title,
-      subtitle: isCartographic
-        ? 'Cartografía Conceptual de Ocho Ejes'
-        : 'Toca para editar o añadir subtemas',
-      x: 0,
-      y: 0,
-      width: 180,
-      height: 56,
-      isRoot: true,
-      icon: isCartographic ? undefined : '💡',
-    },
-  ];
-  const relaid = applyLayout(initialNodes, [], type, 'vitality-warm', true, 'clockwise');
+  
+  let initialNodes: OrganizerNode[];
+  let initialEdges: OrganizerEdge[];
+
+  if (type === 'cartographic') {
+    const built = buildCartographicProjectNodes(title, rootId);
+    initialNodes = built.nodes;
+    initialEdges = built.edges;
+  } else {
+    initialNodes = [
+      {
+        id: rootId,
+        text: title,
+        subtitle: 'Toca para editar o añadir subtemas',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 56,
+        isRoot: true,
+        icon: '💡',
+      },
+    ];
+    initialEdges = [];
+  }
+
+  const relaid = applyLayout(initialNodes, initialEdges, type, 'vitality-warm', true, 'clockwise');
   return {
     id: `proj-${stamp}`,
     title,
@@ -49,8 +65,9 @@ export function createCleanInitialProject(
     theme: 'vitality-warm',
     canvasBg: 'dots',
     rainbowBranches: true,
+    cartographicDirection: 'clockwise',
     nodes: relaid.nodes,
-    edges: [],
+    edges: relaid.edges,
     images: [],
     createdAt: stamp,
     updatedAt: stamp,

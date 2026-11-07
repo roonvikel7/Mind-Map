@@ -232,7 +232,7 @@ export const ORGANIZER_TYPES_META: OrganizerTypeMeta[] = [
     label: 'Cartografía Conceptual (8 Ejes)',
     shortLabel: 'Cartografía Conceptual',
     emoji: '🧭',
-    description: 'Mapa gráfico de 8 ejes de Tobón: configurable en sentido horario o antihorario',
+    description: 'Los 8 ejes de Tobón con cuadros de redacción directa listos para escribir',
   },
   {
     type: 'logic',

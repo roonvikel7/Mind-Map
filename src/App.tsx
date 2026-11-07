@@ -20,7 +20,11 @@ import { applyLayout } from './utils/layouts';
 import { expandNodeWithAi, generateOrganizer } from './utils/aiService';
 import { getThemeConfig } from './utils/themes';
 import { parseImportedProjectJson } from './utils/exporter';
-import { TemplateCard } from './utils/templates';
+import {
+  buildCartographicProjectNodes,
+  isCartographicStructure,
+  TemplateCard,
+} from './utils/templates';
 import { Navbar } from './components/Navbar';
 import { LeftSidebar } from './components/LeftSidebar';
 import { RightInspector } from './components/RightInspector';
@@ -630,12 +634,29 @@ export function App() {
     (newType: OrganizerType) => {
       if (!activeProject) return;
       pushHistory(activeProject.nodes, activeProject.edges);
+
+      let targetNodes = activeProject.nodes;
+      let targetEdges = activeProject.edges;
+
+      // Al seleccionar Cartografía Conceptual, generar automáticamente los 8 ejes con sus cuadros listos para escribir si aún no los tiene
+      if (newType === 'cartographic' && !isCartographicStructure(targetNodes)) {
+        const root =
+          targetNodes.find(n => n.isRoot || (n.depth || 0) === 0) ||
+          targetNodes[0];
+        const title =
+          root?.text || activeProject.title || 'Cartografía Conceptual';
+        const generated = buildCartographicProjectNodes(title, root?.id, root);
+        targetNodes = generated.nodes;
+        targetEdges = generated.edges;
+        showToast('Cartografía lista: 8 ejes con cuadros para escribir directamente.');
+      }
+
       const relaid = applyLayout(
-        activeProject.nodes,
-        activeProject.edges,
+        targetNodes,
+        targetEdges,
         newType,
         activeProject.theme,
-        false,
+        newType === 'cartographic',
         activeProject.cartographicDirection || 'clockwise'
       );
       commitProjectPatch({
@@ -644,7 +665,7 @@ export function App() {
         edges: relaid.edges,
       });
     },
-    [activeProject, commitProjectPatch, pushHistory]
+    [activeProject, commitProjectPatch, pushHistory, showToast]
   );
 
   // Cambiar tema global EdrawMax
@@ -829,37 +850,46 @@ export function App() {
     setHistoryFuture([]);
   };
 
-  // Crear mapa en blanco limpio con SOLO la forma para el título (sin ramas extra)
+  // Crear mapa con la estructura limpia o con los 8 ejes en Cartografía
   const handleCreateNewProject = (
     type: OrganizerType = 'mindmap',
     title: string = 'Idea Central'
   ) => {
     const stamp = Date.now();
     const rootId = `root-${stamp}`;
-    const isCartographic = type === 'cartographic';
     const themeToUse: ThemeId = activeProject?.theme || 'vitality-warm';
-    const cleanNodes: OrganizerNode[] = [
-      {
-        id: rootId,
-        text: title,
-        subtitle: isCartographic
-          ? 'Cartografía Conceptual de Ocho Ejes'
-          : 'Toca para editar o añadir subtemas',
-        x: 0,
-        y: 0,
-        width: 180,
-        height: 56,
-        isRoot: true,
-        icon: isCartographic ? undefined : '💡',
-      },
-    ];
+
+    let initialNodes: OrganizerNode[];
+    let initialEdges: OrganizerEdge[];
+
+    if (type === 'cartographic') {
+      const built = buildCartographicProjectNodes(title, rootId);
+      initialNodes = built.nodes;
+      initialEdges = built.edges;
+    } else {
+      initialNodes = [
+        {
+          id: rootId,
+          text: title,
+          subtitle: 'Toca para editar o añadir subtemas',
+          x: 0,
+          y: 0,
+          width: 180,
+          height: 56,
+          isRoot: true,
+          icon: '💡',
+        },
+      ];
+      initialEdges = [];
+    }
 
     const relaid = applyLayout(
-      cleanNodes,
-      [],
+      initialNodes,
+      initialEdges,
       type,
       themeToUse,
-      true
+      true,
+      'clockwise'
     );
 
     const newProj: OrganizerProject = {
@@ -869,8 +899,9 @@ export function App() {
       theme: themeToUse,
       canvasBg: 'dots',
       rainbowBranches: true,
+      cartographicDirection: 'clockwise',
       nodes: relaid.nodes,
-      edges: [],
+      edges: relaid.edges,
       images: [],
       createdAt: stamp,
       updatedAt: stamp,
@@ -1122,8 +1153,10 @@ export function App() {
         currentType={activeProject?.type || 'mindmap'}
         currentTitle={activeProject?.title || 'Idea Central'}
         onConfirm={(title, type) => {
-          if (activeProject && activeProject.nodes.length <= 1) {
-            const isCartographic = type === 'cartographic';
+          if (type === 'cartographic') {
+            handleCreateNewProject('cartographic', title);
+            showToast(`Cartografía lista: «${title}» con 8 ejes y cuadros`);
+          } else if (activeProject && activeProject.nodes.length <= 1) {
             const baseNode: OrganizerNode = {
               ...(activeProject.nodes[0] || {
                 id: `root-${Date.now()}`,
@@ -1135,10 +1168,8 @@ export function App() {
                 depth: 0,
               }),
               text: title,
-              subtitle: isCartographic
-                ? 'Cartografía Conceptual de Ocho Ejes'
-                : 'Toca para editar o añadir subtemas',
-              icon: isCartographic ? undefined : '💡',
+              subtitle: 'Toca para editar o añadir subtemas',
+              icon: '💡',
             };
             const relaid = applyLayout(
               [baseNode],
