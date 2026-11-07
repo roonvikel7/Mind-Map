@@ -9,67 +9,58 @@ import { generateOrganizer } from './aiService';
 
 export interface CartographicAxisDef {
   name: string;
-  subtitle: string;
-  childPlaceholder: string;
-  childSubtitle: string;
+  connector: string;
+  childContent: string;
   icon?: string;
 }
 
 export const CARTOGRAPHIC_EIGHT_AXES: CartographicAxisDef[] = [
   {
     name: '1. Ejemplificación',
-    subtitle: 'Caso o aplicación real',
-    childPlaceholder: 'Escribe un ejemplo real',
-    childSubtitle: 'Describe un caso práctico ilustrativo',
+    connector: 'se ejemplifica mediante',
+    childContent: 'un caso documentado donde la teoría se aplicó con éxito para resolver una problemática real en su contexto',
     icon: '💡',
   },
   {
     name: '2. Noción',
-    subtitle: 'Definición y etimología',
-    childPlaceholder: 'Escribe la noción',
-    childSubtitle: 'Significado central y origen del término',
+    connector: 'se define como',
+    childContent: 'el significado etimológico y conceptual esencial que delimita con precisión el campo de acción del término',
     icon: '📖',
   },
   {
     name: '3. Categorización',
-    subtitle: 'Clase o categoría mayor',
-    childPlaceholder: 'Escribe la categorización',
-    childSubtitle: 'Campo o clase superior que lo engloba',
+    connector: 'pertenece a',
+    childContent: 'la clase o disciplina mayor del conocimiento que engloba su estudio y fundamentación teórica',
     icon: '🗂️',
   },
   {
     name: '4. Caracterización',
-    subtitle: 'Rasgos esenciales',
-    childPlaceholder: 'Escribe las características',
-    childSubtitle: 'Propiedades y elementos distintivos',
+    connector: 'se caracteriza por',
+    childContent: 'los rasgos distintivos y principios rectores que estructuran su funcionamiento y validez conceptual',
     icon: '✨',
   },
   {
     name: '5. Diferenciación',
-    subtitle: 'Distinción de conceptos afines',
-    childPlaceholder: 'Escribe las diferencias',
-    childSubtitle: 'De qué otros conceptos se distingue',
+    connector: 'se distingue de',
+    childContent: 'otros conceptos y nociones cercanas estableciendo fronteras claras para evitar confusiones epistemológicas',
     icon: '⚖️',
   },
   {
     name: '6. Subdivisión',
-    subtitle: 'Clases o componentes',
-    childPlaceholder: 'Escribe la subdivisión',
-    childSubtitle: 'Tipos, clases o partes del concepto',
+    connector: 'se subdivide en',
+    childContent: 'las tipologías, clases o componentes fundamentales que integran su estructura interna',
     icon: '🧩',
   },
   {
     name: '7. Vinculación',
-    subtitle: 'Vínculos con teorías o leyes',
-    childPlaceholder: 'Escribe la vinculación',
-    childSubtitle: 'Relaciones con disciplinas o teorías',
+    connector: 'se vincula con',
+    childContent: 'las leyes, modelos científicos y disciplinas complementarias que fortalecen su aplicación práctica',
     icon: '🔗',
   },
   {
     name: '8. Metodología',
-    subtitle: 'Pasos de aplicación',
-    childPlaceholder: 'Escribe la metodología',
-    childSubtitle: 'Procedimientos o fases de aplicación',
+    connector: 'se aplica mediante',
+    childContent: 'la secuencia ordenada de fases y procedimientos rigurosos para su implementación efectiva',
     icon: '🧭',
   },
 ];
@@ -107,7 +98,7 @@ export function buildCartographicProjectNodes(
       id: axisId,
       parentId: actualRootId,
       text: axis.name,
-      subtitle: axis.subtitle,
+      subtitle: undefined, // Sin subtítulo secundario artificial
       x: 0,
       y: 0,
       width: 175,
@@ -119,8 +110,8 @@ export function buildCartographicProjectNodes(
     const childNode: OrganizerNode = {
       id: childId,
       parentId: axisId,
-      text: axis.childPlaceholder,
-      subtitle: axis.childSubtitle,
+      text: axis.childContent,
+      subtitle: undefined, // Sin palabras robóticas debajo del cuadro
       x: 0,
       y: 0,
       width: 185,
@@ -140,6 +131,7 @@ export function buildCartographicProjectNodes(
       id: `edge-${axisId}-${childId}`,
       from: axisId,
       to: childId,
+      label: axis.connector,
     });
   });
 

@@ -74,49 +74,57 @@ const BUILTIN_KNOWLEDGE: Record<
       // 1. Ejemplificación (Norte)
       { text: '1. Ejemplificación', parentIndex: 0 },
       {
-        text: 'Los 14 principios de Fayol (1880) se siguen usando en la actualidad en la gestión de capital y liquidez.',
+        text: 'un modelo corporativo contemporáneo que aplica los principios clásicos de gestión de liquidez y presupuesto de capital para garantizar su estabilidad',
+        label: 'se ejemplifica mediante',
         parentIndex: 1,
       },
       // 2. Noción (Noreste)
       { text: '2. Noción', parentIndex: 0 },
       {
-        text: 'A principios del siglo XX la gestión financiera se separa de la administración como una ciencia propia.',
+        text: 'la disciplina directiva encargada de planificar, organizar y controlar los recursos monetarios para maximizar el valor integral de la organización',
+        label: 'se define como',
         parentIndex: 3,
       },
       // 3. Categorización (Este medio-alto)
       { text: '3. Categorización', parentIndex: 0 },
       {
-        text: 'Pertenece a las ciencias económico-administrativas y a la toma de decisiones estratégicas de recursos.',
+        text: 'la rama de las ciencias económico-administrativas orientada a la toma de decisiones estratégicas sobre inversiones y financiamiento',
+        label: 'pertenece a',
         parentIndex: 5,
       },
       // 4. Características (Este medio-bajo)
       { text: '4. Características', parentIndex: 0 },
       {
-        text: 'Optimización de rentabilidad, control estricto de riesgos, liquidez operativa y sostenibilidad a largo plazo.',
+        text: 'la optimización equilibrada de la rentabilidad, la mitigación rigurosa de riesgos y la preservación de liquidez operativa a largo plazo',
+        label: 'se caracteriza por',
         parentIndex: 7,
       },
       // 5. Diferencias (Sureste)
       { text: '5. Diferencias', parentIndex: 0 },
       {
-        text: 'Se diferencia de la Contabilidad (registro histórico) y de la Economía (análisis macro) por su enfoque directivo.',
+        text: 'la contabilidad formal enfocada en el registro de hechos históricos y la economía macro por su orientación ejecutiva hacia el futuro financiero',
+        label: 'se distingue de',
         parentIndex: 9,
       },
       // 6. Subdivisión (Sur)
       { text: '6. Subdivisión', parentIndex: 0 },
       {
-        text: 'Administración de personal, tesorería, mercado de capitales y valoración de inversiones.',
+        text: 'la gestión de tesorería, el análisis de inversiones de capital, la estructura de financiamiento y el mercado de valores',
+        label: 'se subdivide en',
         parentIndex: 11,
       },
       // 7. Vinculación (Suroeste)
       { text: '7. Vinculación', parentIndex: 0 },
       {
-        text: 'Weber, la administración científica de Taylor y la psicología en la administración de Mayo.',
+        text: 'las teorías cuantitativas del riesgo, los modelos de gobernanza corporativa y la economía conductual para la toma de decisiones',
+        label: 'se vincula con',
         parentIndex: 13,
       },
       // 8. Metodología (Oeste)
       { text: '8. Metodología', parentIndex: 0 },
       {
-        text: 'Diagnóstico de problemas de contexto, aplicación rigurosa de la teoría en la práctica y control financiero.',
+        text: 'el diagnóstico de flujo de caja, la formulación de proyecciones rigurosas y la aplicación de métricas de control presupuestario continuo',
+        label: 'se aplica mediante',
         parentIndex: 15,
       },
     ],
@@ -133,42 +141,50 @@ const BUILTIN_KNOWLEDGE: Record<
       },
       { text: '1. Ejemplificación', parentIndex: 0 },
       {
-        text: 'Los 14 principios de Fayol (1880) se siguen usando en la actualidad en la gestión de capital y liquidez.',
+        text: 'un modelo corporativo contemporáneo que aplica los principios clásicos de gestión de liquidez y presupuesto de capital para garantizar su estabilidad',
+        label: 'se ejemplifica mediante',
         parentIndex: 1,
       },
       { text: '2. Noción', parentIndex: 0 },
       {
-        text: 'A principios del siglo XX la gestión financiera se separa de la administración como una ciencia propia.',
+        text: 'la disciplina directiva encargada de planificar, organizar y controlar los recursos monetarios para maximizar el valor integral de la organización',
+        label: 'se define como',
         parentIndex: 3,
       },
       { text: '3. Categorización', parentIndex: 0 },
       {
-        text: 'Pertenece a las ciencias económico-administrativas y a la toma de decisiones estratégicas de recursos.',
+        text: 'la rama de las ciencias económico-administrativas orientada a la toma de decisiones estratégicas sobre inversiones y financiamiento',
+        label: 'pertenece a',
         parentIndex: 5,
       },
       { text: '4. Características', parentIndex: 0 },
       {
-        text: 'Optimización de rentabilidad, control estricto de riesgos, liquidez operativa y sostenibilidad a largo plazo.',
+        text: 'la optimización equilibrada de la rentabilidad, la mitigación rigurosa de riesgos y la preservación de liquidez operativa a largo plazo',
+        label: 'se caracteriza por',
         parentIndex: 7,
       },
       { text: '5. Diferencias', parentIndex: 0 },
       {
-        text: 'Se diferencia de la Contabilidad (registro histórico) y de la Economía (análisis macro) por su enfoque directivo.',
+        text: 'la contabilidad formal enfocada en el registro de hechos históricos y la economía macro por su orientación ejecutiva hacia el futuro financiero',
+        label: 'se distingue de',
         parentIndex: 9,
       },
       { text: '6. Subdivisión', parentIndex: 0 },
       {
-        text: 'Administración de personal, tesorería, mercado de capitales y valoración de inversiones.',
+        text: 'la gestión de tesorería, el análisis de inversiones de capital, la estructura de financiamiento y el mercado de valores',
+        label: 'se subdivide en',
         parentIndex: 11,
       },
       { text: '7. Vinculación', parentIndex: 0 },
       {
-        text: 'Weber, la administración científica de Taylor y la psicología en la administración de Mayo.',
+        text: 'las teorías cuantitativas del riesgo, los modelos de gobernanza corporativa y la economía conductual para la toma de decisiones',
+        label: 'se vincula con',
         parentIndex: 13,
       },
       { text: '8. Metodología', parentIndex: 0 },
       {
-        text: 'Diagnóstico de problemas de contexto, aplicación rigurosa de la teoría en la práctica y control financiero.',
+        text: 'el diagnóstico de flujo de caja, la formulación de proyecciones rigurosas y la aplicación de métricas de control presupuestario continuo',
+        label: 'se aplica mediante',
         parentIndex: 15,
       },
     ],
@@ -433,21 +449,21 @@ function generateHeuristicOrganizer(req: AiGenerationRequest, themeId: ThemeId) 
     const seed: TemplateSeedNode[] = [
       { text: topic, subtitle: 'Cartografía Conceptual de Ocho Ejes', parentIndex: null, shape: 'rounded' },
       { text: '1. Ejemplificación', parentIndex: 0 },
-      { text: `Caso de estudio real y aplicación histórica de ${topic}.`, parentIndex: 1 },
+      { text: `un caso documentado y verificable donde se observa la aplicación práctica y resolución de problemas vinculados a ${topic}`, label: 'se ejemplifica mediante', parentIndex: 1 },
       { text: '2. Noción', parentIndex: 0 },
-      { text: `Etimología, definición esencial y origen conceptual de ${topic}.`, parentIndex: 3 },
+      { text: `el significado etimológico y conceptual esencial que fundamenta y delimita el estudio riguroso de ${topic}`, label: 'se define como', parentIndex: 3 },
       { text: '3. Categorización', parentIndex: 0 },
-      { text: `Clase o disciplina mayor a la que pertenece ${topic}.`, parentIndex: 5 },
+      { text: `la disciplina o clase mayor del conocimiento humano en la que se inscribe y fundamenta ${topic}`, label: 'pertenece a', parentIndex: 5 },
       { text: '4. Características', parentIndex: 0 },
-      { text: `Rasgos distintivos, elementos y principios rectores de ${topic}.`, parentIndex: 7 },
+      { text: `los principios rectores, propiedades distintivas y rasgos esenciales que estructuran a ${topic}`, label: 'se caracteriza por', parentIndex: 7 },
       { text: '5. Diferencias', parentIndex: 0 },
-      { text: `Conceptos cercanos o paralelos de los cuales se diferencia ${topic}.`, parentIndex: 9 },
+      { text: `las nociones cercanas y enfoques paralelos de los cuales se distingue formalmente ${topic} para evitar confusiones`, label: 'se distingue de', parentIndex: 9 },
       { text: '6. Subdivisión', parentIndex: 0 },
-      { text: `Tipologías, ramas, fases o componentes internos de ${topic}.`, parentIndex: 11 },
+      { text: `las tipologías, clases y componentes internos fundamentales que integran la estructura de ${topic}`, label: 'se subdivide en', parentIndex: 11 },
       { text: '7. Vinculación', parentIndex: 0 },
-      { text: `Relación interdisciplinaria, teorías de apoyo y autores clave.`, parentIndex: 13 },
+      { text: `los marcos teóricos, leyes científicas y disciplinas complementarias que fortalecen a ${topic}`, label: 'se vincula con', parentIndex: 13 },
       { text: '8. Metodología', parentIndex: 0 },
-      { text: `Pasos de aplicación práctica y resolución de problemas de contexto.`, parentIndex: 15 },
+      { text: `la secuencia ordenada de fases metodológicas y protocolos rigurosos para la implementación de ${topic}`, label: 'se aplica mediante', parentIndex: 15 },
     ];
     return buildFromTemplate(topic, type, seed, themeId);
   }
@@ -668,36 +684,160 @@ function cleanJsonResponse(rawText: string): any {
   return JSON.parse(clean);
 }
 
+/**
+ * Transforma el texto de cualquier nodo en un argumento fluido, continuo y formal en español:
+ * - Elimina etiquetas robóticas con dos puntos ("Definición conceptual:", "Origen etimológico:", "Propósito:")
+ * - Elimina paréntesis integrando explicaciones de forma corrida
+ * - Elimina dos puntos residuales
+ * - Asegura continuidad sintáctica perfecta con el conector textual de la arista (label)
+ */
+export function cleanAndNaturalizeArgument(
+  rawText: string,
+  label?: string,
+  isRoot?: boolean
+): { text: string; label?: string } {
+  if (!rawText) return { text: '', label };
+
+  let text = rawText.trim();
+
+  // En la raíz principal conservar su título limpio
+  if (isRoot) {
+    text = text.replace(/^["'«»“]+|["'«»”]+$/g, '').replace(/:\s*$/, '').trim();
+    return { text, label };
+  }
+
+  // 1. Quitar comillas envolventes
+  text = text.replace(/^["'«»“]+|["'«»”]+$/g, '').trim();
+
+  // 2. Eliminar prefijos con dos puntos de IA: "Definición conceptual:", "Origen etimológico:", "Propósito:", etc.
+  text = text.replace(/^[A-Za-zÁ-ÿ\s0-9'\-_/]{2,40}:\s*/i, '');
+
+  // 3. Eliminar dos puntos dentro del texto (reemplazar por coma o nexo natural)
+  text = text.replace(/\s*:\s*/g, ', ');
+
+  // 4. Eliminar paréntesis y corchetes, integrando el contenido de forma corrida
+  text = text.replace(/\s*\(([^)]+)\)\s*/g, (_m, inner) => {
+    const trimmed = inner.trim();
+    if (/^\d{4}$/.test(trimmed)) {
+      return ` en el año ${trimmed} `;
+    }
+    return `, ${trimmed}, `;
+  });
+  text = text.replace(/\[([^\]]+)\]/g, '$1');
+
+  // 5. Limpiar comas duplicadas y espacios
+  text = text
+    .replace(/,\s*,+/g, ',')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,.;])/g, '$1')
+    .replace(/,\s*\./g, '.')
+    .replace(/^\s*,\s*/, '')
+    .trim();
+
+  // 6. Normalizar y naturalizar el conector textual de la arista (label)
+  let cleanLabel = label ? label.trim().toLowerCase() : undefined;
+  if (cleanLabel) {
+    cleanLabel = cleanLabel.replace(/^["'«»]+|["'«»]+$/g, '').trim();
+    if (cleanLabel === 'deriva') cleanLabel = 'deriva de';
+    else if (cleanLabel === 'establece') cleanLabel = 'establece que';
+    else if (cleanLabel === 'define') cleanLabel = 'se define como';
+    else if (cleanLabel === 'clasifica') cleanLabel = 'se clasifica en';
+    else if (cleanLabel === 'caracteriza') cleanLabel = 'se caracteriza por';
+    else if (cleanLabel === 'distingue' || cleanLabel === 'diferencia') cleanLabel = 'se distingue de';
+    else if (cleanLabel === 'vincula' || cleanLabel === 'relaciona') cleanLabel = 'se vincula con';
+    else if (cleanLabel === 'aplica') cleanLabel = 'se aplica mediante';
+    else if (cleanLabel === 'produce' || cleanLabel === 'genera') cleanLabel = 'conduce a';
+    else if (cleanLabel === 'ejemplifica') cleanLabel = 'se ejemplifica con';
+    else if (cleanLabel === 'manifiesta') cleanLabel = 'se manifiesta en';
+    else if (cleanLabel === 'origina') cleanLabel = 'se origina en';
+
+    // 7. Evitar redundancia si el cuadro repite el inicio del conector
+    const redundantStartRegex = new RegExp(
+      `^(${cleanLabel}|deriva(\\s+del|\\s+de)?|proviene(\\s+del|\\s+de)?|se define(\\s+como)?|establece(\\s+que)?|se caracteriza(\\s+por)?|se distingue(\\s+de)?|se vincula(\\s+con)?|se aplica(\\s+mediante)?)\\s+`,
+      'i'
+    );
+    if (redundantStartRegex.test(text)) {
+      text = text.replace(redundantStartRegex, '');
+    }
+
+    // Si el conector termina en preposición/conjunción, asegurar primera letra minúscula para lectura corrida
+    if (/(?:de|del|en|como|por|que|con|mediante|hacia)$/i.test(cleanLabel)) {
+      const firstWord = text.split(' ')[0] || '';
+      const isProperNoun =
+        /^[A-ZÁÉÍÓÚ][a-záéíóú]+$/.test(firstWord) &&
+        ['España', 'Roma', 'Grecia', 'Aristóteles', 'Platón', 'Fayol', 'Taylor', 'Weber', 'América', 'Europa', 'Novak', 'Tobón'].includes(firstWord);
+      if (!isProperNoun && text.length > 0) {
+        text = text.charAt(0).toLowerCase() + text.slice(1);
+      }
+    }
+  }
+
+  // Asegurar punto final para oraciones argumentativas largas
+  if (text.length > 35 && !/[.!?]$/.test(text)) {
+    text = text + '.';
+  }
+
+  return { text, label: cleanLabel };
+}
+
 function buildGeminiPrompt(req: AiGenerationRequest): string {
   const isCartographic = req.type === 'cartographic';
+
+  const naturalLanguageDirectives = `
+NORMAS ESTRICTAS DE REDACCIÓN NATURAL Y LENGUAJE FORMAL (OBLIGATORIAS):
+1. PROHIBIDO TOTALMENTE EL USO DE DOS PUNTOS (:) DENTRO DE LOS CUADROS: NUNCA inicies un texto con "Definición conceptual:", "Origen etimológico:", "Propósito:", "Concepto:", "Características:", "Caso real:", etc. Escribe directamente la idea como un argumento continuo y fluido.
+2. PROHIBIDO EL USO DE PARÉNTESIS (...): No pongas aclaraciones ni palabras entre paréntesis. Toda explicación debe redactarse de forma corrida e integrada con comas y nexos naturales.
+3. CONECTORES TEXTUALES Y CONTINUIDAD SINTÁCTICA PERFECTA:
+   En cada rama secundaria o cuadro de contenido, proporciona en "label" un conector textual o proposición verbal en minúscula (ej. "se define como", "deriva de", "se fundamenta en", "se clasifica en", "se distingue de", "comprende", "se caracteriza por", "conduce a", "se vincula con", "se manifiesta mediante", "se aplica mediante").
+   El contenido del cuadro ("text") DEBE continuar gramaticalmente la frase del conector, de tal forma que al leer: [Nodo Padre] + [conector] + [cuadro hijo], se lea en voz alta como una sola oración continua, elegante, formal y con sentido perfecto en español.
+   - Ejemplo CORRECTO:
+     Padre: "2. Noción"
+     label: "se define como"
+     text: "la valoración integral y el reconocimiento del propio mérito que orienta la dignidad y la seguridad personal"
+     Lectura: "2. Noción se define como la valoración integral y el reconocimiento del propio mérito..."
+   - Ejemplo PROHIBIDO (robótico):
+     label: "establece"
+     text: "Definición conceptual: Juicio evaluativo (autoestima)..."
+4. CERO SUBTÍTULOS EN CUADROS DE CONTENIDO:
+   En las ramas secundarias y cuadros de contenido NO pongas "subtitle" (deja "subtitle": null o no envíes la propiedad). Prohibido poner frases como "Esencia psicológica", "Raíz lingüística", "Detalle explicativo", etc. Los cuadros deben ser limpios y enfocados en su argumento. Solo la idea central raíz puede llevar subtítulo.
+5. LENGUAJE FORMAL, COMPRENSIBLE Y ARGUMENTATIVO: Redacta con estilo académico riguroso pero fácil de entender, con argumentos completos y fluidos.`;
 
   let typeGuidance = '';
   switch (req.type) {
     case 'cartographic':
       typeGuidance = `
 TIPO: Cartografía Conceptual (Metodología Pedagógica de los 8 Ejes de Sergio Tobón).
-REGLAS ESTRICTAS DE CALIDAD Y FORMALIDAD:
 1. El nodo raíz DEBE ser exactamente "${req.topic}" con subtítulo "Cartografía Conceptual de Ocho Ejes".
-2. DEBE tener exactamente 8 ejes principales con la numeración formal:
-   - "1. Ejemplificación" (Caso real o aplicación práctica)
-   - "2. Noción" (Definición etimológica y esencial)
-   - "3. Categorización" (Disciplina o clase mayor a la que pertenece)
-   - "4. Características" (Rasgos distintivos y principios rectores)
-   - "5. Diferencias" (De qué otros conceptos se distingue o no debe confundirse)
-   - "6. Subdivisión" (Tipologías, componentes o ramas internas)
-   - "7. Vinculación" (Teorías, autores interdisciplinarios y disciplinas de apoyo)
-   - "8. Metodología" (Pasos o protocolo de aplicación práctica en contexto)
-3. Bajo CADA uno de los 8 ejes, agrega 1 o 2 subnodos detallados con una explicación conceptual sólida en "text" y un resumen en "subtitle".
-4. REGLA OBLIGATORIA: En la Cartografía Conceptual NO uses emojis ni iconos en ningún nodo. Mantén un formato formal académico.`;
+2. DEBE tener exactamente los 8 ejes principales con sus nombres formales:
+   - "1. Ejemplificación"
+   - "2. Noción"
+   - "3. Categorización"
+   - "4. Caracterización"
+   - "5. Diferenciación"
+   - "6. Subdivisión"
+   - "7. Vinculación"
+   - "8. Metodología"
+3. Cada uno de los 8 ejes debe tener 1 o 2 cuadros hijos con argumentos sólidos y conectores textuales naturales ("label"):
+   - Ejemplificación -> "se ejemplifica mediante" -> caso real o aplicación empírica ilustrativa
+   - Noción -> "se define como" o "deriva de" -> significado conceptual y raíz etimológica sin dos puntos ni paréntesis
+   - Categorización -> "pertenece a" -> clase o disciplina mayor que lo engloba
+   - Caracterización -> "se caracteriza por" -> rasgos esenciales y principios rectores
+   - Diferenciación -> "se distingue de" -> límites con nociones afines para evitar confusiones
+   - Subdivisión -> "se subdivide en" -> componentes o tipologías internas
+   - Vinculación -> "se vincula con" -> teorías y disciplinas complementarias
+   - Metodología -> "se aplica mediante" -> protocolo o pasos para su implementación
+4. En Cartografía Conceptual NO uses emojis ni iconos en ningún nodo.
+5. Los cuadros hijos NO deben tener "subtitle" (deja "subtitle": null).`;
       break;
 
     case 'concept':
       typeGuidance = `
 TIPO: Mapa Conceptual de Joseph Novak.
 REGLAS:
-1. Conceptos breves y precisos en cada nodo (de 1 a 4 palabras).
-2. Cada conector entre nodos DEBE tener en "label" una proposición o verbo relacionador claro (ej. "comprende", "produce", "depende de", "se clasifica en").
-3. Estructura piramidal con 3 o 4 niveles jerárquicos.`;
+1. Conceptos y proposiciones argumentativas claras sin dos puntos ni paréntesis.
+2. Cada conector entre nodos DEBE tener en "label" una proposición o verbo relacionador claro en minúscula (ej. "comprende", "produce", "depende de", "se clasifica en", "se manifiesta mediante", "requiere de").
+3. Estructura piramidal con 3 o 4 niveles jerárquicos donde cada conexión se lee como una oración completa.
+4. Los cuadros secundarios NO deben tener "subtitle" (deja "subtitle": null).`;
       break;
 
     case 'timeline':
@@ -705,8 +845,9 @@ REGLAS:
 TIPO: Línea de Tiempo Cronológica e Histórica.
 REGLAS:
 1. La raíz es el proceso o hito global.
-2. Cada evento o etapa DEBE llevar en el campo "subtitle" el año, fecha exacta o período (ej. "1969", "Etapa 1: Mes 1", "Siglo XIX").
-3. Ordenación estrictamente cronológica.`;
+2. Cada evento o etapa lleva en "text" la descripción argumentativa de lo ocurrido sin paréntesis ni dos puntos iniciales.
+3. El campo "subtitle" solo se usa para el año o fecha exacta (ej. "1969", "Siglo XIX").
+4. Ordenación estrictamente cronológica.`;
       break;
 
     case 'fishbone':
@@ -715,15 +856,17 @@ TIPO: Diagrama de Causa y Efecto Ishikawa (Espina de Pescado 6M).
 REGLAS:
 1. La raíz es el problema o efecto analizado.
 2. Las ramas de primer nivel deben ser las categorías 6M ("Métodos", "Mano de Obra", "Materiales", "Maquinaria", "Medición", "Medio Ambiente").
-3. Bajo cada categoría, añade de 2 a 3 causas raíz específicas con un "subtitle" que explique el impacto o factor causante.`;
+3. Bajo cada categoría, añade de 2 a 3 causas raíz redactadas como argumentos formales sin dos puntos ni paréntesis.
+4. Los cuadros de causa NO deben tener "subtitle" (deja "subtitle": null).`;
       break;
 
     case 'synoptic':
       typeGuidance = `
 TIPO: Cuadro Sinóptico Académico con Llaves.
 REGLAS:
-1. Jerarquía limpia de izquierda a derecha: Tema Central -> Ideas Principales -> Ideas Secundarias -> Detalles y Ejemplos.
-2. Cada nodo con texto conciso y "subtitle" complementario.`;
+1. Jerarquía limpia de izquierda a derecha: Tema Central -> Ideas Principales -> Ideas Secundarias -> Detalles.
+2. Cada cuadro con un argumento fluido y formal sin dos puntos ni paréntesis.
+3. Los cuadros de detalle NO deben tener "subtitle" (deja "subtitle": null).`;
       break;
 
     case 'tree':
@@ -731,7 +874,8 @@ REGLAS:
 TIPO: Organigrama Jerárquico / Estructural.
 REGLAS:
 1. Estructura ejecutiva de liderazgo a unidades operativas.
-2. El campo "subtitle" DEBE contener el cargo o función (ej. "Dirección General", "Gerencia de Operaciones", "Líder Técnico").`;
+2. El campo "text" contiene el nombre del área o rol, redactado de forma formal y comprensible sin dos puntos ni paréntesis.
+3. Los cuadros de nivel 2 o inferior NO deben tener subtítulos artificiales.`;
       break;
 
     case 'flowchart':
@@ -740,7 +884,8 @@ TIPO: Diagrama de Flujo de Procesos.
 REGLAS:
 1. El nodo inicial debe tener "flowType": "start".
 2. Pasos operativos sucesivos con "flowType": "process", "decision", "data" o "end".
-3. Las decisiones ("decision") deben ramificar con "label": "Sí" y "label": "No".`;
+3. Redacta las acciones de forma natural y directa sin dos puntos ni paréntesis.
+4. Las decisiones ("decision") deben ramificar con "label": "Sí" y "label": "No".`;
       break;
 
     default: // mindmap, logic
@@ -748,7 +893,9 @@ REGLAS:
 TIPO: Mapa Mental Radial Equilibrado / Mapa Lógico.
 REGLAS:
 1. Desarrolla entre 4 y 6 ramas temáticas principales bien diferenciadas.
-2. Cada rama principal debe tener de 2 a 3 niveles de sub-ramas ricas en contenido, con títulos claros y subtítulos explicativos.`;
+2. Cada rama principal debe tener sub-ramas con argumentos fluidos y proposiciones conectivas naturales en "label".
+3. Prohibido usar dos puntos iniciales o paréntesis en los cuadros.
+4. Los cuadros secundarios NO deben tener "subtitle" (deja "subtitle": null).`;
       break;
   }
 
@@ -756,6 +903,8 @@ REGLAS:
 Genera un organizador visual completo, profundo, analítico y pedagógico en español sobre el tema: "${req.topic}".
 Detalles adicionales del usuario: ${req.details || 'Ninguno (desarrolla de forma profunda y profesional)'}.
 Profundidad: ${req.depth || 'deep'}.
+
+${naturalLanguageDirectives}
 
 ${typeGuidance}
 
@@ -771,10 +920,9 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto antes o después ni marca
     },
     {
       "id": "2",
-      "text": "Rama 1",
-      "subtitle": "Detalle explicativo",
+      "text": "el argumento fluido que continúa naturalmente el conector",
       "parentId": "1",
-      "label": "verbo conector opcional"${isCartographic ? '' : ',\n      "icon": "💡"'}
+      "label": "se fundamenta en"${isCartographic ? '' : ',\n      "icon": "💡"'}
     }
   ]
 }`;
@@ -882,10 +1030,19 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
       parsed.nodes.forEach((n: any, idx: number) => {
         const id = String(n.id || `g-${idx}`);
         const pId = n.parentId ? String(n.parentId) : null;
+        const isRootNode = !pId || idx === 0;
+
+        // Limpiar y naturalizar texto argumentativo y conector textual (cero dos puntos, cero paréntesis y cero subtítulos robóticos en cuadros)
+        const naturalized = cleanAndNaturalizeArgument(
+          String(n.text || 'Tema'),
+          n.label,
+          isRootNode
+        );
+
         nodes.push({
           id,
-          text: String(n.text || 'Tema').trim(),
-          subtitle: n.subtitle ? String(n.subtitle).trim() : undefined,
+          text: naturalized.text,
+          subtitle: isRootNode ? (n.subtitle ? String(n.subtitle).trim() : undefined) : undefined,
           parentId: pId,
           x: 0,
           y: 0,
@@ -894,7 +1051,7 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
           icon: isCartographic ? undefined : n.icon,
           shape: n.shape,
           flowType: n.flowType,
-          isRoot: !pId || idx === 0,
+          isRoot: isRootNode,
         });
 
         if (pId) {
@@ -902,7 +1059,7 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
             id: `eg-${id}`,
             from: pId,
             to: id,
-            label: n.label,
+            label: naturalized.label,
           });
         }
       });
@@ -969,20 +1126,28 @@ async function generateWithOpenAi(req: AiGenerationRequest, themeId: ThemeId) {
   parsed.nodes.forEach((n: any, idx: number) => {
     const id = String(n.id || `o-${idx}`);
     const pId = n.parentId ? String(n.parentId) : null;
+    const isRootNode = !pId || idx === 0;
+
+    const naturalized = cleanAndNaturalizeArgument(
+      String(n.text || 'Tema'),
+      n.label,
+      isRootNode
+    );
+
     nodes.push({
       id,
-      text: n.text || 'Tema',
-      subtitle: n.subtitle,
+      text: naturalized.text,
+      subtitle: isRootNode ? (n.subtitle ? String(n.subtitle).trim() : undefined) : undefined,
       parentId: pId,
       x: 0,
       y: 0,
       width: 140,
       height: 46,
       icon: req.type === 'cartographic' ? undefined : n.icon,
-      isRoot: !pId || idx === 0,
+      isRoot: isRootNode,
     });
     if (pId) {
-      edges.push({ id: `eo-${id}`, from: pId, to: id, label: n.label });
+      edges.push({ id: `eo-${id}`, from: pId, to: id, label: naturalized.label });
     }
   });
 
@@ -993,7 +1158,7 @@ async function generateWithOpenAi(req: AiGenerationRequest, themeId: ThemeId) {
   };
 }
 
-/** Consulta a Google Gemini para ramificar inteligentemente un nodo con subtemas y subtítulos */
+/** Consulta a Google Gemini para ramificar inteligentemente un nodo con argumentos naturales y formales */
 async function expandNodeWithGemini(
   node: OrganizerNode,
   lineageContext: string,
@@ -1004,27 +1169,27 @@ async function expandNodeWithGemini(
   const isCartographic = type === 'cartographic';
   const models = GEMINI_PREFERRED_MODELS;
 
-  const prompt = `Eres un experto pedagógico en organizadores visuales estilo EdrawMax.
-El usuario está editando un organizador visual de tipo "${type}" titulado "${projectTitle || 'Diagrama'}".
-Desea ramificar y profundizar el nodo seleccionado:
-- Título actual: "${node.text}"
+  const prompt = `Eres un redactor académico y pedagógico experto en organizadores visuales y mapas estructurados estilo EdrawMax.
+El usuario está profundizando el tema "${projectTitle || 'Diagrama'}" sobre el nodo:
+- Texto del nodo: "${node.text}"
 ${node.subtitle ? `- Subtítulo actual: "${node.subtitle}"` : ''}
-- Contexto de la rama padre: "${lineageContext}"
+- Contexto de la rama: "${lineageContext}"
 
-Genera exactamente entre 3 y 4 nuevas sub-ramificaciones lógicas, profundas, coherentes y específicas que deriven de este nodo.
-Para CADA sub-rama proporciona:
-1. "text": Título conciso del concepto o subtema (máx 5-7 palabras).
-2. "subtitle": Subtítulo explicativo, dato clave, fecha, cargo, métrica o detalle complementario de apoyo (máx 8-12 palabras).
-3. "label": Proposición conectora opcional (útil si es mapa conceptual).
-${isCartographic ? 'REGLA ESTRICTA: NO uses emojis ni iconos en los textos ni en campos "icon".' : '4. "icon": Emoji pertinente opcional.'}
+Genera entre 2 y 3 nuevas sub-ramificaciones lógicas formuladas como argumentos formales, claros y continuos en español.
+
+NORMAS ESTRICTAS DE LENGUAJE Y NATURALIDAD:
+1. PROHIBIDO USAR DOS PUNTOS (:): NUNCA inicies un texto con etiquetas como "Definición:", "Concepto:", "Propósito:", "Ejemplo:", etc. Escribe directamente el argumento.
+2. PROHIBIDO USAR PARÉNTESIS (...): No pongas aclaraciones entre paréntesis; redacta de forma corrida integrando las ideas con comas y nexos naturales.
+3. CONEXIÓN SINTÁCTICA NATURAL CON EL CONECTOR: En "label" coloca un conector textual o proposición verbal en minúscula (ej. "se define como", "se fundamenta en", "se manifiesta en", "se distingue de", "comprende", "conduce a", "se vincula con", "se aplica mediante"). El texto del cuadro ("text") DEBE continuar gramaticalmente el conector para que al leer [Nodo] + [conector] + [cuadro] se lea en voz alta como una sola oración fluida, elegante y con sentido completo.
+4. CERO SUBTÍTULOS: No incluyas "subtitle" en las sub-ramas; los cuadros deben lucir limpios y humanos.
+${isCartographic ? '5. En Cartografía Conceptual NO uses emojis ni iconos en ningún campo.' : '5. "icon": Emoji opcional pertinente.'}
 
 Devuelve ÚNICAMENTE un objeto JSON válido con este formato:
 {
   "branches": [
     {
-      "text": "Subtema generado",
-      "subtitle": "Explicación o detalle clave",
-      "label": "comprende"${isCartographic ? '' : ',\n      "icon": "💡"'}
+      "text": "el argumento fluido que continúa naturalmente el conector",
+      "label": "se fundamenta en"${isCartographic ? '' : ',\n      "icon": "💡"'}
     }
   ]
 }`;
@@ -1041,7 +1206,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido con este formato:
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
               responseMimeType: 'application/json',
-              temperature: 0.4,
+              temperature: 0.35,
             },
           }),
         }
@@ -1059,12 +1224,19 @@ Devuelve ÚNICAMENTE un objeto JSON válido con este formato:
 
       const parsed = cleanJsonResponse(raw);
       if (Array.isArray(parsed.branches) && parsed.branches.length > 0) {
-        return parsed.branches.map((b: any) => ({
-          text: String(b.text || 'Subtema').trim(),
-          subtitle: b.subtitle ? String(b.subtitle).trim() : undefined,
-          label: b.label ? String(b.label).trim() : undefined,
-          icon: isCartographic ? undefined : b.icon,
-        }));
+        return parsed.branches.map((b: any) => {
+          const naturalized = cleanAndNaturalizeArgument(
+            String(b.text || 'Subtema'),
+            b.label,
+            false
+          );
+          return {
+            text: naturalized.text,
+            subtitle: undefined,
+            label: naturalized.label,
+            icon: isCartographic ? undefined : b.icon,
+          };
+        });
       }
     } catch (e: any) {
       lastErr = e;
@@ -1085,113 +1257,113 @@ function generateLocalSemanticBranches(
     const isEjemplo = node.text.includes('Ejemplificación');
     const isNocion = node.text.includes('Noción');
     const isCat = node.text.includes('Categorización');
-    const isCaract = node.text.includes('Características');
-    const isDif = node.text.includes('Diferencias');
+    const isCaract = node.text.includes('Características') || node.text.includes('Caracterización');
+    const isDif = node.text.includes('Diferencias') || node.text.includes('Diferenciación');
     const isSub = node.text.includes('Subdivisión');
     const isVinc = node.text.includes('Vinculación');
     const isMetod = node.text.includes('Metodología');
 
     if (isEjemplo) {
       return [
-        { text: 'Caso de Estudio Contemporáneo', subtitle: 'Aplicación empírica en organizaciones líderes y precedentes' },
-        { text: 'Demostración Práctica Documentada', subtitle: 'Evidencia cuantificable de resolución de problemas en contexto' },
+        { text: 'un caso documentado y representativo donde se aprecia su impacto y aplicación real', label: 'se ejemplifica mediante' },
+        { text: 'la resolución práctica de una problemática concreta y verificable en su contexto', label: 'se demuestra en' },
       ];
     }
     if (isNocion) {
       return [
-        { text: 'Etimología y Definición Esencial', subtitle: 'Raíz conceptual y delimitación epistemológica precisa' },
-        { text: 'Evolución Histórica del Concepto', subtitle: 'Transformación del significado a través de las etapas clave' },
+        { text: 'el significado conceptual esencial y las raíces etimológicas que delimitan con rigor el término', label: 'se define como' },
+        { text: 'la evolución histórica y transformaciones teóricas que moldearon su comprensión actual', label: 'comprende' },
       ];
     }
     if (isCat) {
       return [
-        { text: 'Clase o Disciplina Matriz', subtitle: 'Ubicación taxonómica dentro del corpus científico general' },
-        { text: 'Campos Conexos Directos', subtitle: 'Áreas del saber con las que comparte fronteras teóricas' },
+        { text: 'la disciplina o campo mayor del saber científico en el cual se inserta su fundamentación', label: 'pertenece a' },
+        { text: 'las áreas interdisciplinarias directas con las que interactúa y comparte fronteras teóricas', label: 'se vincula con' },
       ];
     }
     if (isCaract) {
       return [
-        { text: 'Principios Rectores Fundamentales', subtitle: 'Leyes y normativas conceptuales inmutables' },
-        { text: 'Rasgos Operativos Diferenciadores', subtitle: 'Patrones específicos observables en la práctica' },
+        { text: 'los principios rectores y leyes conceptuales que definen su estructura intrínseca', label: 'se caracteriza por' },
+        { text: 'los patrones operativos observables que permiten verificar su consistencia en la práctica', label: 'se manifiesta mediante' },
       ];
     }
     if (isDif) {
       return [
-        { text: 'Conceptos Cercanos o Paralelos', subtitle: 'Términos con los que suele confundirse en el uso cotidiano' },
-        { text: 'Límites y Distinciones Críticas', subtitle: 'Criterios formales para una separación rigurosa' },
+        { text: 'las nociones cercanas y términos paralelos para evitar confusiones de significado', label: 'se distingue de' },
+        { text: 'los límites conceptuales que establecen una separación rigurosa frente a conceptos afines', label: 'establece fronteras con' },
       ];
     }
     if (isSub) {
       return [
-        { text: 'Componentes Primarios de la Estructura', subtitle: 'Módulos o subsistemas constitutivos esenciales' },
-        { text: 'Tipologías y Variantes Especializadas', subtitle: 'Clasificación interna según contexto de aplicación' },
+        { text: 'las tipologías y variantes internas estructuradas según el contexto de aplicación', label: 'se subdivide en' },
+        { text: 'los módulos y subsistemas constitutivos que integran su cuerpo operativo', label: 'se compone de' },
       ];
     }
     if (isVinc) {
       return [
-        { text: 'Teorías Científicas de Soporte', subtitle: 'Marcos explicativos y modelos interdisciplinarios' },
-        { text: 'Autores y Obras de Referencia', subtitle: 'Aportes bibliográficos y escuelas de pensamiento' },
+        { text: 'los marcos teóricos y leyes científicas que respaldan su validez explicativa', label: 'se fundamenta en' },
+        { text: 'las contribuciones bibliográficas fundamentales de autores y escuelas de pensamiento', label: 'se nutre de' },
       ];
     }
     if (isMetod) {
       return [
-        { text: 'Fases del Protocolo de Acción', subtitle: 'Secuencia ordenada de etapas para implementación' },
-        { text: 'Instrumentos y Métricas de Control', subtitle: 'Herramientas de evaluación y verificación de resultados' },
+        { text: 'la secuencia metódica de fases estructuradas para su aplicación efectiva', label: 'se aplica mediante' },
+        { text: 'las herramientas de evaluación y criterios de verificación de resultados alcanzados', label: 'se evalúa con' },
       ];
     }
 
     return [
-      { text: `Fundamentación de ${baseTopic}`, subtitle: 'Marco teórico y justificación científica' },
-      { text: `Instrumentación Operativa`, subtitle: 'Criterios de aplicación y desarrollo metodológico' },
-      { text: `Evaluación de Consistencia`, subtitle: 'Métricas de impacto y control de calidad' },
+      { text: `los fundamentos teóricos y principios que justifican el estudio riguroso de ${baseTopic}`, label: 'se fundamenta en' },
+      { text: 'los criterios metodológicos y herramientas operativas para su puesta en marcha', label: 'se instrumenta con' },
+      { text: 'los indicadores verificables de impacto y consistencia en el entorno real', label: 'conduce a' },
     ];
   }
 
   if (type === 'timeline') {
     return [
-      { text: `Fase 1: Preparación de ${baseTopic}`, subtitle: 'Hito Inicial • Diagnóstico y requerimientos' },
-      { text: `Fase 2: Ejecución y Despliegue`, subtitle: 'Hito Central • Operación y seguimiento' },
-      { text: `Fase 3: Auditoría y Resultados`, subtitle: 'Hito Final • Evaluación y consolidación' },
+      { text: `la fase preliminar de diagnóstico y levantamiento de requerimientos para ${baseTopic}`, label: 'inicia con' },
+      { text: 'el despliegue operativo central y la coordinación de acciones estratégicas', label: 'continúa con' },
+      { text: 'la consolidación de resultados finales y auditoría de impacto alcanzado', label: 'culmina en' },
     ];
   }
 
   if (type === 'tree') {
     return [
-      { text: `Área de Coordinación`, subtitle: 'Supervisión Estratégica' },
-      { text: `Unidad de Ejecución Técnica`, subtitle: 'Operaciones de Campo' },
-      { text: `Aseguramiento de Calidad`, subtitle: 'Control y Compliance' },
+      { text: `la dirección estratégica y coordinación integral para ${baseTopic}`, label: 'supervisa a' },
+      { text: 'la unidad técnica especializada en operaciones y desarrollo', label: 'coordina a' },
+      { text: 'el equipo de aseguramiento de calidad y cumplimiento normativo', label: 'audita a' },
     ];
   }
 
   if (type === 'fishbone') {
     return [
-      { text: `Procedimientos Desactualizados`, subtitle: 'Falta de estandarización en procesos clave' },
-      { text: `Limitación de Recursos`, subtitle: 'Brechas de capacitación y herramientas' },
-      { text: `Variabilidad del Entorno`, subtitle: 'Factores externos no controlados' },
+      { text: `la ausencia de protocolos estandarizados y actualizados para el seguimiento del proceso`, label: 'causado por' },
+      { text: 'la dispersión de prioridades y sobrecarga de actividades sin herramientas adecuadas', label: 'asociado a' },
+      { text: 'las fluctuaciones no controladas en las condiciones del entorno operativo', label: 'debido a' },
     ];
   }
 
   if (type === 'concept') {
     return [
-      { text: `Elemento Constitutivo`, subtitle: 'Componente nuclear del sistema', label: 'comprende' },
-      { text: `Principio de Acción`, subtitle: 'Regla rectora del comportamiento', label: 'determina' },
-      { text: `Impacto Observable`, subtitle: 'Resultado verificable en la práctica', label: 'produce' },
+      { text: `los componentes esenciales y principios rectores del sistema`, label: 'comprende' },
+      { text: `las reglas formativas y normativas que dirigen su comportamiento`, label: 'determina' },
+      { text: `un impacto concreto y verificable en la resolución de problemáticas del área`, label: 'conduce a' },
     ];
   }
 
   if (type === 'flowchart') {
     return [
-      { text: `Verificación Inicial de ${baseTopic}`, subtitle: 'Comprobación de condiciones previas' },
-      { text: `Protocolo de Ejecución`, subtitle: 'Paso operativo estandarizado' },
-      { text: `Cierre y Validación`, subtitle: 'Registro formal y bitácora' },
+      { text: `Revisar y verificar las condiciones iniciales para ${baseTopic}`, label: 'requiere' },
+      { text: 'Ejecutar las acciones estandarizadas del procedimiento', label: 'luego' },
+      { text: 'Registrar la conformidad y validar el cierre formal del proceso', label: 'finalmente' },
     ];
   }
 
   // Mapa mental, lógico, sinóptico
   return [
-    { text: `Aspectos Clave de ${baseTopic}`, subtitle: 'Fundamentos estructurales y directrices', icon: '📌' },
-    { text: `Estrategia e Implementación`, subtitle: 'Acciones prácticas para ejecución efectiva', icon: '⚡' },
-    { text: `Monitoreo y Resultados`, subtitle: 'Indicadores de desempeño y optimización continua', icon: '📊' },
+    { text: `los fundamentos conceptuales y directrices estratégicas de ${baseTopic}`, label: 'se fundamenta en', icon: '📌' },
+    { text: 'las acciones prioritarias y metodologías para una ejecución efectiva', label: 'se implementa con', icon: '⚡' },
+    { text: 'los mecanismos de seguimiento y optimización continua de resultados', label: 'conduce a', icon: '📊' },
   ];
 }
 
@@ -1254,10 +1426,12 @@ export async function expandNodeWithAi(
     const newId = `node-ai-${stamp}-${idx}`;
     const branchColor = node.color || PALETTES[idx % PALETTES.length];
 
+    const naturalized = cleanAndNaturalizeArgument(branch.text, branch.label, false);
+
     newNodes.push({
       id: newId,
-      text: branch.text,
-      subtitle: branch.subtitle,
+      text: naturalized.text,
+      subtitle: undefined, // Cero subtítulos robóticos en cuadros de contenido
       parentId: node.id,
       x: node.x,
       y: node.y,
@@ -1272,7 +1446,7 @@ export async function expandNodeWithAi(
       from: node.id,
       to: newId,
       color: branchColor,
-      label: branch.label || (type === 'concept' ? 'comprende' : undefined),
+      label: naturalized.label || (type === 'concept' ? 'comprende' : undefined),
     });
   });
 

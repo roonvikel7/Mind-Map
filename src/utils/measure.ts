@@ -154,7 +154,7 @@ export function measureNodeDimensions(
   }
 
   let subLinesCount = 0;
-  if (node.subtitle) {
+  if (node.subtitle && isRoot) {
     const subMaxW = typo.maxTextWidth + 40;
     const subLines = wrapTextLines(node.subtitle, subMaxW, 11.5, 500);
     subLinesCount = subLines.length;

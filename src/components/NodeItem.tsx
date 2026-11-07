@@ -429,10 +429,10 @@ export const NodeItem: React.FC<NodeItemProps> = ({
               </div>
             )}
 
-            {node.subtitle && !isEditing && (
+            {node.subtitle && !isEditing && isRoot && (
               <div
                 style={{
-                  color: isRoot ? 'rgba(255,255,255,0.86)' : theme.textSecondary,
+                  color: 'rgba(255,255,255,0.86)',
                 }}
                 className="text-[11px] font-medium leading-snug mt-0.5 break-words"
               >
