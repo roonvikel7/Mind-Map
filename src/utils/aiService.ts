@@ -780,6 +780,14 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto antes o después ni marca
 }`;
 }
 
+export const GEMINI_PREFERRED_MODELS = [
+  'gemini-flash-lite-latest',
+  'gemini-3.5-flash-lite',
+  'gemini-3-flash-preview',
+  'gemini-3.5-flash',
+  'gemini-flash-latest',
+];
+
 /** Valida rápidamente si una clave de API de Gemini es funcional */
 export async function testGeminiApiKey(apiKey: string): Promise<{
   success: boolean;
@@ -791,7 +799,7 @@ export async function testGeminiApiKey(apiKey: string): Promise<{
     return { success: false, error: 'Por favor ingresa una clave de API válida.' };
   }
 
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  const models = GEMINI_PREFERRED_MODELS;
   let lastErr = '';
 
   for (const model of models) {
@@ -826,7 +834,7 @@ export async function testGeminiApiKey(apiKey: string): Promise<{
 
 async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
   const prompt = buildGeminiPrompt(req);
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  const models = GEMINI_PREFERRED_MODELS;
   let lastError: Error | null = null;
   const isCartographic = req.type === 'cartographic';
 
@@ -994,7 +1002,7 @@ async function expandNodeWithGemini(
   apiKey: string
 ): Promise<Array<{ text: string; subtitle?: string; label?: string; icon?: string }>> {
   const isCartographic = type === 'cartographic';
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  const models = GEMINI_PREFERRED_MODELS;
 
   const prompt = `Eres un experto pedagógico en organizadores visuales estilo EdrawMax.
 El usuario está editando un organizador visual de tipo "${type}" titulado "${projectTitle || 'Diagrama'}".

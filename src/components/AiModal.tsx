@@ -47,6 +47,7 @@ export const AiModal: React.FC<AiModalProps> = ({
 
   // Estado de clave y conexión de Google Gemini
   const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [activeModel, setActiveModel] = useState('gemini-flash-lite');
   const [showKeyConfig, setShowKeyConfig] = useState(false);
   const [testingKey, setTestingKey] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; msg: string } | null>(null);
@@ -74,6 +75,7 @@ export const AiModal: React.FC<AiModalProps> = ({
     try {
       const res = await testGeminiApiKey(geminiApiKey);
       if (res.success) {
+        if (res.model) setActiveModel(res.model);
         setTestResult({
           success: true,
           msg: `¡Clave verificada con éxito (${res.model})!`,
@@ -176,7 +178,7 @@ export const AiModal: React.FC<AiModalProps> = ({
                     : 'Motor Semántico Local Autónomo'}
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-white text-stone-600 font-semibold border border-stone-200">
-                  {geminiApiKey.trim() ? 'gemini-2.5-flash' : 'Sin conexión'}
+                  {geminiApiKey.trim() ? activeModel : 'Sin conexión'}
                 </span>
               </div>
               <button
