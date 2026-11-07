@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ChevronDown,
   Download,
@@ -48,6 +48,7 @@ interface NavbarProps {
   onRedo: () => void;
   onChangeCartographicDirection?: (dir: 'clockwise' | 'counterclockwise') => void;
   onAddImageFile?: (file: File) => void;
+  onOpenCreateChooser?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -76,11 +77,59 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRedo,
   onChangeCartographicDirection,
   onAddImageFile,
+  onOpenCreateChooser,
 }) => {
   const [projectsMenuOpen, setProjectsMenuOpen] = useState(false);
   const [typeMenuOpen, setTypeMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+
+  const projectsMenuRef = useRef<HTMLDivElement | null>(null);
+  const projectsBtnRef = useRef<HTMLButtonElement | null>(null);
+  const typeMenuRef = useRef<HTMLDivElement | null>(null);
+  const typeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  // Cerrar menús desplegables inmediatamente cuando el usuario hace clic afuera o pulsa Escape
+  useEffect(() => {
+    if (!typeMenuOpen && !projectsMenuOpen) return;
+
+    const handleGlobalPointerDown = (e: MouseEvent | PointerEvent) => {
+      const target = e.target as Node;
+      if (
+        typeMenuOpen &&
+        typeMenuRef.current &&
+        !typeMenuRef.current.contains(target) &&
+        typeBtnRef.current &&
+        !typeBtnRef.current.contains(target)
+      ) {
+        setTypeMenuOpen(false);
+      }
+      if (
+        projectsMenuOpen &&
+        projectsMenuRef.current &&
+        !projectsMenuRef.current.contains(target) &&
+        projectsBtnRef.current &&
+        !projectsBtnRef.current.contains(target)
+      ) {
+        setProjectsMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setTypeMenuOpen(false);
+        setProjectsMenuOpen(false);
+      }
+    };
+
+    // Usar capture = true para interceptar antes de que otros contenedores llamen a stopPropagation
+    window.addEventListener('pointerdown', handleGlobalPointerDown, true);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handleGlobalPointerDown, true);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [typeMenuOpen, projectsMenuOpen]);
 
   const currentTypeMeta =
     ORGANIZER_TYPES_META.find(m => m.type === project.type) || ORGANIZER_TYPES_META[0];
@@ -120,6 +169,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Menú de Proyectos */}
         <div className="relative">
           <button
+            ref={projectsBtnRef}
             type="button"
             onClick={() => {
               setProjectsMenuOpen(v => !v);
@@ -135,42 +185,44 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {projectsMenuOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setProjectsMenuOpen(false)}
-              />
-              <div className="absolute left-0 mt-2 w-80 rounded-2xl bg-white border border-stone-200 edraw-panel-shadow p-2 z-50">
-                <div className="flex items-center justify-between px-2 py-1.5 border-b border-stone-100 mb-1">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                    Proyectos Guardados
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        fileInputRef.current?.click();
-                        setProjectsMenuOpen(false);
-                      }}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-stone-600 hover:bg-stone-100"
-                      title="Abrir archivo .json de proyecto"
-                    >
-                      <Upload className="w-3 h-3" />
-                      <span>Importar</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
+            <div
+              ref={projectsMenuRef}
+              className="absolute left-0 mt-2 w-80 rounded-2xl bg-white border border-stone-200 edraw-panel-shadow p-2 z-50 animate-in fade-in duration-100"
+            >
+              <div className="flex items-center justify-between px-2 py-1.5 border-b border-stone-100 mb-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                  Proyectos Guardados
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      fileInputRef.current?.click();
+                      setProjectsMenuOpen(false);
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-stone-600 hover:bg-stone-100"
+                    title="Abrir archivo .json de proyecto"
+                  >
+                    <Upload className="w-3 h-3" />
+                    <span>Importar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProjectsMenuOpen(false);
+                      if (onOpenCreateChooser) {
+                        onOpenCreateChooser();
+                      } else {
                         onCreateNewProject('mindmap');
-                        setProjectsMenuOpen(false);
-                      }}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-semibold"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>Nuevo</span>
-                    </button>
-                  </div>
+                      }
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-semibold"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Nuevo</span>
+                  </button>
                 </div>
+              </div>
 
                 <div className="max-h-72 overflow-y-auto space-y-1 pr-0.5">
                   {projects.map(p => {
@@ -221,7 +273,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   })}
                 </div>
               </div>
-            </>
           )}
         </div>
 
@@ -251,6 +302,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="flex items-center gap-1.5">
         <div className="relative">
           <button
+            ref={typeBtnRef}
             type="button"
             onClick={() => {
               setTypeMenuOpen(v => !v);
@@ -265,47 +317,44 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {typeMenuOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setTypeMenuOpen(false)}
-              />
-              <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-80 rounded-2xl bg-white border border-stone-200 edraw-panel-shadow p-2 z-50">
-                <div className="px-2 py-1 text-[10.5px] font-bold uppercase tracking-wider text-stone-400">
-                  Transformar Estructura (9 Motores)
-                </div>
-                <div className="grid grid-cols-1 gap-1 mt-1">
-                  {ORGANIZER_TYPES_META.map(item => {
-                    const active = item.type === project.type;
-                    return (
-                      <button
-                        key={item.type}
-                        type="button"
-                        onClick={() => {
-                          onChangeType(item.type);
-                          setTypeMenuOpen(false);
-                        }}
-                        className={`flex items-start gap-2.5 p-2 rounded-xl text-left transition-colors ${
-                          active
-                            ? 'bg-orange-50 border border-orange-200 text-orange-950'
-                            : 'hover:bg-stone-50 text-stone-700'
-                        }`}
-                      >
-                        <span className="text-lg leading-none mt-0.5">
-                          {item.emoji}
-                        </span>
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold">{item.label}</div>
-                          <div className="text-[10.5px] text-stone-500 leading-snug">
-                            {item.description}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+            <div
+              ref={typeMenuRef}
+              className="absolute left-1/2 -translate-x-1/2 mt-2 w-80 rounded-2xl bg-white border border-stone-200 edraw-panel-shadow p-2 z-50 animate-in fade-in duration-100"
+            >
+              <div className="px-2 py-1 text-[10.5px] font-bold uppercase tracking-wider text-stone-400">
+                Transformar Estructura (9 Motores)
               </div>
-            </>
+              <div className="grid grid-cols-1 gap-1 mt-1">
+                {ORGANIZER_TYPES_META.map(item => {
+                  const active = item.type === project.type;
+                  return (
+                    <button
+                      key={item.type}
+                      type="button"
+                      onClick={() => {
+                        onChangeType(item.type);
+                        setTypeMenuOpen(false);
+                      }}
+                      className={`flex items-start gap-2.5 p-2 rounded-xl text-left transition-colors ${
+                        active
+                          ? 'bg-orange-50 border border-orange-200 text-orange-950'
+                          : 'hover:bg-stone-50 text-stone-700'
+                      }`}
+                    >
+                      <span className="text-lg leading-none mt-0.5">
+                        {item.emoji}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold">{item.label}</div>
+                        <div className="text-[10.5px] text-stone-500 leading-snug">
+                          {item.description}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
 

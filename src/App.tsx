@@ -32,6 +32,7 @@ import { NodeNotesModal } from './components/NodeNotesModal';
 import { EdgeLabelModal } from './components/EdgeLabelModal';
 import { SettingsModal } from './components/SettingsModal';
 import { PresentationView } from './components/PresentationView';
+import { CreateChooserModal } from './components/CreateChooserModal';
 
 export function App() {
   const [projects, setProjects] = useState<OrganizerProject[]>([]);
@@ -54,6 +55,7 @@ export function App() {
   >([]);
 
   // Modales
+  const [createChooserOpen, setCreateChooserOpen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -79,8 +81,27 @@ export function App() {
     loadInitialProjects().then(({ projects: loaded, activeId }) => {
       setProjects(loaded);
       setActiveProjectId(activeId);
+      // Al inicio o cuando el usuario abra la web, mostrar el selector para escoger qué crear
+      setCreateChooserOpen(true);
     });
   }, []);
+
+  // Cerrar cualquier ventana o modal inmediatamente al presionar la tecla Escape
+  useEffect(() => {
+    const handleGlobalEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (createChooserOpen) setCreateChooserOpen(false);
+        if (aiModalOpen) setAiModalOpen(false);
+        if (templatesOpen) setTemplatesOpen(false);
+        if (exportOpen) setExportOpen(false);
+        if (settingsOpen) setSettingsOpen(false);
+        if (notesNodeId) setNotesNodeId(null);
+        if (editingEdge) setEditingEdge(null);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalEsc);
+    return () => window.removeEventListener('keydown', handleGlobalEsc);
+  }, [createChooserOpen, aiModalOpen, templatesOpen, exportOpen, settingsOpen, notesNodeId, editingEdge]);
 
   const activeProject =
     projects.find(p => p.id === activeProjectId) || projects[0];
@@ -783,61 +804,33 @@ export function App() {
     setHistoryFuture([]);
   };
 
-  // Crear mapa en blanco limpio pero con 3 ramas iniciales listas para editar
-  const handleCreateNewProject = (type: OrganizerType = 'mindmap') => {
+  // Crear mapa en blanco limpio con SOLO la forma para el título (sin ramas extra)
+  const handleCreateNewProject = (
+    type: OrganizerType = 'mindmap',
+    title: string = 'Idea Central'
+  ) => {
     const stamp = Date.now();
     const rootId = `root-${stamp}`;
-    const seedNodes: OrganizerNode[] = [
+    const isCartographic = type === 'cartographic';
+    const cleanNodes: OrganizerNode[] = [
       {
         id: rootId,
-        text: 'Idea Central',
+        text: title,
+        subtitle: isCartographic
+          ? 'Cartografía Conceptual de Ocho Ejes'
+          : 'Haz doble clic para escribir o Tab para ramificar',
         x: 0,
         y: 0,
-        width: 150,
-        height: 52,
+        width: 180,
+        height: 56,
         isRoot: true,
-        icon: '💡',
+        icon: isCartographic ? undefined : '💡',
       },
-      {
-        id: `n1-${stamp}`,
-        text: 'Rama Principal 1',
-        parentId: rootId,
-        x: 0,
-        y: 0,
-        width: 140,
-        height: 44,
-        icon: '🚀',
-      },
-      {
-        id: `n2-${stamp}`,
-        text: 'Rama Principal 2',
-        parentId: rootId,
-        x: 0,
-        y: 0,
-        width: 140,
-        height: 44,
-        icon: '🎯',
-      },
-      {
-        id: `n3-${stamp}`,
-        text: 'Rama Principal 3',
-        parentId: rootId,
-        x: 0,
-        y: 0,
-        width: 140,
-        height: 44,
-        icon: '✨',
-      },
-    ];
-    const seedEdges: OrganizerEdge[] = [
-      { id: `e1-${stamp}`, from: rootId, to: `n1-${stamp}` },
-      { id: `e2-${stamp}`, from: rootId, to: `n2-${stamp}` },
-      { id: `e3-${stamp}`, from: rootId, to: `n3-${stamp}` },
     ];
 
     const relaid = applyLayout(
-      seedNodes,
-      seedEdges,
+      cleanNodes,
+      [],
       type,
       'vitality-warm',
       true
@@ -845,13 +838,14 @@ export function App() {
 
     const newProj: OrganizerProject = {
       id: `proj-${stamp}`,
-      title: 'Nuevo Organizador Visual',
+      title,
       type,
       theme: 'vitality-warm',
       canvasBg: 'dots',
       rainbowBranches: true,
       nodes: relaid.nodes,
-      edges: relaid.edges,
+      edges: [],
+      images: [],
       createdAt: stamp,
       updatedAt: stamp,
     };
@@ -864,6 +858,9 @@ export function App() {
     setActiveProjectId(newProj.id);
     saveActiveProjectId(newProj.id);
     setSelectedNodeId(rootId);
+    setSelectedEdgeId(null);
+    setSelectedImageId(null);
+    setConnectSourceId(null);
     setHistoryPast([]);
     setHistoryFuture([]);
   };
@@ -980,6 +977,7 @@ export function App() {
         onRedo={handleRedo}
         onChangeCartographicDirection={handleChangeCartographicDirection}
         onAddImageFile={handleAddImageFile}
+        onOpenCreateChooser={() => setCreateChooserOpen(true)}
       />
 
       {/* Área Central de 3 Columnas: Biblioteca Izquierda + Lienzo Infinito + Inspector Derecho */}
@@ -1079,6 +1077,52 @@ export function App() {
       </div>
 
       {/* Modales del Estudio */}
+      <CreateChooserModal
+        isOpen={createChooserOpen}
+        onClose={() => setCreateChooserOpen(false)}
+        currentType={activeProject?.type || 'mindmap'}
+        currentTitle={activeProject?.title || 'Idea Central'}
+        onConfirm={(title, type) => {
+          if (activeProject && activeProject.nodes.length <= 1) {
+            const isCartographic = type === 'cartographic';
+            const baseNode: OrganizerNode = {
+              ...(activeProject.nodes[0] || {
+                id: `root-${Date.now()}`,
+                x: 0,
+                y: 0,
+                width: 200,
+                height: 60,
+                isRoot: true,
+                depth: 0,
+              }),
+              text: title,
+              subtitle: isCartographic
+                ? 'Cartografía Conceptual de Ocho Ejes'
+                : 'Haz doble clic para escribir o Tab para ramificar',
+              icon: isCartographic ? undefined : '💡',
+            };
+            const relaid = applyLayout(
+              [baseNode],
+              [],
+              type,
+              activeProject.theme || 'vitality-warm',
+              true,
+              activeProject.cartographicDirection || 'clockwise'
+            );
+            commitProjectPatch({
+              title,
+              type,
+              nodes: relaid.nodes,
+              edges: [],
+            });
+            showToast(`Listo: «${title}»`);
+          } else {
+            handleCreateNewProject(type, title);
+            showToast(`Creado: «${title}»`);
+          }
+        }}
+      />
+
       <AiModal
         isOpen={aiModalOpen}
         onClose={() => setAiModalOpen(false)}

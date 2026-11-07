@@ -1,4 +1,4 @@
-import { OrganizerProject, ThemeId } from '../types/organizer';
+import { OrganizerProject, OrganizerType, ThemeId } from '../types/organizer';
 import { createDefaultProjects } from './templates';
 import { applyLayout } from './layouts';
 import { EDRAW_THEMES } from './themes';
@@ -20,10 +20,48 @@ function normalizeThemeId(raw?: string): ThemeId {
   return 'vitality-warm';
 }
 
+export function createCleanInitialProject(
+  type: OrganizerType = 'mindmap',
+  title = 'Idea Central'
+): OrganizerProject {
+  const stamp = Date.now();
+  const rootId = `root-${stamp}`;
+  const isCartographic = type === 'cartographic';
+  return {
+    id: `proj-${stamp}`,
+    title,
+    type,
+    theme: 'vitality-warm',
+    canvasBg: 'dots',
+    rainbowBranches: true,
+    nodes: [
+      {
+        id: rootId,
+        text: title,
+        subtitle: isCartographic
+          ? 'Cartografía Conceptual de Ocho Ejes'
+          : 'Haz doble clic para escribir o Tab para ramificar',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 56,
+        isRoot: true,
+        icon: isCartographic ? undefined : '💡',
+      },
+    ],
+    edges: [],
+    images: [],
+    createdAt: stamp,
+    updatedAt: stamp,
+  };
+}
+
 export async function loadInitialProjects(): Promise<{
   projects: OrganizerProject[];
   activeId: string;
 }> {
+  const cleanInitial = createCleanInitialProject('mindmap', 'Idea Central');
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -44,22 +82,32 @@ export async function loadInitialProjects(): Promise<{
             edges,
           };
         });
-        const savedActive = localStorage.getItem(ACTIVE_PROJECT_KEY);
-        const activeId =
-          sanitized.some(p => p.id === savedActive) && savedActive
-            ? savedActive
-            : sanitized[0].id;
-        return { projects: sanitized, activeId };
+
+        // Si el primer proyecto ya es un lienzo limpio (solo 1 nodo raíz), lo usamos
+        const firstIsClean =
+          sanitized[0] &&
+          sanitized[0].nodes.length === 1 &&
+          sanitized[0].nodes[0].isRoot;
+
+        if (firstIsClean) {
+          return { projects: sanitized, activeId: sanitized[0].id };
+        }
+
+        // Siempre al inicio anteponer el proyecto limpio con solo la forma del título
+        const combined = [cleanInitial, ...sanitized];
+        saveProjects(combined);
+        localStorage.setItem(ACTIVE_PROJECT_KEY, cleanInitial.id);
+        return { projects: combined, activeId: cleanInitial.id };
       }
     }
   } catch (err) {
     console.error('Error cargando proyectos guardados:', err);
   }
 
-  const defaults = await createDefaultProjects();
+  const defaults = [cleanInitial];
   saveProjects(defaults);
-  localStorage.setItem(ACTIVE_PROJECT_KEY, defaults[0].id);
-  return { projects: defaults, activeId: defaults[0].id };
+  localStorage.setItem(ACTIVE_PROJECT_KEY, cleanInitial.id);
+  return { projects: defaults, activeId: cleanInitial.id };
 }
 
 export function saveProjects(projects: OrganizerProject[]) {
