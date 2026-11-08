@@ -485,7 +485,7 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
             strokeWidth: 2.85,
             label: e.label,
             labelX: (x1 + x2) / 2,
-            labelY: (y1 + y2) / 2 - 10,
+            labelY: (y1 + y2) / 2,
           });
         } else {
           // Conexión de subtemas secundarios
@@ -519,7 +519,7 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
             strokeWidth: 2.1,
             label: e.label,
             labelX: (x1 + x2) / 2,
-            labelY: (y1 + y2) / 2 - 10,
+            labelY: (y1 + y2) / 2,
           });
         }
       } else if (project.type === 'mindmap' || project.type === 'logic') {
@@ -544,7 +544,7 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
             color: branchColor,
             label: e.label,
             labelX: (x1 + x2) / 2,
-            labelY: (y1 + y2) / 2 - 12,
+            labelY: (y1 + y2) / 2,
           });
         } else {
           let d: string;
@@ -571,7 +571,7 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
             strokeWidth: from.isRoot ? 2.8 : 2.1,
             label: e.label,
             labelX: (x1 + x2) / 2,
-            labelY: (y1 + y2) / 2 - 12,
+            labelY: (y1 + y2) / 2,
           });
         }
       } else if (project.type === 'tree') {
@@ -753,6 +753,8 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
 
   // Des-colisión inteligente de etiquetas de conectores y proposiciones para que jamás se monten entre sí
   resolveLabelCollisions(paths);
+  // Garantizar separación física estricta entre etiquetas y cuadros/nodos de contenido
+  preventLabelsOverlappingNodes(paths, nodeMap);
 
   return {
     paths,
@@ -825,5 +827,53 @@ function resolveLabelCollisions(paths: RenderedPathItem[]) {
       }
     }
     if (!moved) break;
+  }
+}
+
+/**
+ * Garantiza de forma estricta que ninguna píldora de conector toque ni se sobreponga
+ * con los cuadros/nodos de la escena, manteniendo una separación visual limpia de al menos 12px.
+ */
+function preventLabelsOverlappingNodes(
+  paths: RenderedPathItem[],
+  nodeMap: Map<string, OrganizerNode>
+) {
+  const labeled = paths.filter(
+    p => p.label && p.labelX !== undefined && p.labelY !== undefined
+  );
+  if (labeled.length === 0) return;
+
+  const margin = 12; // Margen de separación física obligatoria entre la píldora y cualquier cuadro
+
+  for (const path of labeled) {
+    const pillW = Math.max(90, (path.label!.length * 7.5) + 24);
+    const pillH = 26;
+
+    for (const node of nodeMap.values()) {
+      const halfNodeW = node.width / 2 + margin;
+      const halfNodeH = node.height / 2 + margin;
+      const halfPillW = pillW / 2;
+      const halfPillH = pillH / 2;
+
+      const dx = path.labelX! - node.x;
+      const dy = path.labelY! - node.y;
+
+      const requiredX = halfNodeW + halfPillW;
+      const requiredY = halfNodeH + halfPillH;
+
+      const overlapX = requiredX - Math.abs(dx);
+      const overlapY = requiredY - Math.abs(dy);
+
+      // Si la píldora intersecta la caja del nodo con su margen de seguridad
+      if (overlapX > 0 && overlapY > 0) {
+        if (overlapY <= overlapX) {
+          // Desplazar verticalmente fuera del nodo asegurando el margen
+          path.labelY! += (dy >= 0 ? 1 : -1) * (overlapY + 4);
+        } else {
+          // Desplazar horizontalmente fuera del nodo asegurando el margen
+          path.labelX! += (dx >= 0 ? 1 : -1) * (overlapX + 4);
+        }
+      }
+    }
   }
 }

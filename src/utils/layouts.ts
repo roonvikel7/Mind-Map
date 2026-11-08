@@ -230,8 +230,8 @@ export function applyLayout(
   }
   parkHiddenSubtrees(root.id, root.x, root.y);
 
-  // Evitar estrictamente la sobreposición de cuadros entre cualquier nodo visible
-  preventNodeCollisions(nodes, hiddenIds);
+  // Evitar estrictamente la sobreposición de cuadros y garantizar separación para conectores
+  preventNodeCollisions(nodes, hiddenIds, edges);
 
   // 7. Sincronizar aristas jerárquicas y sus colores/etiquetas semánticas
   const existingEdgeKey = new Set<string>();
@@ -317,7 +317,8 @@ function placeHorizontalSubtree(
   const kids = visibleChildren(id);
   if (kids.length === 0) return;
 
-  const hGap = (node.depth || 0) === 0 ? 88 : 66;
+  // Separación horizontal generosa para dar holgura completa a las píldoras de conectores
+  const hGap = (node.depth || 0) === 0 ? 116 : 124;
   const totalKidsSpan =
     kids.reduce((acc, cid) => acc + (spanMemo.get(cid) || 48), 0) +
     (kids.length - 1) * vGap;
@@ -485,7 +486,7 @@ function layoutCartographic(
 
   // 1. Sector Top (Norte: Ej. 1. Ejemplificación)
   if (topAxes.length > 0) {
-    const vGapTop = 84;
+    const vGapTop = 96;
     for (const tid of topAxes) {
       const tNode = nodeMap.get(tid)!;
       tNode.cartographicSector = 'top';
@@ -494,21 +495,21 @@ function layoutCartographic(
       tNode.y = root.y - root.height / 2 - vGapTop - tNode.height / 2;
 
       const subKids = visibleChildren(tid);
-      let subCursorY = tNode.y - tNode.height / 2 - 28;
+      let subCursorY = tNode.y - tNode.height / 2 - 84;
       for (const sid of subKids) {
         const sNode = nodeMap.get(sid)!;
         sNode.x = tNode.x;
         sNode.y = subCursorY - sNode.height / 2;
         sNode.side = 'top';
         sNode.cartographicSector = 'top';
-        subCursorY = sNode.y - sNode.height / 2 - 16;
+        subCursorY = sNode.y - sNode.height / 2 - 24;
       }
     }
   }
 
   // 2. Sector Bottom (Sur: Ej. 6. Subdivisión)
   if (bottomAxes.length > 0) {
-    const vGapBot = 84;
+    const vGapBot = 96;
     for (const bid of bottomAxes) {
       const bNode = nodeMap.get(bid)!;
       bNode.cartographicSector = 'bottom';
@@ -517,14 +518,14 @@ function layoutCartographic(
       bNode.y = root.y + root.height / 2 + vGapBot + bNode.height / 2;
 
       const subKids = visibleChildren(bid);
-      let subCursorY = bNode.y + bNode.height / 2 + 28;
+      let subCursorY = bNode.y + bNode.height / 2 + 84;
       for (const sid of subKids) {
         const sNode = nodeMap.get(sid)!;
         sNode.x = bNode.x;
         sNode.y = subCursorY + sNode.height / 2;
         sNode.side = 'bottom';
         sNode.cartographicSector = 'bottom';
-        subCursorY = sNode.y + sNode.height / 2 + 16;
+        subCursorY = sNode.y + sNode.height / 2 + 24;
       }
     }
   }
@@ -978,24 +979,41 @@ function layoutTimeline(
 
 /**
  * Garantiza de forma estricta que ningún cuadro/nodo se sobreponga a otro
- * en ningún organizador visual, manteniendo márgenes de separación física limpia.
+ * y que cualquier par de nodos conectados por una proposición o etiqueta (conector)
+ * cuenten con una separación física suficiente para que la píldora jamás roce ni se sobreponga
+ * con los cuadros en ningún organizador visual.
  */
 function preventNodeCollisions(
   nodes: OrganizerNode[],
-  hiddenIds: Set<string>
+  hiddenIds: Set<string>,
+  edges: OrganizerEdge[] = []
 ) {
   const visible = nodes.filter(n => !hiddenIds.has(n.id));
   if (visible.length <= 1) return;
 
-  const minGap = 26; // Separación mínima entre bordes de cualquier par de nodos
+  // Mapa de etiquetas entre pares de nodos para calcular holgura de conectores
+  const edgeLabelMap = new Map<string, string>();
+  for (const e of edges) {
+    if (e.label && e.label.trim()) {
+      edgeLabelMap.set(`${e.from}->${e.to}`, e.label.trim());
+      edgeLabelMap.set(`${e.to}->${e.from}`, e.label.trim());
+    }
+  }
 
-  for (let iter = 0; iter < 8; iter++) {
+  const baseMinGap = 32; // Separación base limpia entre cuadros no conectados
+
+  for (let iter = 0; iter < 10; iter++) {
     let hadCollision = false;
 
     for (let i = 0; i < visible.length; i++) {
       for (let j = i + 1; j < visible.length; j++) {
         const a = visible[i];
         const b = visible[j];
+
+        const pairLabel = edgeLabelMap.get(`${a.id}->${b.id}`);
+        const hasConnector = Boolean(pairLabel);
+        const labelW = hasConnector ? Math.max(90, pairLabel!.length * 7.5 + 24) : 0;
+        const labelH = 26;
 
         const halfWa = a.width / 2;
         const halfHa = a.height / 2;
@@ -1005,13 +1023,31 @@ function preventNodeCollisions(
         const dx = b.x - a.x;
         const dy = b.y - a.y;
 
-        const requiredDistX = halfWa + halfWb + minGap;
-        const requiredDistY = halfHa + halfHb + minGap;
+        // Si hay conector entre a y b, garantizar espacio físico para la píldora sin que roce ninguno
+        let minGapX = baseMinGap;
+        let minGapY = baseMinGap;
+
+        if (hasConnector) {
+          if (Math.abs(dy) > Math.abs(dx)) {
+            // Conexión vertical (ej. eje superior/inferior en Cartografía o árbol vertical):
+            // Requiere espacio vertical amplio para que la píldora flote holgada
+            minGapY = Math.max(minGapY, labelH + 52); // Al menos 78px entre bordes
+            minGapX = Math.max(minGapX, 26);
+          } else {
+            // Conexión horizontal (ej. ramas Este/Oeste):
+            // Requiere espacio horizontal para acomodar el ancho de la píldora
+            minGapX = Math.max(minGapX, labelW + 30);
+            minGapY = Math.max(minGapY, 26);
+          }
+        }
+
+        const requiredDistX = halfWa + halfWb + minGapX;
+        const requiredDistY = halfHa + halfHb + minGapY;
 
         const overlapX = requiredDistX - Math.abs(dx);
         const overlapY = requiredDistY - Math.abs(dy);
 
-        // Si hay solapamiento simultáneo en X y en Y, los cuadros se están tocando o montando
+        // Si hay solapamiento simultáneo en X y en Y, los cuadros se están tocando o invadiendo el espacio
         if (overlapX > 0 && overlapY > 0) {
           hadCollision = true;
 
