@@ -1094,27 +1094,27 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
 
-      {/* Minimapa de Radar Interactivo */}
+      {/* Minimapa de Radar Interactivo (Elegante y anclado sobre el dock de controles en la esquina inferior derecha) */}
       {showMinimap && scene.visibleNodes.length > 0 && (
         <div
           onPointerDown={e => e.stopPropagation()}
-          className="absolute bottom-16 left-3 sm:bottom-14 sm:left-4 z-30 w-40 sm:w-44 h-28 rounded-xl bg-white/92 backdrop-blur-md border border-stone-200/90 edraw-panel-shadow p-1.5 overflow-hidden pointer-events-auto"
+          className="absolute bottom-16 sm:bottom-14 right-3 sm:right-4 z-30 w-44 sm:w-48 h-28 sm:h-32 rounded-2xl bg-white/95 backdrop-blur-md border border-stone-200/90 edraw-panel-shadow p-2 overflow-hidden pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150"
         >
-          <div className="flex items-center justify-between px-1 mb-0.5">
-            <span className="text-[9.5px] font-bold uppercase tracking-wider text-stone-400">
+          <div className="flex items-center justify-between px-1 mb-1">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-stone-400">
               Vista General
             </span>
-            <div className="flex items-center gap-1">
-              <span className="text-[9px] font-semibold text-stone-400">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-semibold text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded-full">
                 {scene.visibleNodes.length}n
               </span>
               <button
                 type="button"
                 onClick={() => setShowMinimap(false)}
                 title="Ocultar minimapa"
-                className="p-0.5 rounded hover:bg-stone-100 text-stone-400 hover:text-stone-700"
+                className="p-0.5 rounded hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
               >
-                <X className="w-2.5 h-2.5" />
+                <X className="w-3 h-3" />
               </button>
             </div>
           </div>
@@ -1122,7 +1122,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             viewBox={`${scene.bounds.minX - 60} ${scene.bounds.minY - 60} ${
               scene.bounds.width + 120
             } ${scene.bounds.height + 120}`}
-            className="w-full h-[82px] rounded-lg cursor-pointer"
+            className="w-full h-[76px] sm:h-[84px] rounded-xl cursor-pointer"
             style={{ backgroundColor: theme.canvasBg }}
             onClick={e => {
               const svgRect = e.currentTarget.getBoundingClientRect();
@@ -1179,25 +1179,25 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
 
-      {/* Guía inferior izquierda de atajos rápidos (solo escritorio amplio para armonía visual) */}
+      {/* Guía inferior izquierda de atajos rápidos (espacio protegido anti-colisión) */}
       <div
         onPointerDown={e => e.stopPropagation()}
-        className="hidden xl:flex absolute bottom-3 left-4 z-30 items-center gap-2 px-3 py-1.5 rounded-xl bg-white/90 backdrop-blur-md border border-stone-200/80 text-[11px] text-stone-600 shadow-sm"
+        className="hidden xl:flex absolute bottom-3 left-4 z-30 max-w-[calc(100vw-440px)] items-center gap-2 px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-stone-200/90 text-[11px] text-stone-600 shadow-sm select-none shrink-0"
       >
-        <span className="px-1.5 py-0.5 rounded bg-stone-100 font-semibold text-stone-700">
+        <span className="px-1.5 py-0.5 rounded bg-stone-100 font-bold text-stone-700 text-[10px]">
           Tab
         </span>
-        <span>Subtema</span>
+        <span className="whitespace-nowrap font-medium">Subtema</span>
         <span className="text-stone-300">•</span>
-        <span className="px-1.5 py-0.5 rounded bg-stone-100 font-semibold text-stone-700">
+        <span className="px-1.5 py-0.5 rounded bg-stone-100 font-bold text-stone-700 text-[10px]">
           Enter
         </span>
-        <span>Hermano</span>
+        <span className="whitespace-nowrap font-medium">Hermano</span>
         <span className="text-stone-300">•</span>
-        <span className="px-1.5 py-0.5 rounded bg-stone-100 font-semibold text-stone-700">
-          Doble Clic
+        <span className="px-1.5 py-0.5 rounded bg-stone-100 font-bold text-stone-700 text-[10px]">
+          2x Clic
         </span>
-        <span>Editar</span>
+        <span className="whitespace-nowrap font-medium">Editar</span>
       </div>
 
       {/* Controles flotantes de navegación, encuadre y auto-alineación (Adaptables Móvil/PC) */}

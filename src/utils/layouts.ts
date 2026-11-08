@@ -436,7 +436,7 @@ function layoutCartographic(
   root.y = 0;
   root.side = 'center';
 
-  const vGap = 20;
+  const vGap = 32;
   const spanMemo = new Map<string, number>();
   computeVerticalSubtreeSpan(rootId, nodeMap, visibleChildren, vGap, spanMemo);
 
@@ -452,37 +452,82 @@ function layoutCartographic(
 
   if (n === 8) {
     if (direction === 'clockwise') {
-      // Sentido Horario Canónico (Ejes 1 a 8 en el sentido de las agujas del reloj)
-      topAxes.push(axes[0]);                             // 1. Ejemplificación (Norte)
-      rightAxes.push(axes[1], axes[2], axes[3], axes[4]); // 2, 3, 4, 5 (Este: Noción -> Diferencias)
-      bottomAxes.push(axes[5]);                          // 6. Subdivisión (Sur)
-      leftAxes.push(axes[7], axes[6]);                   // 8, 7 (Oeste: Metodología arriba, Vinculación abajo)
+      // Sentido Horario Canónico 1-3-1-3 (Simetría Bilateral Perfecta)
+      // Norte: 12:00
+      topAxes.push(axes[0]);                             // 1. Ejemplificación
+      // Este: 1:30, 3:00, 4:30 (3 ejes)
+      rightAxes.push(axes[1], axes[2], axes[3]);         // 2. Noción, 3. Categorización, 4. Caracterización
+      // Sur: 6:00
+      bottomAxes.push(axes[5]);                          // 6. Subdivisión
+      // Oeste: 10:30, 9:00, 7:30 (3 ejes de arriba a abajo en el flanco izquierdo)
+      leftAxes.push(axes[7], axes[6], axes[4]);          // 8. Metodología, 7. Vinculación, 5. Diferenciación
     } else {
-      // Sentido Antihorario (Ejes 1 a 8 en contra de las agujas del reloj)
-      topAxes.push(axes[0]);                             // 1. Ejemplificación (Norte)
-      leftAxes.push(axes[1], axes[2], axes[3], axes[4]);  // 2, 3, 4, 5 (Oeste: Noción -> Diferencias)
-      bottomAxes.push(axes[5]);                          // 6. Subdivisión (Sur)
-      rightAxes.push(axes[7], axes[6]);                  // 8, 7 (Este: Metodología arriba, Vinculación abajo)
+      // Sentido Antihorario Canónico 1-3-1-3 (Simetría Bilateral Perfecta)
+      topAxes.push(axes[0]);                             // 1. Ejemplificación
+      // Oeste: 10:30, 9:00, 7:30 (3 ejes)
+      leftAxes.push(axes[1], axes[2], axes[3]);          // 2. Noción, 3. Categorización, 4. Caracterización
+      // Sur: 6:00
+      bottomAxes.push(axes[5]);                          // 6. Subdivisión
+      // Este: de arriba a abajo en el flanco derecho
+      rightAxes.push(axes[7], axes[6], axes[4]);         // 8. Metodología, 7. Vinculación, 5. Diferenciación
     }
   } else {
-    // Distribución general para cualquier número de ramas
+    // Distribución general perfectamente equilibrada para cualquier número de ramas
     topAxes.push(axes[0]);
     if (n > 1) {
-      const botIdx = Math.max(1, Math.floor((n * 5) / 8));
-      if (botIdx < n) bottomAxes.push(axes[botIdx]);
-
-      const groupA = axes.slice(1, botIdx);
-      const groupB = axes.slice(botIdx + 1);
-
-      if (direction === 'clockwise') {
-        rightAxes.push(...groupA);
-        leftAxes.push(...groupB.reverse());
+      const remaining = axes.slice(1);
+      if (remaining.length === 1) {
+        bottomAxes.push(remaining[0]);
       } else {
-        leftAxes.push(...groupA);
-        rightAxes.push(...groupB.reverse());
+        const hasBottom = remaining.length >= 3;
+        let rightList: string[] = [];
+        let leftList: string[] = [];
+
+        if (hasBottom) {
+          const mid = Math.floor(remaining.length / 2);
+          bottomAxes.push(remaining[mid]);
+          rightList = remaining.slice(0, mid);
+          leftList = remaining.slice(mid + 1);
+        } else {
+          const half = Math.ceil(remaining.length / 2);
+          rightList = remaining.slice(0, half);
+          leftList = remaining.slice(half);
+        }
+
+        if (direction === 'clockwise') {
+          rightAxes.push(...rightList);
+          leftAxes.push(...leftList.reverse());
+        } else {
+          leftAxes.push(...rightList);
+          rightAxes.push(...leftList.reverse());
+        }
       }
     }
   }
+
+  // Función recursiva para apilar limpiamente subárboles verticales en los ejes Norte y Sur
+  const stackVerticalCartographicSubtree = (
+    parentId: string,
+    currentEdgeY: number,
+    dirSign: -1 | 1 // -1 = hacia arriba (Norte), +1 = hacia abajo (Sur)
+  ) => {
+    const kids = visibleChildren(parentId);
+    if (kids.length === 0) return;
+
+    let cursorEdgeY = currentEdgeY;
+    for (const kidId of kids) {
+      const kidNode = nodeMap.get(kidId);
+      if (!kidNode) continue;
+      kidNode.x = root.x;
+      kidNode.side = dirSign === -1 ? 'top' : 'bottom';
+      kidNode.cartographicSector = dirSign === -1 ? 'top' : 'bottom';
+      kidNode.y = cursorEdgeY + dirSign * (kidNode.height / 2);
+
+      const nextEdgeY = kidNode.y + dirSign * (kidNode.height / 2 + 28);
+      stackVerticalCartographicSubtree(kidId, nextEdgeY, dirSign);
+      cursorEdgeY = nextEdgeY;
+    }
+  };
 
   // 1. Sector Top (Norte: Ej. 1. Ejemplificación)
   if (topAxes.length > 0) {
@@ -494,16 +539,11 @@ function layoutCartographic(
       tNode.x = root.x;
       tNode.y = root.y - root.height / 2 - vGapTop - tNode.height / 2;
 
-      const subKids = visibleChildren(tid);
-      let subCursorY = tNode.y - tNode.height / 2 - 84;
-      for (const sid of subKids) {
-        const sNode = nodeMap.get(sid)!;
-        sNode.x = tNode.x;
-        sNode.y = subCursorY - sNode.height / 2;
-        sNode.side = 'top';
-        sNode.cartographicSector = 'top';
-        subCursorY = sNode.y - sNode.height / 2 - 24;
-      }
+      stackVerticalCartographicSubtree(
+        tid,
+        tNode.y - tNode.height / 2 - 84,
+        -1
+      );
     }
   }
 
@@ -517,16 +557,11 @@ function layoutCartographic(
       bNode.x = root.x;
       bNode.y = root.y + root.height / 2 + vGapBot + bNode.height / 2;
 
-      const subKids = visibleChildren(bid);
-      let subCursorY = bNode.y + bNode.height / 2 + 84;
-      for (const sid of subKids) {
-        const sNode = nodeMap.get(sid)!;
-        sNode.x = bNode.x;
-        sNode.y = subCursorY + sNode.height / 2;
-        sNode.side = 'bottom';
-        sNode.cartographicSector = 'bottom';
-        subCursorY = sNode.y + sNode.height / 2 + 24;
-      }
+      stackVerticalCartographicSubtree(
+        bid,
+        bNode.y + bNode.height / 2 + 84,
+        1
+      );
     }
   }
 
@@ -535,7 +570,7 @@ function layoutCartographic(
     const hGapRight = 135;
     const totalSpanRight =
       rightAxes.reduce((acc, cid) => acc + (spanMemo.get(cid) || 50), 0) +
-      (rightAxes.length - 1) * 22;
+      (rightAxes.length - 1) * 32;
 
     let cursorY = root.y - totalSpanRight / 2;
 
@@ -556,10 +591,10 @@ function layoutCartographic(
         nodeMap,
         visibleChildren,
         spanMemo,
-        18
+        32
       );
 
-      cursorY += cSpan + 22;
+      cursorY += cSpan + 32;
     }
   }
 
@@ -568,7 +603,7 @@ function layoutCartographic(
     const hGapLeft = 135;
     const totalSpanLeft =
       leftAxes.reduce((acc, cid) => acc + (spanMemo.get(cid) || 50), 0) +
-      (leftAxes.length - 1) * 22;
+      (leftAxes.length - 1) * 32;
 
     let cursorY = root.y - totalSpanLeft / 2;
 
@@ -589,10 +624,10 @@ function layoutCartographic(
         nodeMap,
         visibleChildren,
         spanMemo,
-        18
+        32
       );
 
-      cursorY += cSpan + 22;
+      cursorY += cSpan + 32;
     }
   }
 }
