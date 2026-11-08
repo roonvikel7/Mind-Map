@@ -6,6 +6,7 @@ import type {
 } from '../types/organizer';
 import { getThemeConfig } from './themes';
 import { computeHierarchyVisibility, measureNodeDimensions } from './measure';
+import { pruneRedundantConnectorNodes } from './graphCleaners';
 
 export const PALETTES = [
   '#E11D48',
@@ -35,8 +36,13 @@ export function applyLayout(
     return { nodes: [], edges: [] };
   }
 
+  // Poda preventiva: eliminar nodos puentes conectores redundantes ("como", "por", etc.)
+  const pruned = pruneRedundantConnectorNodes(rawNodes, rawEdges, type);
+  const cleanRawNodes = pruned.nodes;
+  const cleanRawEdges = pruned.edges;
+
   const theme = getThemeConfig(themeId);
-  const nodes: OrganizerNode[] = rawNodes.map(n => ({
+  const nodes: OrganizerNode[] = cleanRawNodes.map(n => ({
     ...n,
     ribSpineX: undefined,
     ribTipX: undefined,
@@ -45,7 +51,7 @@ export function applyLayout(
     milestoneIndex: undefined,
     cartographicSector: undefined,
   }));
-  const edges: OrganizerEdge[] = rawEdges.map(e => ({ ...e }));
+  const edges: OrganizerEdge[] = cleanRawEdges.map(e => ({ ...e }));
 
   const nodeMap = new Map<string, OrganizerNode>();
   nodes.forEach(n => nodeMap.set(n.id, n));
@@ -262,7 +268,10 @@ export function applyLayout(
     }
   }
 
-  return { nodes, edges };
+  const finalNodeIds = new Set(nodes.map(n => n.id));
+  const validEdges = edges.filter(e => finalNodeIds.has(e.from) && finalNodeIds.has(e.to));
+
+  return { nodes, edges: validEdges };
 }
 
 /* ============================================================================

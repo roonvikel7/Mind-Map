@@ -684,101 +684,14 @@ function cleanJsonResponse(rawText: string): any {
   return JSON.parse(clean);
 }
 
-/**
- * Transforma el texto de cualquier nodo en un argumento fluido, continuo y formal en español:
- * - Elimina etiquetas robóticas con dos puntos ("Definición conceptual:", "Origen etimológico:", "Propósito:")
- * - Elimina paréntesis integrando explicaciones de forma corrida
- * - Elimina dos puntos residuales
- * - Asegura continuidad sintáctica perfecta con el conector textual de la arista (label)
- */
-export function cleanAndNaturalizeArgument(
-  rawText: string,
-  label?: string,
-  isRoot?: boolean
-): { text: string; label?: string } {
-  if (!rawText) return { text: '', label };
-
-  let text = rawText.trim();
-
-  // En la raíz principal conservar su título limpio
-  if (isRoot) {
-    text = text.replace(/^["'«»“]+|["'«»”]+$/g, '').replace(/:\s*$/, '').trim();
-    return { text, label };
-  }
-
-  // 1. Quitar comillas envolventes
-  text = text.replace(/^["'«»“]+|["'«»”]+$/g, '').trim();
-
-  // 2. Eliminar prefijos con dos puntos de IA: "Definición conceptual:", "Origen etimológico:", "Propósito:", etc.
-  text = text.replace(/^[A-Za-zÁ-ÿ\s0-9'\-_/]{2,40}:\s*/i, '');
-
-  // 3. Eliminar dos puntos dentro del texto (reemplazar por coma o nexo natural)
-  text = text.replace(/\s*:\s*/g, ', ');
-
-  // 4. Eliminar paréntesis y corchetes, integrando el contenido de forma corrida
-  text = text.replace(/\s*\(([^)]+)\)\s*/g, (_m, inner) => {
-    const trimmed = inner.trim();
-    if (/^\d{4}$/.test(trimmed)) {
-      return ` en el año ${trimmed} `;
-    }
-    return `, ${trimmed}, `;
-  });
-  text = text.replace(/\[([^\]]+)\]/g, '$1');
-
-  // 5. Limpiar comas duplicadas y espacios
-  text = text
-    .replace(/,\s*,+/g, ',')
-    .replace(/\s{2,}/g, ' ')
-    .replace(/\s+([,.;])/g, '$1')
-    .replace(/,\s*\./g, '.')
-    .replace(/^\s*,\s*/, '')
-    .trim();
-
-  // 6. Normalizar y naturalizar el conector textual de la arista (label)
-  let cleanLabel = label ? label.trim().toLowerCase() : undefined;
-  if (cleanLabel) {
-    cleanLabel = cleanLabel.replace(/^["'«»]+|["'«»]+$/g, '').trim();
-    if (cleanLabel === 'deriva') cleanLabel = 'deriva de';
-    else if (cleanLabel === 'establece') cleanLabel = 'establece que';
-    else if (cleanLabel === 'define') cleanLabel = 'se define como';
-    else if (cleanLabel === 'clasifica') cleanLabel = 'se clasifica en';
-    else if (cleanLabel === 'caracteriza') cleanLabel = 'se caracteriza por';
-    else if (cleanLabel === 'distingue' || cleanLabel === 'diferencia') cleanLabel = 'se distingue de';
-    else if (cleanLabel === 'vincula' || cleanLabel === 'relaciona') cleanLabel = 'se vincula con';
-    else if (cleanLabel === 'aplica') cleanLabel = 'se aplica mediante';
-    else if (cleanLabel === 'produce' || cleanLabel === 'genera') cleanLabel = 'conduce a';
-    else if (cleanLabel === 'ejemplifica') cleanLabel = 'se ejemplifica con';
-    else if (cleanLabel === 'manifiesta') cleanLabel = 'se manifiesta en';
-    else if (cleanLabel === 'origina') cleanLabel = 'se origina en';
-
-    // 7. Evitar redundancia si el cuadro repite el inicio del conector
-    const redundantStartRegex = new RegExp(
-      `^(${cleanLabel}|deriva(\\s+del|\\s+de)?|proviene(\\s+del|\\s+de)?|se define(\\s+como)?|establece(\\s+que)?|se caracteriza(\\s+por)?|se distingue(\\s+de)?|se vincula(\\s+con)?|se aplica(\\s+mediante)?)\\s+`,
-      'i'
-    );
-    if (redundantStartRegex.test(text)) {
-      text = text.replace(redundantStartRegex, '');
-    }
-
-    // Si el conector termina en preposición/conjunción, asegurar primera letra minúscula para lectura corrida
-    if (/(?:de|del|en|como|por|que|con|mediante|hacia)$/i.test(cleanLabel)) {
-      const firstWord = text.split(' ')[0] || '';
-      const isProperNoun =
-        /^[A-ZÁÉÍÓÚ][a-záéíóú]+$/.test(firstWord) &&
-        ['España', 'Roma', 'Grecia', 'Aristóteles', 'Platón', 'Fayol', 'Taylor', 'Weber', 'América', 'Europa', 'Novak', 'Tobón'].includes(firstWord);
-      if (!isProperNoun && text.length > 0) {
-        text = text.charAt(0).toLowerCase() + text.slice(1);
-      }
-    }
-  }
-
-  // Asegurar punto final para oraciones argumentativas largas
-  if (text.length > 35 && !/[.!?]$/.test(text)) {
-    text = text + '.';
-  }
-
-  return { text, label: cleanLabel };
-}
+export {
+  cleanAndNaturalizeArgument,
+  pruneRedundantConnectorNodes,
+} from './graphCleaners';
+import {
+  cleanAndNaturalizeArgument,
+  pruneRedundantConnectorNodes,
+} from './graphCleaners';
 
 function buildGeminiPrompt(req: AiGenerationRequest): string {
   const isCartographic = req.type === 'cartographic';
@@ -800,7 +713,12 @@ NORMAS ESTRICTAS DE REDACCIÓN NATURAL Y LENGUAJE FORMAL (OBLIGATORIAS):
      text: "Definición conceptual: Juicio evaluativo (autoestima)..."
 4. CERO SUBTÍTULOS EN CUADROS DE CONTENIDO:
    En las ramas secundarias y cuadros de contenido NO pongas "subtitle" (deja "subtitle": null o no envíes la propiedad). Prohibido poner frases como "Esencia psicológica", "Raíz lingüística", "Detalle explicativo", etc. Los cuadros deben ser limpios y enfocados en su argumento. Solo la idea central raíz puede llevar subtítulo.
-5. LENGUAJE FORMAL, COMPRENSIBLE Y ARGUMENTATIVO: Redacta con estilo académico riguroso pero fácil de entender, con argumentos completos y fluidos.`;
+5. LENGUAJE FORMAL, COMPRENSIBLE Y ARGUMENTATIVO: Redacta con estilo académico riguroso pero fácil de entender, con argumentos completos y fluidos.
+6. PROHIBIDO ABSOLUTAMENTE CREAR CUADROS O NODOS INTERMEDIOS PARA LOS CONECTORES:
+   - El conector va ÚNICAMENTE en la propiedad "label" de la línea o arista de conexión.
+   - NUNCA crees un cuadro o nodo cuyo texto ("text") sea únicamente una palabra o frase de enlace (ej. NUNCA crees un cuadro con texto "como", "por", "pertenece a", "se define", "comprende", "integra", "es").
+   - NUNCA pongas dos cuadros seguidos para conectar una misma idea (ej. [Eje] -> [como] -> [el proceso...] ESTÁ TERMINANTEMENTE PROHIBIDO).
+   - Debe haber UN SOLO CUADRO de contenido conectado directamente al nodo padre con el conector sobre la línea en "label".`;
 
   let typeGuidance = '';
   switch (req.type) {
@@ -808,7 +726,7 @@ NORMAS ESTRICTAS DE REDACCIÓN NATURAL Y LENGUAJE FORMAL (OBLIGATORIAS):
       typeGuidance = `
 TIPO: Cartografía Conceptual (Metodología Pedagógica de los 8 Ejes de Sergio Tobón).
 1. El nodo raíz DEBE ser exactamente "${req.topic}" con subtítulo "Cartografía Conceptual de Ocho Ejes".
-2. DEBE tener exactamente los 8 ejes principales con sus nombres formales:
+2. DEBE tener exactamente los 8 ejes principales con sus nombres formales como hijos directos de la raíz:
    - "1. Ejemplificación"
    - "2. Noción"
    - "3. Categorización"
@@ -817,15 +735,17 @@ TIPO: Cartografía Conceptual (Metodología Pedagógica de los 8 Ejes de Sergio 
    - "6. Subdivisión"
    - "7. Vinculación"
    - "8. Metodología"
-3. Cada uno de los 8 ejes debe tener 1 o 2 cuadros hijos con argumentos sólidos y conectores textuales naturales ("label"):
-   - Ejemplificación -> "se ejemplifica mediante" -> caso real o aplicación empírica ilustrativa
-   - Noción -> "se define como" o "deriva de" -> significado conceptual y raíz etimológica sin dos puntos ni paréntesis
-   - Categorización -> "pertenece a" -> clase o disciplina mayor que lo engloba
-   - Caracterización -> "se caracteriza por" -> rasgos esenciales y principios rectores
-   - Diferenciación -> "se distingue de" -> límites con nociones afines para evitar confusiones
-   - Subdivisión -> "se subdivide en" -> componentes o tipologías internas
-   - Vinculación -> "se vincula con" -> teorías y disciplinas complementarias
-   - Metodología -> "se aplica mediante" -> protocolo o pasos para su implementación
+3. ARQUITECTURA DE UN SOLO CUADRO DE CONTENIDO DIRECTO POR EJE (TOTAL EXACTO DE 17 NODOS: 1 raíz + 8 ejes + 8 cuadros de contenido):
+   - Cada uno de los 8 ejes DEBE conectarse DIRECTAMENTE a su propio y único cuadro de contenido mediante la propiedad "label" de la conexión.
+   - PROHIBIDO crear cuadros intermediarios para las palabras conectoras (como "como", "por", "pertenece a", etc.). El conector va en "label", NUNCA en un cuadro.
+   - Eje "1. Ejemplificación" (hijo de raíz) -> conectado directamente mediante label "se ejemplifica mediante" a un único cuadro hijo con el caso práctico real documentado.
+   - Eje "2. Noción" (hijo de raíz) -> conectado directamente mediante label "se define como" a un único cuadro hijo con el significado conceptual y etimológico esencial.
+   - Eje "3. Categorización" (hijo de raíz) -> conectado directamente mediante label "pertenece a" a un único cuadro hijo con la clase o disciplina mayor que lo engloba.
+   - Eje "4. Caracterización" (hijo de raíz) -> conectado directamente mediante label "se caracteriza por" a un único cuadro hijo con sus rasgos esenciales.
+   - Eje "5. Diferenciación" (hijo de raíz) -> conectado directamente mediante label "se distingue de" a un único cuadro hijo con las nociones de las que se deslinda.
+   - Eje "6. Subdivisión" (hijo de raíz) -> conectado directamente mediante label "se subdivide en" a un único cuadro hijo con sus componentes o clases internas.
+   - Eje "7. Vinculación" (hijo de raíz) -> conectado directamente mediante label "se vincula con" a un único cuadro hijo con las leyes y teorías complementarias.
+   - Eje "8. Metodología" (hijo de raíz) -> conectado directamente mediante label "se aplica mediante" a un único cuadro hijo con las fases y pasos de aplicación.
 4. En Cartografía Conceptual NO uses emojis ni iconos en ningún nodo.
 5. Los cuadros hijos NO deben tener "subtitle" (deja "subtitle": null).`;
       break;
@@ -914,15 +834,20 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto antes o después ni marca
   "nodes": [
     {
       "id": "1",
-      "text": "Idea Central",
-      "subtitle": "Subtítulo descriptivo opcional",
+      "text": "${req.topic}",
+      "subtitle": "${isCartographic ? 'Cartografía Conceptual de Ocho Ejes' : 'Idea Central'}",
       "parentId": null${isCartographic ? '' : ',\n      "icon": "🧠"'}
     },
     {
       "id": "2",
-      "text": "el argumento fluido que continúa naturalmente el conector",
-      "parentId": "1",
-      "label": "se fundamenta en"${isCartographic ? '' : ',\n      "icon": "💡"'}
+      "text": "${isCartographic ? '2. Noción' : 'Aspecto Fundamental'}",
+      "parentId": "1"${isCartographic ? '' : ',\n      "icon": "💡"'}
+    },
+    {
+      "id": "3",
+      "text": "el argumento fluido que continúa naturalmente el conector sobre la línea sin cuadros intermediarios",
+      "parentId": "2",
+      "label": "${isCartographic ? 'se define como' : 'se fundamenta en'}"${isCartographic ? '' : ',\n      "icon": "✨"'}
     }
   ]
 }`;
