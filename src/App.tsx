@@ -22,6 +22,8 @@ import { getThemeConfig } from './utils/themes';
 import { parseImportedProjectJson } from './utils/exporter';
 import {
   buildCartographicProjectNodes,
+  buildStarterProjectNodes,
+  getDefaultTitleForType,
   isCartographicStructure,
   TemplateCard,
 } from './utils/templates';
@@ -656,71 +658,25 @@ export function App() {
       let targetNodes = activeProject.nodes;
       let targetEdges = activeProject.edges;
 
-      // Al seleccionar Cartografía Conceptual, generar automáticamente los 8 ejes con sus cuadros listos para escribir si aún no los tiene
+      // Si el proyecto actual solo tiene el nodo raíz (o es Cartografía sin los 8 ejes), generamos la estructura completa lista
       if (newType === 'cartographic' && !isCartographicStructure(targetNodes)) {
         const root =
           targetNodes.find(n => n.isRoot || (n.depth || 0) === 0) ||
           targetNodes[0];
         const title =
-          root?.text || activeProject.title || 'Cartografía Conceptual';
-        const generated = buildCartographicProjectNodes(title, root?.id, root);
+          root?.text || activeProject.title || getDefaultTitleForType(newType);
+        const generated = buildStarterProjectNodes('cartographic', title, root?.id, root);
         targetNodes = generated.nodes;
         targetEdges = generated.edges;
         showToast('Cartografía lista: 8 ejes con cuadros para escribir directamente.');
-      } else if (newType === 'matrix' && targetNodes.length <= 1) {
+      } else if (targetNodes.length <= 1) {
         const root = targetNodes[0];
-        const stamp = Date.now();
-        const quadrants = [
-          { text: 'Fortalezas Internas', icon: '💪' },
-          { text: 'Oportunidades del Entorno', icon: '🚀' },
-          { text: 'Debilidades Operativas', icon: '🛠️' },
-          { text: 'Amenazas Externas', icon: '⚠️' },
-        ];
-        targetNodes = [
-          { ...root, isRoot: true, icon: '⊞' },
-          ...quadrants.map((q, idx) => ({
-            id: `quad-${stamp}-${idx + 1}`,
-            parentId: root.id,
-            text: q.text,
-            x: 0,
-            y: 0,
-            width: 180,
-            height: 50,
-            icon: q.icon,
-          })),
-        ];
-        targetEdges = quadrants.map((_, idx) => ({
-          id: `edge-${stamp}-q-${idx + 1}`,
-          from: root.id,
-          to: `quad-${stamp}-${idx + 1}`,
-        }));
-      } else if (newType === 'cycle' && targetNodes.length <= 1) {
-        const root = targetNodes[0];
-        const stamp = Date.now();
-        const stages = [
-          { text: '1. Planificación Inicial', icon: '📋' },
-          { text: '2. Ejecución Controlada', icon: '⚡' },
-          { text: '3. Evaluación de Resultados', icon: '📊' },
-          { text: '4. Mejora Continua', icon: '🔄' },
-        ];
-        targetNodes = [
-          { ...root, isRoot: true, icon: '🔄' },
-          ...stages.map((st, idx) => ({
-            id: `stage-${stamp}-${idx + 1}`,
-            parentId: root.id,
-            text: st.text,
-            x: 0,
-            y: 0,
-            width: 175,
-            height: 48,
-            icon: st.icon,
-          })),
-        ];
-        targetEdges = stages.map((_, idx) => ({
-          id: `edge-${stamp}-s-${idx + 1}`,
-          from: root.id,
-          to: `stage-${stamp}-${idx + 1}`,
-        }));
+        const title =
+          root?.text || activeProject.title || getDefaultTitleForType(newType);
+        const generated = buildStarterProjectNodes(newType, title, root?.id, root);
+        targetNodes = generated.nodes;
+        targetEdges = generated.edges;
+        showToast(`Estructura lista: «${title}»`);
       }
 
       const relaid = applyLayout(
@@ -728,7 +684,7 @@ export function App() {
         targetEdges,
         newType,
         activeProject.theme,
-        newType === 'cartographic',
+        true,
         activeProject.cartographicDirection || 'clockwise'
       );
       commitProjectPatch({
@@ -957,110 +913,21 @@ export function App() {
     setHistoryFuture([]);
   };
 
-  // Crear mapa con la estructura limpia o con los 8 ejes en Cartografía
+  // Crear mapa con la estructura limpia y completa para cualquiera de los 12 tipos
   const handleCreateNewProject = (
     type: OrganizerType = 'mindmap',
-    title: string = 'Idea Central'
+    title?: string
   ) => {
     const stamp = Date.now();
     const rootId = `root-${stamp}`;
     const themeToUse: ThemeId = activeProject?.theme || 'vitality-warm';
+    const actualTitle = (title && title.trim()) || getDefaultTitleForType(type);
 
-    let initialNodes: OrganizerNode[];
-    let initialEdges: OrganizerEdge[];
-
-    if (type === 'cartographic') {
-      const built = buildCartographicProjectNodes(title, rootId);
-      initialNodes = built.nodes;
-      initialEdges = built.edges;
-    } else if (type === 'matrix') {
-      const quadrants = [
-        { text: 'Fortalezas Internas', icon: '💪' },
-        { text: 'Oportunidades del Entorno', icon: '🚀' },
-        { text: 'Debilidades Operativas', icon: '🛠️' },
-        { text: 'Amenazas Externas', icon: '⚠️' },
-      ];
-      initialNodes = [
-        {
-          id: rootId,
-          text: title,
-          x: 0,
-          y: 0,
-          width: 190,
-          height: 54,
-          isRoot: true,
-          icon: '⊞',
-        },
-        ...quadrants.map((q, idx) => ({
-          id: `quad-${stamp}-${idx + 1}`,
-          parentId: rootId,
-          text: q.text,
-          x: 0,
-          y: 0,
-          width: 180,
-          height: 50,
-          icon: q.icon,
-        })),
-      ];
-      initialEdges = quadrants.map((_, idx) => ({
-        id: `edge-${stamp}-q-${idx + 1}`,
-        from: rootId,
-        to: `quad-${stamp}-${idx + 1}`,
-      }));
-    } else if (type === 'cycle') {
-      const stages = [
-        { text: '1. Planificación Inicial', icon: '📋' },
-        { text: '2. Ejecución Controlada', icon: '⚡' },
-        { text: '3. Evaluación de Resultados', icon: '📊' },
-        { text: '4. Mejora Continua', icon: '🔄' },
-      ];
-      initialNodes = [
-        {
-          id: rootId,
-          text: title,
-          x: 0,
-          y: 0,
-          width: 180,
-          height: 54,
-          isRoot: true,
-          icon: '🔄',
-        },
-        ...stages.map((st, idx) => ({
-          id: `stage-${stamp}-${idx + 1}`,
-          parentId: rootId,
-          text: st.text,
-          x: 0,
-          y: 0,
-          width: 175,
-          height: 48,
-          icon: st.icon,
-        })),
-      ];
-      initialEdges = stages.map((_, idx) => ({
-        id: `edge-${stamp}-s-${idx + 1}`,
-        from: rootId,
-        to: `stage-${stamp}-${idx + 1}`,
-      }));
-    } else {
-      initialNodes = [
-        {
-          id: rootId,
-          text: title,
-          subtitle: 'Toca para editar o añadir subtemas',
-          x: 0,
-          y: 0,
-          width: 180,
-          height: 56,
-          isRoot: true,
-          icon: '💡',
-        },
-      ];
-      initialEdges = [];
-    }
+    const generated = buildStarterProjectNodes(type, actualTitle, rootId);
 
     const relaid = applyLayout(
-      initialNodes,
-      initialEdges,
+      generated.nodes,
+      generated.edges,
       type,
       themeToUse,
       true,
@@ -1069,7 +936,7 @@ export function App() {
 
     const newProj: OrganizerProject = {
       id: `proj-${stamp}`,
-      title,
+      title: actualTitle,
       type,
       theme: themeToUse,
       canvasBg: 'dots',
@@ -1095,6 +962,7 @@ export function App() {
     setConnectSourceId(null);
     setHistoryPast([]);
     setHistoryFuture([]);
+    showToast(`Plantilla lista: «${actualTitle}»`);
   };
 
   // Eliminar proyecto guardado
@@ -1331,42 +1199,28 @@ export function App() {
         currentTitle={activeProject?.title || 'Idea Central'}
         onOpenTemplates={() => setTemplatesOpen(true)}
         onConfirm={(title, type) => {
-          if (type === 'cartographic' || type === 'matrix' || type === 'cycle') {
-            handleCreateNewProject(type, title);
-            showToast(`Estructura lista: «${title}»`);
-          } else if (activeProject && activeProject.nodes.length <= 1) {
-            const baseNode: OrganizerNode = {
-              ...(activeProject.nodes[0] || {
-                id: `root-${Date.now()}`,
-                x: 0,
-                y: 0,
-                width: 200,
-                height: 60,
-                isRoot: true,
-                depth: 0,
-              }),
-              text: title,
-              subtitle: 'Toca para editar o añadir subtemas',
-              icon: '💡',
-            };
+          const actualTitle = (title && title.trim()) || getDefaultTitleForType(type);
+          if (activeProject && activeProject.nodes.length <= 1) {
+            const root = activeProject.nodes[0];
+            const themeToUse = activeProject.theme || 'vitality-warm';
+            const generated = buildStarterProjectNodes(type, actualTitle, root?.id, root);
             const relaid = applyLayout(
-              [baseNode],
-              [],
+              generated.nodes,
+              generated.edges,
               type,
-              activeProject.theme || 'vitality-warm',
+              themeToUse,
               true,
               activeProject.cartographicDirection || 'clockwise'
             );
             commitProjectPatch({
-              title,
+              title: actualTitle,
               type,
               nodes: relaid.nodes,
-              edges: [],
+              edges: relaid.edges,
             });
-            showToast(`Listo: «${title}»`);
+            showToast(`Plantilla lista: «${actualTitle}»`);
           } else {
-            handleCreateNewProject(type, title);
-            showToast(`Creado: «${title}»`);
+            handleCreateNewProject(type, actualTitle);
           }
         }}
       />

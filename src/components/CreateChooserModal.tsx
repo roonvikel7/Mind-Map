@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, LayoutTemplate, Sparkles, X } from 'lucide-react';
 import { OrganizerType } from '../types/organizer';
 import { ORGANIZER_TYPES_META } from '../utils/themes';
+import { getDefaultTitleForType } from '../utils/templates';
 
 interface CreateChooserModalProps {
   isOpen: boolean;
@@ -53,14 +54,14 @@ export const CreateChooserModal: React.FC<CreateChooserModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalTitle = title.trim() || 'Idea Central';
+    const finalTitle = title.trim() || getDefaultTitleForType(selectedType);
     onConfirm(finalTitle, selectedType);
     onClose();
   };
 
   const handleSelectTypeAndSubmit = (type: OrganizerType) => {
     setSelectedType(type);
-    const finalTitle = title.trim() || 'Idea Central';
+    const finalTitle = title.trim() || getDefaultTitleForType(type);
     onConfirm(finalTitle, type);
     onClose();
   };
@@ -131,7 +132,7 @@ export const CreateChooserModal: React.FC<CreateChooserModalProps> = ({
               className="w-full px-3.5 sm:px-4 py-2.5 rounded-2xl border border-stone-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 outline-none text-base sm:text-sm font-bold text-stone-800 bg-stone-50/60 transition-all placeholder:text-stone-400 placeholder:font-normal"
             />
             <p className="text-[11px] text-stone-400">
-              Aparecerá limpio en el centro del lienzo como la forma principal de tu mapa.
+              Se creará automáticamente con la estructura lista, nodos y cuadros para escribir directamente.
             </p>
           </div>
 
@@ -199,7 +200,7 @@ export const CreateChooserModal: React.FC<CreateChooserModalProps> = ({
                 type="submit"
                 className="flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white text-xs font-bold shadow-sm transition-all"
               >
-                <span>Comenzar a Crear</span>
+                <span>Crear con Estructura Lista</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>

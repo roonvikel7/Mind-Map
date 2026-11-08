@@ -146,6 +146,1168 @@ export function buildCartographicProjectNodes(
   return { nodes, edges };
 }
 
+export function getDefaultTitleForType(type: OrganizerType): string {
+  switch (type) {
+    case 'concept':
+      return 'Mapa Conceptual';
+    case 'cartographic':
+      return 'Cartografía Conceptual';
+    case 'mindmap':
+      return 'Idea Central';
+    case 'logic':
+      return 'Mapa Lógico';
+    case 'synoptic':
+      return 'Cuadro Sinóptico';
+    case 'fishbone':
+      return 'Diagrama de Ishikawa';
+    case 'tree':
+      return 'Organigrama Institucional';
+    case 'flowchart':
+      return 'Proceso de Gestión';
+    case 'timeline':
+      return 'Hoja de Ruta y Cronograma';
+    case 'radial':
+      return 'Núcleo Central';
+    case 'matrix':
+      return 'Matriz FODA';
+    case 'cycle':
+      return 'Ciclo de Mejora Continua';
+    default:
+      return 'Idea Central';
+  }
+}
+
+export function buildStarterProjectNodes(
+  type: OrganizerType,
+  customTitle?: string,
+  rootId?: string,
+  existingRoot?: OrganizerNode
+): { nodes: OrganizerNode[]; edges: OrganizerEdge[] } {
+  const stamp = Date.now();
+  const actualRootId = rootId || existingRoot?.id || `root-${stamp}`;
+  const title = (customTitle && customTitle.trim()) || existingRoot?.text || getDefaultTitleForType(type);
+
+  // 1. Cartografía Conceptual de 8 Ejes (Tobón)
+  if (type === 'cartographic') {
+    return buildCartographicProjectNodes(title, actualRootId, existingRoot);
+  }
+
+  // 2. Mapa Conceptual (Novak: Proposiciones, conceptos jerárquicos y conectores explícitos)
+  if (type === 'concept') {
+    const rootNode: OrganizerNode = {
+      ...(existingRoot || {}),
+      id: actualRootId,
+      text: title,
+      subtitle: 'Estructura Jerárquica Conceptual',
+      x: 0,
+      y: 0,
+      width: Math.max(190, existingRoot?.width || 200),
+      height: Math.max(56, existingRoot?.height || 60),
+      isRoot: true,
+      depth: 0,
+      icon: existingRoot?.icon || '🕸️',
+    };
+
+    const concepts = [
+      {
+        id: `c1-${actualRootId}`,
+        text: 'Concepto y Noción Fundamental',
+        icon: '💡',
+        connectorToChild: 'se define como',
+        subtopics: [
+          {
+            id: `sub1-1-${actualRootId}`,
+            text: 'Conjunto estructurado de conceptos vinculados mediante palabras de enlace claras',
+            connector: 'comprende',
+          },
+          {
+            id: `sub1-2-${actualRootId}`,
+            text: 'Representación explícita de proposiciones con coherencia lógica y analítica',
+            connector: 'generando',
+          },
+        ],
+      },
+      {
+        id: `c2-${actualRootId}`,
+        text: 'Estructura y Organización',
+        icon: '🗂️',
+        connectorToChild: 'se estructura en',
+        subtopics: [
+          {
+            id: `sub2-1-${actualRootId}`,
+            text: 'Niveles jerárquicos ordenados de mayor generalidad a mayor especificidad',
+            connector: 'mediante',
+          },
+          {
+            id: `sub2-2-${actualRootId}`,
+            text: 'Enlaces cruzados que articulan dominios y disciplinas complementarias',
+            connector: 'e integra',
+          },
+        ],
+      },
+      {
+        id: `c3-${actualRootId}`,
+        text: 'Propósito y Beneficios',
+        icon: '🚀',
+        connectorToChild: 'tiene como fin',
+        subtopics: [
+          {
+            id: `sub3-1-${actualRootId}`,
+            text: 'Estimular el aprendizaje significativo y la asimilación profunda de ideas',
+            connector: 'para favorecer',
+          },
+          {
+            id: `sub3-2-${actualRootId}`,
+            text: 'Facilitar el pensamiento crítico y la síntesis analítica de contenidos',
+            connector: 'optimizando',
+          },
+        ],
+      },
+    ];
+
+    const nodes: OrganizerNode[] = [rootNode];
+    const edges: OrganizerEdge[] = [];
+
+    concepts.forEach(c => {
+      nodes.push({
+        id: c.id,
+        parentId: actualRootId,
+        text: c.text,
+        x: 0,
+        y: 0,
+        width: 175,
+        height: 50,
+        depth: 1,
+        icon: c.icon,
+      });
+
+      edges.push({
+        id: `e-${actualRootId}-${c.id}`,
+        from: actualRootId,
+        to: c.id,
+        label: c.connectorToChild,
+      });
+
+      c.subtopics.forEach(s => {
+        nodes.push({
+          id: s.id,
+          parentId: c.id,
+          text: s.text,
+          x: 0,
+          y: 0,
+          width: 185,
+          height: 52,
+          depth: 2,
+        });
+
+        edges.push({
+          id: `e-${c.id}-${s.id}`,
+          from: c.id,
+          to: s.id,
+          label: s.connector,
+        });
+      });
+    });
+
+    return { nodes, edges };
+  }
+
+  // 3. Mapa Mental Radial (Buzan/Edraw: Equilibrado a izquierda y derecha con ramas orgánicas)
+  if (type === 'mindmap') {
+    const rootNode: OrganizerNode = {
+      ...(existingRoot || {}),
+      id: actualRootId,
+      text: title,
+      subtitle: 'Mapa Mental Equilibrado',
+      x: 0,
+      y: 0,
+      width: Math.max(180, existingRoot?.width || 190),
+      height: Math.max(54, existingRoot?.height || 56),
+      isRoot: true,
+      depth: 0,
+      icon: existingRoot?.icon || '🧠',
+    };
+
+    const branches = [
+      {
+        id: `br-1-${actualRootId}`,
+        text: '1. Fundamentos y Principios',
+        icon: '💡',
+        subtopics: [
+          'Definición esencial y marco de referencia',
+          'Objetivos estratégicos y alcance',
+        ],
+      },
+      {
+        id: `br-2-${actualRootId}`,
+        text: '2. Características Clave',
+        icon: '✨',
+        subtopics: [
+          'Propiedades distintivas y fortalezas',
+          'Factores críticos de éxito',
+        ],
+      },
+      {
+        id: `br-3-${actualRootId}`,
+        text: '3. Metodología y Procesos',
+        icon: '⚙️',
+        subtopics: [
+          'Secuencia de implementación paso a paso',
+          'Herramientas y recursos operativos',
+        ],
+      },
+      {
+        id: `br-4-${actualRootId}`,
+        text: '4. Aplicaciones y Resultados',
+        icon: '🚀',
+        subtopics: [
+          'Casos de uso e impacto práctico',
+          'Métricas de avance y mejora continua',
+        ],
+      },
+    ];
+
+    const nodes: OrganizerNode[] = [rootNode];
+    const edges: OrganizerEdge[] = [];
+
+    branches.forEach(b => {
+      nodes.push({
+        id: b.id,
+        parentId: actualRootId,
+        text: b.text,
+        x: 0,
+        y: 0,
+        width: 175,
+        height: 50,
+        depth: 1,
+        icon: b.icon,
+      });
+
+      edges.push({
+        id: `e-${actualRootId}-${b.id}`,
+        from: actualRootId,
+        to: b.id,
+      });
+
+      b.subtopics.forEach((sub, sIdx) => {
+        const subId = `sub-${b.id}-${sIdx + 1}`;
+        nodes.push({
+          id: subId,
+          parentId: b.id,
+          text: sub,
+          x: 0,
+          y: 0,
+          width: 180,
+          height: 48,
+          depth: 2,
+        });
+
+        edges.push({
+          id: `e-${b.id}-${subId}`,
+          from: b.id,
+          to: subId,
+        });
+      });
+    });
+
+    return { nodes, edges };
+  }
+
+  // 4. Mapa Lógico Derecho (Izquierda -> Derecha)
+  if (type === 'logic') {
+    const rootNode: OrganizerNode = {
+      ...(existingRoot || {}),
+      id: actualRootId,
+      text: title,
+      subtitle: 'Desglose Jerárquico Horizontal',
+      x: 0,
+      y: 0,
+      width: Math.max(180, existingRoot?.width || 190),
+      height: Math.max(54, existingRoot?.height || 56),
+      isRoot: true,
+      depth: 0,
+      icon: existingRoot?.icon || '🌿',
+    };
+
+    const pillars = [
+      {
+        id: `log-1-${actualRootId}`,
+        text: '1. Diagnóstico y Entorno',
+        icon: '🔍',
+        subtopics: [
+          'Análisis de la situación de partida y antecedentes',
+          'Identificación de necesidades prioritarias',
+        ],
+      },
+      {
+        id: `log-2-${actualRootId}`,
+        text: '2. Formulación Estratégica',
+        icon: '🎯',
+        subtopics: [
+          'Definición de metas cuantitativas y cualitativas',
+          'Criterios técnicos de validación y control',
+        ],
+      },
+      {
+        id: `log-3-${actualRootId}`,
+        text: '3. Plan de Acción Operativo',
+        icon: '📋',
+        subtopics: [
+          'Asignación de responsabilidades y cronograma',
+          'Distribución eficiente de presupuesto y recursos',
+        ],
+      },
+      {
+        id: `log-4-${actualRootId}`,
+        text: '4. Indicadores de Logro',
+        icon: '📈',
+        subtopics: [
+          'Métricas clave de avance y seguimiento periódico',
+          'Evaluación de impacto y entregables finales',
+        ],
+      },
+    ];
+
+    const nodes: OrganizerNode[] = [rootNode];
+    const edges: OrganizerEdge[] = [];
+
+    pillars.forEach(p => {
+      nodes.push({
+        id: p.id,
+        parentId: actualRootId,
+        text: p.text,
+        x: 0,
+        y: 0,
+        width: 175,
+        height: 50,
+        depth: 1,
+        icon: p.icon,
+      });
+
+      edges.push({
+        id: `e-${actualRootId}-${p.id}`,
+        from: actualRootId,
+        to: p.id,
+      });
+
+      p.subtopics.forEach((sub, sIdx) => {
+        const subId = `sub-${p.id}-${sIdx + 1}`;
+        nodes.push({
+          id: subId,
+          parentId: p.id,
+          text: sub,
+          x: 0,
+          y: 0,
+          width: 180,
+          height: 48,
+          depth: 2,
+        });
+
+        edges.push({
+          id: `e-${p.id}-${subId}`,
+          from: p.id,
+          to: subId,
+        });
+      });
+    });
+
+    return { nodes, edges };
+  }
+
+  // 5. Cuadro Sinóptico de Llaves ({)
+  if (type === 'synoptic') {
+    const rootNode: OrganizerNode = {
+      ...(existingRoot || {}),
+      id: actualRootId,
+      text: title,
+      subtitle: 'Cuadro Sinóptico de Llaves',
+      x: 0,
+      y: 0,
+      width: Math.max(180, existingRoot?.width || 190),
+      height: Math.max(54, existingRoot?.height || 56),
+      isRoot: true,
+      depth: 0,
+      icon: existingRoot?.icon || '🗂️',
+    };
+
+    const mainIdeas = [
+      {
+        id: `syn-1-${actualRootId}`,
+        text: 'Idea Principal: Fundamentos Teóricos',
+        icon: '💡',
+        subtopics: [
+          'Conceptos esenciales y antecedentes históricos',
+          'Principios rectores y marco normativo',
+        ],
+      },
+      {
+        id: `syn-2-${actualRootId}`,
+        text: 'Idea Principal: Componentes Estructurales',
+        icon: '🧩',
+        subtopics: [
+          'Elementos constitutivos de primer nivel',
+          'Mecanismos de integración operativa',
+        ],
+      },
+      {
+        id: `syn-3-${actualRootId}`,
+        text: 'Idea Principal: Aplicación y Práctica',
+        icon: '🚀',
+        subtopics: [
+          'Ámbitos prioritarios de implementación',
+          'Herramientas de seguimiento y verificación',
+        ],
+      },
+    ];
+
+    const nodes: OrganizerNode[] = [rootNode];
+    const edges: OrganizerEdge[] = [];
+
+    mainIdeas.forEach(m => {
+      nodes.push({
+        id: m.id,
+        parentId: actualRootId,
+        text: m.text,
+        x: 0,
+        y: 0,
+        width: 185,
+        height: 50,
+        depth: 1,
+        icon: m.icon,
+      });
+
+      edges.push({
+        id: `e-${actualRootId}-${m.id}`,
+        from: actualRootId,
+        to: m.id,
+      });
+
+      m.subtopics.forEach((sub, sIdx) => {
+        const subId = `sub-${m.id}-${sIdx + 1}`;
+        nodes.push({
+          id: subId,
+          parentId: m.id,
+          text: sub,
+          x: 0,
+          y: 0,
+          width: 180,
+          height: 48,
+          depth: 2,
+        });
+
+        edges.push({
+          id: `e-${m.id}-${subId}`,
+          from: m.id,
+          to: subId,
+        });
+      });
+    });
+
+    return { nodes, edges };
+  }
+
+  // 6. Diagrama de Ishikawa / Causa y Efecto (6M)
+  if (type === 'fishbone') {
+    const rootNode: OrganizerNode = {
+      ...(existingRoot || {}),
+      id: actualRootId,
+      text: title,
+      subtitle: 'Efecto Principal (Espina Central)',
+      x: 0,
+      y: 0,
+      width: Math.max(190, existingRoot?.width || 200),
+      height: Math.max(54, existingRoot?.height || 56),
+      isRoot: true,
+      depth: 0,
+      icon: existingRoot?.icon || '🎯',
+    };
+
+    const ribs = [
+      {
+        id: `rib-1-${actualRootId}`,
+        text: 'Métodos y Procedimientos',
+        icon: '📋',
+        subtopics: [
+          'Procesos operativos con pasos no estandarizados',
+          'Manuales desactualizados o sin difusión adecuada',
+        ],
+      },
+      {
+        id: `rib-2-${actualRootId}`,
+        text: 'Personas y Equipo',
+        icon: '👥',
+        subtopics: [
+          'Curva de aprendizaje prolongada en nuevas tareas',
+          'Falta de programas continuos de capacitación',
+        ],
+      },
+      {
+        id: `rib-3-${actualRootId}`,
+        text: 'Tecnología y Maquinaria',
+        icon: '💻',
+        subtopics: [
+          'Herramientas informáticas con soporte limitado',
+          'Mantenimiento preventivo con baja regularidad',
+        ],
+      },
+      {
+        id: `rib-4-${actualRootId}`,
+        text: 'Materiales e Insumos',
+        icon: '📦',
+        subtopics: [
+          'Variabilidad en la calidad de los insumos recibidos',
+          'Tiempos de entrega con retrasos imprevistos',
+        ],
+      },
+      {
+        id: `rib-5-${actualRootId}`,
+        text: 'Medición y Calibración',
+        icon: '📊',
+        subtopics: [
+          'Indicadores métricos con tolerancias dispersas',
+          'Seguimiento tardío de observaciones críticas',
+        ],
+      },
+      {
+        id: `rib-6-${actualRootId}`,
+        text: 'Medio y Contexto',
+        icon: '🌍',
+        subtopics: [
+          'Condiciones ambientales de trabajo desfavorables',
+          'Variaciones normativas del mercado externo',
+        ],
+      },
+    ];
+
+    const nodes: OrganizerNode[] = [rootNode];
+    const edges: OrganizerEdge[] = [];
+
+    ribs.forEach(r => {
+      nodes.push({
+        id: r.id,
+        parentId: actualRootId,
+        text: r.text,
+        x: 0,
+        y: 0,
+        width: 175,
+        height: 50,
+        depth: 1,
+        icon: r.icon,
+      });
+
+      edges.push({
+        id: `e-${actualRootId}-${r.id}`,
+        from: actualRootId,
+        to: r.id,
+      });
+
+      r.subtopics.forEach((sub, sIdx) => {
+        const subId = `sub-${r.id}-${sIdx + 1}`;
+        nodes.push({
+          id: subId,
+          parentId: r.id,
+          text: sub,
+          x: 0,
+          y: 0,
+          width: 180,
+          height: 48,
+          depth: 2,
+        });
+
+        edges.push({
+          id: `e-${r.id}-${subId}`,
+          from: r.id,
+          to: subId,
+        });
+      });
+    });
+
+    return { nodes, edges };
+  }
+
+  // 7. Organigrama Jerárquico Vertical (Tree)
+  if (type === 'tree') {
+    const rootNode: OrganizerNode = {
+      ...(existingRoot || {}),
+      id: actualRootId,
+      text: title,
+      subtitle: 'Presidencia y Liderazgo Estratégico',
+      x: 0,
+      y: 0,
+      width: Math.max(190, existingRoot?.width || 200),
+      height: Math.max(54, existingRoot?.height || 56),
+      isRoot: true,
+      depth: 0,
+      icon: existingRoot?.icon || '🏛️',
+    };
+
+    const departments = [
+      {
+        id: `dept-1-${actualRootId}`,
+        text: 'Dirección de Operaciones',
+        icon: '⚙️',
+        subtopics: [
+          'Área de Producción y Calidad',
+          'Logística y Cadena de Suministro',
+        ],
+      },
+      {
+        id: `dept-2-${actualRootId}`,
+        text: 'Dirección de Tecnología',
+        icon: '💻',
+        subtopics: [
+          'Arquitectura y Desarrollo Digital',
+          'Infraestructura y Redes',
+        ],
+      },
+      {
+        id: `dept-3-${actualRootId}`,
+        text: 'Dirección Comercial y Marketing',
+        icon: '📈',
+        subtopics: [
+          'Estrategia de Marca y Adquisición',
+          'Atención y Fidelización',
+        ],
+      },
+      {
+        id: `dept-4-${actualRootId}`,
+        text: 'Dirección de Talento Humano',
+        icon: '👥',
+        subtopics: [
+          'Atracción, Cultura y Bienestar',
+          'Capacitación y Desarrollo Profesional',
+        ],
+      },
+    ];
+
+    const nodes: OrganizerNode[] = [rootNode];
+    const edges: OrganizerEdge[] = [];
+
+    departments.forEach(d => {
+      nodes.push({
+        id: d.id,
+        parentId: actualRootId,
+        text: d.text,
+        x: 0,
+        y: 0,
+        width: 175,
+        height: 50,
+        depth: 1,
+        icon: d.icon,
+      });
+
+      edges.push({
+        id: `e-${actualRootId}-${d.id}`,
+        from: actualRootId,
+        to: d.id,
+      });
+
+      d.subtopics.forEach((sub, sIdx) => {
+        const subId = `sub-${d.id}-${sIdx + 1}`;
+        nodes.push({
+          id: subId,
+          parentId: d.id,
+          text: sub,
+          x: 0,
+          y: 0,
+          width: 170,
+          height: 48,
+          depth: 2,
+        });
+
+        edges.push({
+          id: `e-${d.id}-${subId}`,
+          from: d.id,
+          to: subId,
+        });
+      });
+    });
+
+    return { nodes, edges };
+  }
+
+  // 8. Diagrama de Flujo (Flowchart: Formas semánticas, decisión y loop)
+  if (type === 'flowchart') {
+    const startId = `node-start-${actualRootId}`;
+    const dataId = `node-data-${actualRootId}`;
+    const proc1Id = `node-proc1-${actualRootId}`;
+    const decId = `node-dec-${actualRootId}`;
+    const procYesId = `node-procyes-${actualRootId}`;
+    const procNoId = `node-procno-${actualRootId}`;
+    const endId = `node-end-${actualRootId}`;
+
+    const nodes: OrganizerNode[] = [
+      {
+        id: startId,
+        text: `Inicio: ${title}`,
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 52,
+        isRoot: true,
+        flowType: 'start',
+        icon: '🏁',
+      },
+      {
+        id: dataId,
+        parentId: startId,
+        text: 'Recepción y Registro de Solicitud',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 50,
+        flowType: 'data',
+        icon: '📝',
+      },
+      {
+        id: proc1Id,
+        parentId: dataId,
+        text: 'Evaluación Técnica de Parámetros',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 50,
+        flowType: 'process',
+        icon: '🔍',
+      },
+      {
+        id: decId,
+        parentId: proc1Id,
+        text: '¿Cumple con los Criterios Establecidos?',
+        x: 0,
+        y: 0,
+        width: 190,
+        height: 54,
+        flowType: 'decision',
+        icon: '⚖️',
+      },
+      {
+        id: procYesId,
+        parentId: decId,
+        text: 'Aprobación y Despliegue de la Solución',
+        x: 0,
+        y: 0,
+        width: 185,
+        height: 50,
+        flowType: 'process',
+        icon: '⚡',
+      },
+      {
+        id: procNoId,
+        parentId: decId,
+        text: 'Notificación de Correcciones y Reenvío',
+        x: 0,
+        y: 0,
+        width: 185,
+        height: 50,
+        flowType: 'process',
+        icon: '🔄',
+      },
+      {
+        id: endId,
+        parentId: procYesId,
+        text: 'Validación Final y Cierre del Proceso',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 52,
+        flowType: 'end',
+        icon: '🏆',
+      },
+    ];
+
+    const edges: OrganizerEdge[] = [
+      { id: `e-${startId}-${dataId}`, from: startId, to: dataId },
+      { id: `e-${dataId}-${proc1Id}`, from: dataId, to: proc1Id },
+      { id: `e-${proc1Id}-${decId}`, from: proc1Id, to: decId },
+      { id: `e-${decId}-${procYesId}`, from: decId, to: procYesId, label: 'Sí' },
+      { id: `e-${decId}-${procNoId}`, from: decId, to: procNoId, label: 'No' },
+      { id: `e-${procYesId}-${endId}`, from: procYesId, to: endId },
+      { id: `e-${procNoId}-${proc1Id}`, from: procNoId, to: proc1Id, label: 'Reajuste', isCrossLink: true },
+    ];
+
+    return { nodes, edges };
+  }
+
+  // 9. Línea de Tiempo / Hoja de Ruta Gantt (Timeline)
+  if (type === 'timeline') {
+    const rootNode: OrganizerNode = {
+      ...(existingRoot || {}),
+      id: actualRootId,
+      text: title,
+      subtitle: 'Cronograma Cronológico por Fases',
+      x: 0,
+      y: 0,
+      width: Math.max(190, existingRoot?.width || 200),
+      height: Math.max(54, existingRoot?.height || 56),
+      isRoot: true,
+      depth: 0,
+      icon: existingRoot?.icon || '⏳',
+    };
+
+    const milestones = [
+      {
+        id: `tl-1-${actualRootId}`,
+        text: 'Fase 1: Diagnóstico y Alcance',
+        subtitle: 'Mes 1',
+        icon: '🌱',
+        progress: 100 as const,
+        subtopics: [
+          'Levantamiento riguroso de requerimientos',
+          'Aprobación formal de las bases del proyecto',
+        ],
+      },
+      {
+        id: `tl-2-${actualRootId}`,
+        text: 'Fase 2: Arquitectura y Prototipado',
+        subtitle: 'Mes 2',
+        icon: '🧭',
+        progress: 75 as const,
+        subtopics: [
+          'Diseño técnico de la infraestructura',
+          'Validación de prototipos con usuarios clave',
+        ],
+      },
+      {
+        id: `tl-3-${actualRootId}`,
+        text: 'Fase 3: Implementación y Pruebas',
+        subtitle: 'Mes 3',
+        icon: '🚀',
+        progress: 50 as const,
+        subtopics: [
+          'Despliegue escalonado de funcionalidades',
+          'Auditoría de calidad y pruebas piloto',
+        ],
+      },
+      {
+        id: `tl-4-${actualRootId}`,
+        text: 'Fase 4: Lanzamiento y Consolidación',
+        subtitle: 'Mes 4',
+        icon: '🏆',
+        progress: 0 as const,
+        subtopics: [
+          'Capacitación integral a los equipos',
+          'Entrega del informe final de resultados',
+        ],
+      },
+    ];
+
+    const nodes: OrganizerNode[] = [rootNode];
+    const edges: OrganizerEdge[] = [];
+
+    milestones.forEach(m => {
+      nodes.push({
+        id: m.id,
+        parentId: actualRootId,
+        text: m.text,
+        subtitle: m.subtitle,
+        x: 0,
+        y: 0,
+        width: 185,
+        height: 52,
+        depth: 1,
+        icon: m.icon,
+        progress: m.progress,
+      });
+
+      edges.push({
+        id: `e-${actualRootId}-${m.id}`,
+        from: actualRootId,
+        to: m.id,
+      });
+
+      m.subtopics.forEach((sub, sIdx) => {
+        const subId = `sub-${m.id}-${sIdx + 1}`;
+        nodes.push({
+          id: subId,
+          parentId: m.id,
+          text: sub,
+          x: 0,
+          y: 0,
+          width: 180,
+          height: 48,
+          depth: 2,
+        });
+
+        edges.push({
+          id: `e-${m.id}-${subId}`,
+          from: m.id,
+          to: subId,
+        });
+      });
+    });
+
+    return { nodes, edges };
+  }
+
+  // 10. Diagrama de Círculos y Radios (Radial / Burbujas 360°)
+  if (type === 'radial') {
+    const rootNode: OrganizerNode = {
+      ...(existingRoot || {}),
+      id: actualRootId,
+      text: title,
+      subtitle: 'Ecosistema Circular 360°',
+      x: 0,
+      y: 0,
+      width: Math.max(160, existingRoot?.width || 170),
+      height: Math.max(56, existingRoot?.height || 60),
+      isRoot: true,
+      depth: 0,
+      shape: 'circle',
+      icon: existingRoot?.icon || '🫧',
+    };
+
+    const spokes = [
+      { id: `sp-1-${actualRootId}`, text: 'Propósito Estratégico', sub: 'Misión y visión que orientan la iniciativa', icon: '🎯' },
+      { id: `sp-2-${actualRootId}`, text: 'Propuesta de Valor', sub: 'Beneficio diferencial y satisfacción de usuarios', icon: '💎' },
+      { id: `sp-3-${actualRootId}`, text: 'Recursos y Capacidades', sub: 'Talento técnico e infraestructura de vanguardia', icon: '🛠️' },
+      { id: `sp-4-${actualRootId}`, text: 'Comunidad y Alianzas', sub: 'Red colaborativa y ecosistema de integración', icon: '🤝' },
+      { id: `sp-5-${actualRootId}`, text: 'Sostenibilidad Operativa', sub: 'Gestión responsable y viabilidad a largo plazo', icon: '🌱' },
+      { id: `sp-6-${actualRootId}`, text: 'Innovación y Adaptabilidad', sub: 'Evolución activa ante nuevas oportunidades', icon: '🚀' },
+    ];
+
+    const nodes: OrganizerNode[] = [rootNode];
+    const edges: OrganizerEdge[] = [];
+
+    spokes.forEach(sp => {
+      nodes.push({
+        id: sp.id,
+        parentId: actualRootId,
+        text: sp.text,
+        subtitle: sp.sub,
+        x: 0,
+        y: 0,
+        width: 170,
+        height: 52,
+        depth: 1,
+        icon: sp.icon,
+      });
+
+      edges.push({
+        id: `e-${actualRootId}-${sp.id}`,
+        from: actualRootId,
+        to: sp.id,
+      });
+    });
+
+    return { nodes, edges };
+  }
+
+  // 11. Matriz de Bloques 2x2 / FODA (Matrix)
+  if (type === 'matrix') {
+    const rootNode: OrganizerNode = {
+      ...(existingRoot || {}),
+      id: actualRootId,
+      text: title,
+      subtitle: 'Cuadrantes de Diagnóstico 2×2',
+      x: 0,
+      y: 0,
+      width: Math.max(180, existingRoot?.width || 190),
+      height: Math.max(54, existingRoot?.height || 56),
+      isRoot: true,
+      depth: 0,
+      icon: existingRoot?.icon || '⊞',
+    };
+
+    const quadrants = [
+      {
+        id: `quad-1-${actualRootId}`,
+        text: 'Fortalezas Internas',
+        icon: '💪',
+        priority: 1 as const,
+        subtopics: [
+          'Capacidades técnicas consolidadas y de alto valor',
+          'Equipo con amplia experiencia y compromiso comprobado',
+        ],
+      },
+      {
+        id: `quad-2-${actualRootId}`,
+        text: 'Oportunidades de Crecimiento',
+        icon: '🚀',
+        priority: 2 as const,
+        subtopics: [
+          'Apertura de nuevos mercados y demandas emergentes',
+          'Alianzas estratégicas con actores clave del sector',
+        ],
+      },
+      {
+        id: `quad-3-${actualRootId}`,
+        text: 'Debilidades Operativas',
+        icon: '🛠️',
+        priority: 3 as const,
+        subtopics: [
+          'Procesos manuales pendientes de automatizar',
+          'Tiempos de respuesta que requieren optimización',
+        ],
+      },
+      {
+        id: `quad-4-${actualRootId}`,
+        text: 'Amenazas Externas',
+        icon: '⚠️',
+        priority: 4 as const,
+        subtopics: [
+          'Variabilidad en el contexto regulatorio y económico',
+          'Entrada de competidores con estrategias agresivas',
+        ],
+      },
+    ];
+
+    const nodes: OrganizerNode[] = [rootNode];
+    const edges: OrganizerEdge[] = [];
+
+    quadrants.forEach(q => {
+      nodes.push({
+        id: q.id,
+        parentId: actualRootId,
+        text: q.text,
+        x: 0,
+        y: 0,
+        width: 175,
+        height: 50,
+        depth: 1,
+        icon: q.icon,
+        priority: q.priority,
+      });
+
+      edges.push({
+        id: `e-${actualRootId}-${q.id}`,
+        from: actualRootId,
+        to: q.id,
+      });
+
+      q.subtopics.forEach((sub, sIdx) => {
+        const subId = `sub-${q.id}-${sIdx + 1}`;
+        nodes.push({
+          id: subId,
+          parentId: q.id,
+          text: sub,
+          x: 0,
+          y: 0,
+          width: 180,
+          height: 48,
+          depth: 2,
+        });
+
+        edges.push({
+          id: `e-${q.id}-${subId}`,
+          from: q.id,
+          to: subId,
+        });
+      });
+    });
+
+    return { nodes, edges };
+  }
+
+  // 12. Diagrama de Ciclo Continuo (Cycle / PDCA)
+  if (type === 'cycle') {
+    const rootNode: OrganizerNode = {
+      ...(existingRoot || {}),
+      id: actualRootId,
+      text: title,
+      subtitle: 'Metodología Iterativa Deming / PDCA',
+      x: 0,
+      y: 0,
+      width: Math.max(180, existingRoot?.width || 190),
+      height: Math.max(54, existingRoot?.height || 56),
+      isRoot: true,
+      depth: 0,
+      icon: existingRoot?.icon || '🔄',
+    };
+
+    const stages = [
+      {
+        id: `st-1-${actualRootId}`,
+        text: '1. Planificar (Plan)',
+        icon: '📋',
+        subtopics: ['Diagnóstico de situación, fijación de metas y plan operativo'],
+      },
+      {
+        id: `st-2-${actualRootId}`,
+        text: '2. Hacer (Do)',
+        icon: '⚡',
+        subtopics: ['Ejecución disciplinada de las actividades programadas'],
+      },
+      {
+        id: `st-3-${actualRootId}`,
+        text: '3. Verificar (Check)',
+        icon: '📊',
+        subtopics: ['Monitoreo de indicadores clave y evaluación de desviaciones'],
+      },
+      {
+        id: `st-4-${actualRootId}`,
+        text: '4. Actuar (Act)',
+        icon: '🔄',
+        subtopics: ['Estandarización de aciertos y ajustes para el próximo ciclo'],
+      },
+    ];
+
+    const nodes: OrganizerNode[] = [rootNode];
+    const edges: OrganizerEdge[] = [];
+
+    stages.forEach((st, idx) => {
+      nodes.push({
+        id: st.id,
+        parentId: actualRootId,
+        text: st.text,
+        x: 0,
+        y: 0,
+        width: 175,
+        height: 50,
+        depth: 1,
+        icon: st.icon,
+      });
+
+      edges.push({
+        id: `e-${actualRootId}-${st.id}`,
+        from: actualRootId,
+        to: st.id,
+      });
+
+      st.subtopics.forEach((sub, sIdx) => {
+        const subId = `sub-${st.id}-${sIdx + 1}`;
+        nodes.push({
+          id: subId,
+          parentId: st.id,
+          text: sub,
+          x: 0,
+          y: 0,
+          width: 180,
+          height: 48,
+          depth: 2,
+        });
+
+        edges.push({
+          id: `e-${st.id}-${subId}`,
+          from: st.id,
+          to: subId,
+        });
+      });
+    });
+
+    return { nodes, edges };
+  }
+
+  // Fallback seguro
+  return {
+    nodes: [
+      {
+        ...(existingRoot || {}),
+        id: actualRootId,
+        text: title,
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 54,
+        isRoot: true,
+        depth: 0,
+        icon: existingRoot?.icon || '💡',
+      },
+    ],
+    edges: [],
+  };
+}
+
 export function isCartographicStructure(nodes: OrganizerNode[]): boolean {
   if (!nodes || nodes.length < 9) return false;
   const root = nodes.find(n => n.isRoot || (n.depth || 0) === 0);

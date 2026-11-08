@@ -6,7 +6,7 @@ import {
   ThemeId,
 } from '../types/organizer';
 import { applyLayout } from './layouts';
-import { buildCartographicProjectNodes } from './templates';
+import { buildStarterProjectNodes, getDefaultTitleForType } from './templates';
 import { EDRAW_THEMES } from './themes';
 
 const STORAGE_KEY = 'synapse_edraw_projects_v8';
@@ -28,41 +28,21 @@ function normalizeThemeId(raw?: string): ThemeId {
 
 export function createCleanInitialProject(
   type: OrganizerType = 'mindmap',
-  title = 'Idea Central'
+  title?: string
 ): OrganizerProject {
   const stamp = Date.now();
   const rootId = `root-${stamp}`;
-  
-  let initialNodes: OrganizerNode[];
-  let initialEdges: OrganizerEdge[];
+  const actualTitle = (title && title.trim()) || getDefaultTitleForType(type);
+  const theme: ThemeId = 'vitality-warm';
 
-  if (type === 'cartographic') {
-    const built = buildCartographicProjectNodes(title, rootId);
-    initialNodes = built.nodes;
-    initialEdges = built.edges;
-  } else {
-    initialNodes = [
-      {
-        id: rootId,
-        text: title,
-        subtitle: 'Toca para editar o añadir subtemas',
-        x: 0,
-        y: 0,
-        width: 180,
-        height: 56,
-        isRoot: true,
-        icon: '💡',
-      },
-    ];
-    initialEdges = [];
-  }
+  const { nodes, edges } = buildStarterProjectNodes(type, actualTitle, rootId);
+  const relaid = applyLayout(nodes, edges, type, theme, true, 'clockwise');
 
-  const relaid = applyLayout(initialNodes, initialEdges, type, 'vitality-warm', true, 'clockwise');
   return {
     id: `proj-${stamp}`,
-    title,
+    title: actualTitle,
     type,
-    theme: 'vitality-warm',
+    theme,
     canvasBg: 'dots',
     rainbowBranches: true,
     cartographicDirection: 'clockwise',
