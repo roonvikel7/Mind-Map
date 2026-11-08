@@ -22,7 +22,11 @@ import {
   Upload,
 } from 'lucide-react';
 import { OrganizerProject, OrganizerType } from '../types/organizer';
-import { ORGANIZER_TYPES_META } from '../utils/themes';
+import {
+  ORGANIZER_CATEGORY_LABELS,
+  ORGANIZER_TYPES_META,
+  OrganizerCategory,
+} from '../utils/themes';
 
 interface NavbarProps {
   project: OrganizerProject;
@@ -52,6 +56,13 @@ interface NavbarProps {
   onAddImageFile?: (file: File) => void;
   onOpenCreateChooser?: () => void;
 }
+
+const CATEGORY_ORDER: OrganizerCategory[] = [
+  'mental',
+  'academic',
+  'process',
+  'strategy',
+];
 
 export const Navbar: React.FC<NavbarProps> = ({
   project,
@@ -95,7 +106,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const toolsMenuRef = useRef<HTMLDivElement | null>(null);
   const toolsBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  // Cerrar cualquier menú desplegable inmediatamente al tocar/clicar afuera o presionar Escape
   useEffect(() => {
     if (!typeMenuOpen && !projectsMenuOpen && !toolsMenuOpen) return;
 
@@ -156,7 +166,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="h-14 shrink-0 bg-white/95 backdrop-blur-md border-b border-stone-200/90 px-1.5 sm:px-3.5 flex items-center justify-between gap-1 sm:gap-2 z-50 select-none">
+    <header className="ios-glass-bar h-14 shrink-0 border-b border-stone-200/80 px-1.5 sm:px-3 flex items-center justify-between gap-1 sm:gap-2 z-50 select-none">
       {/* Inputs ocultos de archivos */}
       <input
         ref={fileInputRef}
@@ -183,37 +193,29 @@ export const Navbar: React.FC<NavbarProps> = ({
         }}
       />
 
-      {/* BLOQUE IZQUIERDO: Panel Izquierdo, Marca, Proyectos y Título */}
-      <div className="flex items-center gap-1 sm:gap-2 shrink-0 md:shrink md:min-w-0">
+      {/* ZONA IZQUIERDA: Panel Izquierdo, Archivo/Proyectos y Título con protección anticolisión */}
+      <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 shrink">
         <button
           type="button"
           onClick={onToggleLeft}
-          title={leftOpen ? 'Ocultar panel de formas y esquema' : 'Abrir panel de formas, marcas y esquema'}
-          className={`p-1.5 sm:p-2 rounded-xl border transition-colors shrink-0 ${
+          title={leftOpen ? 'Ocultar biblioteca izquierda' : 'Abrir formas, símbolos y esquema'}
+          className={`ios-btn p-1.5 sm:p-2 rounded-xl border shrink-0 ${
             leftOpen
-              ? 'bg-orange-50 border-orange-200 text-orange-700'
-              : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+              ? 'bg-orange-50 border-orange-200 text-orange-700 shadow-xs'
+              : 'bg-white/90 border-stone-200/90 text-stone-600 hover:bg-stone-100/80'
           }`}
         >
           <PanelLeft className="w-4 h-4" />
         </button>
 
-        {/* Marca Synapse Studio (visible desde sm para armonía en móvil) */}
-        <div className="hidden sm:flex items-center gap-2 pr-0.5 shrink-0">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
+        {/* Marca compacta */}
+        <div className="hidden lg:flex items-center gap-1.5 shrink-0">
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white font-extrabold text-xs shadow-sm">
             S
-          </div>
-          <div className="hidden 2xl:flex flex-col leading-none">
-            <span className="text-[13px] font-extrabold tracking-tight text-stone-800">
-              Synapse
-            </span>
-            <span className="text-[10px] font-semibold text-orange-600">
-              Studio Pro
-            </span>
           </div>
         </div>
 
-        {/* Selector de Proyectos Guardados */}
+        {/* Desplegable Archivo / Mis Mapas */}
         <div className="relative shrink-0">
           <button
             ref={projectsBtnRef}
@@ -223,37 +225,49 @@ export const Navbar: React.FC<NavbarProps> = ({
               closeAllMenus();
               setProjectsMenuOpen(next);
             }}
-            title="Mis mapas, renombrar proyecto, crear nuevo o importar"
-            className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-stone-100/90 hover:bg-stone-200/70 border border-stone-200/80 text-xs font-semibold text-stone-700 transition-colors"
+            title="Mis mapas guardados, renombrar título, crear nuevo o importar JSON"
+            className={`ios-btn flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-bold transition-colors ${
+              projectsMenuOpen
+                ? 'bg-stone-900 border-stone-900 text-white'
+                : 'bg-stone-100/90 hover:bg-stone-200/75 border-stone-200/80 text-stone-700'
+            }`}
           >
-            <FolderOpen className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-600 shrink-0" />
-            <span className="hidden sm:inline max-w-[120px] truncate">
-              Mis Mapas ({projects.length})
+            <FolderOpen
+              className={`w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0 ${
+                projectsMenuOpen ? 'text-amber-300' : 'text-amber-600'
+              }`}
+            />
+            <span className="hidden md:inline max-w-[105px] truncate">
+              Mapas ({projects.length})
             </span>
-            <ChevronDown className="hidden sm:block w-3.5 h-3.5 text-stone-400 shrink-0" />
+            <ChevronDown
+              className={`hidden sm:block w-3 h-3 shrink-0 transition-transform duration-200 ${
+                projectsMenuOpen ? 'rotate-180 text-stone-300' : 'text-stone-400'
+              }`}
+            />
           </button>
 
           {projectsMenuOpen && (
             <div
               ref={projectsMenuRef}
-              className="fixed left-3 right-3 top-[60px] sm:absolute sm:left-0 sm:right-auto sm:top-full sm:mt-2 sm:w-80 rounded-2xl bg-white border border-stone-200 edraw-panel-shadow p-2.5 z-50 max-h-[78dvh] flex flex-col"
+              className="ios-popover fixed left-2.5 right-2.5 top-[60px] sm:absolute sm:left-0 sm:right-auto sm:top-full sm:mt-2 sm:w-80 rounded-[22px] bg-white/95 backdrop-blur-xl border border-stone-200/90 edraw-panel-shadow p-3 z-50 max-h-[80dvh] flex flex-col"
             >
-              {/* Campo de título accesible dentro del menú en pantallas móviles */}
-              <div className="md:hidden pb-2.5 mb-2 border-b border-stone-100">
+              {/* Edición rápida del título accesible en cualquier pantalla */}
+              <div className="pb-2.5 mb-2.5 border-b border-stone-200/70 shrink-0">
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">
-                  Título del Mapa Actual
+                  Título del Proyecto Activo
                 </label>
                 <input
                   type="text"
                   value={project.title}
                   onChange={e => onUpdateTitle(e.target.value)}
-                  placeholder="Título del proyecto..."
-                  className="w-full px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 focus:bg-white focus:border-orange-400 text-base font-bold text-stone-800 outline-none"
+                  placeholder="Título del organizador..."
+                  className="w-full px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 focus:bg-white focus:border-orange-400 text-base sm:text-xs font-bold text-stone-800 outline-none"
                 />
               </div>
 
-              <div className="flex items-center justify-between px-1.5 py-1 border-b border-stone-100 mb-1.5 shrink-0">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
+              <div className="flex items-center justify-between px-1 pb-2 border-b border-stone-100 mb-1.5 shrink-0">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-stone-400">
                   Mis Proyectos ({projects.length})
                 </span>
                 <div className="flex items-center gap-1">
@@ -263,8 +277,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                       fileInputRef.current?.click();
                       setProjectsMenuOpen(false);
                     }}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-stone-600 hover:bg-stone-100"
-                    title="Abrir archivo .json de proyecto"
+                    className="ios-btn flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-stone-600 hover:bg-stone-100"
+                    title="Abrir respaldo .json"
                   >
                     <Upload className="w-3 h-3" />
                     <span>Importar</span>
@@ -279,7 +293,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         onCreateNewProject('mindmap');
                       }
                     }}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-semibold"
+                    className="ios-btn flex items-center gap-1 px-2.5 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-bold shadow-xs"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Nuevo</span>
@@ -300,8 +314,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                       }}
                       className={`group flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-colors ${
                         active
-                          ? 'bg-orange-50 border border-orange-200/80 text-orange-900'
-                          : 'hover:bg-stone-50 text-stone-700'
+                          ? 'bg-orange-50 border border-orange-200/80 text-orange-950'
+                          : 'hover:bg-stone-100/70 text-stone-700'
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
@@ -312,7 +326,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <div className="text-xs font-bold truncate">
                             {p.title}
                           </div>
-                          <div className="text-[10px] text-stone-400">
+                          <div className="text-[10px] text-stone-400 truncate">
                             {meta?.shortLabel} • {p.nodes.length} nodos
                           </div>
                         </div>
@@ -339,19 +353,22 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* Título Editable en Vivo (visible en tablet y escritorio) */}
-        <input
-          type="text"
-          value={project.title}
-          onChange={e => onUpdateTitle(e.target.value)}
-          placeholder="Título del proyecto..."
-          className="hidden md:block w-36 lg:w-48 xl:w-56 px-2.5 py-1 rounded-lg bg-transparent hover:bg-stone-100 focus:bg-white focus:ring-2 focus:ring-orange-400/40 focus:border-orange-300 border border-transparent text-xs font-bold text-stone-800 outline-none transition-all truncate"
-        />
+        {/* Título editable en línea solo en pantallas amplias, con min-w-0 y shrink para 0% desborde */}
+        <div className="hidden xl:flex min-w-0 shrink overflow-hidden">
+          <input
+            type="text"
+            value={project.title}
+            onChange={e => onUpdateTitle(e.target.value)}
+            placeholder="Título del mapa..."
+            className="min-w-0 w-36 2xl:w-52 px-2.5 py-1 rounded-xl bg-stone-100/60 hover:bg-stone-100 focus:bg-white focus:ring-2 focus:ring-orange-400/35 focus:border-orange-300 border border-transparent text-xs font-bold text-stone-800 outline-none transition-all truncate"
+          />
+        </div>
       </div>
 
-      {/* BLOQUE CENTRAL: Selector de los 9 Motores Estructurales + Deshacer/Rehacer */}
+      {/* ZONA CENTRAL: Botones Primordiales Visibles (Estructura 12 Motores + Plantillas + IA) */}
       <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-        <div className="relative">
+        {/* 1. Desplegable de Estructura (12 Motores categorizados EdrawMax) */}
+        <div className="relative shrink-0">
           <button
             ref={typeBtnRef}
             type="button"
@@ -360,27 +377,37 @@ export const Navbar: React.FC<NavbarProps> = ({
               closeAllMenus();
               setTypeMenuOpen(next);
             }}
-            title="Cambiar tipo de organizador visual (9 motores)"
-            className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1.5 rounded-xl bg-amber-50/90 hover:bg-amber-100/80 border border-amber-200/90 text-xs font-bold text-amber-950 transition-colors"
+            title="Cambiar estructura del organizador (12 motores EdrawMax)"
+            className={`ios-btn flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-colors ${
+              typeMenuOpen
+                ? 'bg-amber-100 border-amber-300 text-amber-950 shadow-xs'
+                : 'bg-amber-50/95 hover:bg-amber-100/80 border-amber-200/90 text-amber-950'
+            }`}
           >
-            <span className="text-sm leading-none">{currentTypeMeta.emoji}</span>
-            <span className="hidden md:inline">{currentTypeMeta.shortLabel}</span>
-            <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-700 shrink-0" />
+            <span className="text-sm leading-none shrink-0">{currentTypeMeta.emoji}</span>
+            <span className="hidden md:inline max-w-[132px] lg:max-w-[164px] truncate">
+              {currentTypeMeta.shortLabel}
+            </span>
+            <ChevronDown
+              className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-700 shrink-0 transition-transform duration-200 ${
+                typeMenuOpen ? 'rotate-180' : ''
+              }`}
+            />
           </button>
 
           {typeMenuOpen && (
             <div
               ref={typeMenuRef}
-              className="fixed left-3 right-3 top-[60px] sm:absolute sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:top-full sm:mt-2 sm:w-80 rounded-2xl bg-white border border-stone-200 edraw-panel-shadow p-2 z-50 max-h-[78dvh] flex flex-col"
+              className="ios-popover fixed left-2.5 right-2.5 top-[60px] sm:absolute sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:top-full sm:mt-2 sm:w-[360px] rounded-[22px] bg-white/95 backdrop-blur-xl border border-stone-200/90 edraw-panel-shadow p-2.5 z-50 max-h-[80dvh] flex flex-col"
             >
-              <div className="px-2 py-1 flex items-center justify-between border-b border-stone-100 mb-1 shrink-0">
+              <div className="px-2 py-1 flex items-center justify-between border-b border-stone-100 mb-1.5 shrink-0">
                 <span className="text-[10.5px] font-bold uppercase tracking-wider text-stone-400">
-                  Transformar Estructura (9 Motores)
+                  12 Motores Estructurales EdrawMax
                 </span>
               </div>
 
               {project.type === 'cartographic' && onChangeCartographicDirection && (
-                <div className="mx-1 mb-1.5 p-2 rounded-xl bg-orange-50/80 border border-orange-200/80 flex items-center justify-between gap-2 shrink-0">
+                <div className="mx-1 mb-2 p-2 rounded-xl bg-orange-50/90 border border-orange-200/80 flex items-center justify-between gap-2 shrink-0">
                   <span className="text-[11px] font-bold text-orange-950">
                     Sentido de los 8 Ejes:
                   </span>
@@ -393,7 +420,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           : 'counterclockwise'
                       )
                     }
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-orange-200 text-[11px] font-bold text-orange-800 shadow-sm"
+                    className="ios-btn flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-orange-200 text-[11px] font-bold text-orange-800 shadow-xs"
                   >
                     {project.cartographicDirection === 'counterclockwise' ? (
                       <>
@@ -410,33 +437,47 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               )}
 
-              <div className="overflow-y-auto grid grid-cols-1 gap-1 pr-0.5">
-                {ORGANIZER_TYPES_META.map(item => {
-                  const active = item.type === project.type;
+              <div className="overflow-y-auto space-y-2.5 pr-0.5 flex-1">
+                {CATEGORY_ORDER.map(cat => {
+                  const items = ORGANIZER_TYPES_META.filter(m => m.category === cat);
                   return (
-                    <button
-                      key={item.type}
-                      type="button"
-                      onClick={() => {
-                        onChangeType(item.type);
-                        setTypeMenuOpen(false);
-                      }}
-                      className={`flex items-start gap-2.5 p-2 rounded-xl text-left transition-colors ${
-                        active
-                          ? 'bg-orange-50 border border-orange-200 text-orange-950'
-                          : 'hover:bg-stone-50 text-stone-700'
-                      }`}
-                    >
-                      <span className="text-lg leading-none mt-0.5 shrink-0">
-                        {item.emoji}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold">{item.label}</div>
-                        <div className="text-[10.5px] text-stone-500 leading-snug">
-                          {item.description}
-                        </div>
+                    <div key={cat}>
+                      <div className="px-2 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-stone-400">
+                        {ORGANIZER_CATEGORY_LABELS[cat]}
                       </div>
-                    </button>
+                      <div className="space-y-0.5">
+                        {items.map(item => {
+                          const active = item.type === project.type;
+                          return (
+                            <button
+                              key={item.type}
+                              type="button"
+                              onClick={() => {
+                                onChangeType(item.type);
+                                setTypeMenuOpen(false);
+                              }}
+                              className={`w-full flex items-start gap-2.5 p-2 rounded-xl text-left transition-colors ${
+                                active
+                                  ? 'bg-orange-50 border border-orange-200/90 text-orange-950'
+                                  : 'hover:bg-stone-100/70 text-stone-700'
+                              }`}
+                            >
+                              <span className="text-base leading-none mt-0.5 shrink-0">
+                                {item.emoji}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-bold leading-tight">
+                                  {item.label}
+                                </div>
+                                <div className="text-[10.5px] text-stone-500 leading-snug line-clamp-1 mt-0.5">
+                                  {item.description}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -444,46 +485,46 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* Conmutador Rápido Horario / Antihorario en escritorio cuando es Cartografía */}
-        {project.type === 'cartographic' && onChangeCartographicDirection && (
-          <button
-            type="button"
-            onClick={() =>
-              onChangeCartographicDirection(
-                project.cartographicDirection === 'counterclockwise'
-                  ? 'clockwise'
-                  : 'counterclockwise'
-              )
-            }
-            title={
-              project.cartographicDirection === 'counterclockwise'
-                ? 'Giro Antihorario (clic para Horario)'
-                : 'Giro Horario (clic para Antihorario)'
-            }
-            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200/90 text-xs font-bold text-orange-900 transition-colors"
-          >
-            {project.cartographicDirection === 'counterclockwise' ? (
-              <>
-                <RotateCcw className="w-3.5 h-3.5 text-orange-600" />
-                <span>Antihorario</span>
-              </>
-            ) : (
-              <>
-                <RotateCw className="w-3.5 h-3.5 text-orange-600" />
-                <span>Horario</span>
-              </>
-            )}
-          </button>
-        )}
+        {/* 2. Botón PLANTILLAS Siempre Visible en todas las pantallas */}
+        <button
+          type="button"
+          onClick={() => {
+            closeAllMenus();
+            onOpenTemplates();
+          }}
+          title="Abrir Centro de Plantillas Profesionales EdrawMax"
+          className="ios-btn flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-white hover:bg-orange-50/60 border border-stone-200/90 hover:border-orange-300 text-xs font-bold text-stone-800 shadow-2xs shrink-0"
+        >
+          <LayoutTemplate className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+          <span className="text-[11px] sm:text-xs">Plantillas</span>
+        </button>
 
-        {/* Deshacer / Rehacer */}
-        <div className="flex items-center bg-stone-100/90 rounded-xl p-0.5 border border-stone-200/70">
+        {/* 3. Botón GENERAR CON IA Siempre Visible */}
+        <button
+          type="button"
+          onClick={() => {
+            closeAllMenus();
+            onOpenAiModal();
+          }}
+          title="Generar organizador inteligente con IA"
+          className="ios-btn flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold shadow-sm shrink-0"
+        >
+          <Sparkles className="w-3.5 h-3.5 shrink-0" />
+          <span className="hidden sm:inline">Generar IA</span>
+          <span className="sm:hidden text-[11px]">IA</span>
+        </button>
+      </div>
+
+      {/* ZONA DERECHA: Historial, Desplegable de Herramientas, Exportar y Panel Derecho */}
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        {/* Deshacer / Rehacer en pantallas >= sm (en móvil va dentro del desplegable Herramientas) */}
+        <div className="hidden sm:flex items-center bg-stone-100/90 rounded-xl p-0.5 border border-stone-200/70">
           <button
             type="button"
             disabled={!canUndo}
             onClick={onUndo}
             title="Deshacer (Ctrl+Z)"
-            className="p-1 sm:p-1.5 rounded-lg text-stone-600 hover:bg-white active:bg-white disabled:opacity-35 disabled:hover:bg-transparent transition-all"
+            className="ios-btn p-1.5 rounded-lg text-stone-600 hover:bg-white disabled:opacity-35 disabled:hover:bg-transparent"
           >
             <Undo2 className="w-3.5 h-3.5" />
           </button>
@@ -492,61 +533,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             disabled={!canRedo}
             onClick={onRedo}
             title="Rehacer (Ctrl+Y)"
-            className="p-1 sm:p-1.5 rounded-lg text-stone-600 hover:bg-white active:bg-white disabled:opacity-35 disabled:hover:bg-transparent transition-all"
+            className="ios-btn p-1.5 rounded-lg text-stone-600 hover:bg-white disabled:opacity-35 disabled:hover:bg-transparent"
           >
             <Redo2 className="w-3.5 h-3.5" />
           </button>
         </div>
-      </div>
 
-      {/* BLOQUE DERECHO: IA, Descargar, Menú Organizado de Estudio y Panel de Diseño */}
-      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-        {/* Acción Principal: Generar con IA */}
-        <button
-          type="button"
-          onClick={onOpenAiModal}
-          title="Generar organizador inteligente con Google Gemini IA"
-          className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold shadow-sm transition-all"
-        >
-          <Sparkles className="w-3.5 h-3.5 shrink-0" />
-          <span className="hidden sm:inline">Generar IA</span>
-          <span className="hidden min-[360px]:inline sm:hidden">IA</span>
-        </button>
-
-        {/* Accesos limpios en escritorio amplio (sin saturar pantallas pequeñas/medianas) */}
-        <button
-          type="button"
-          onClick={onOpenTemplates}
-          title="Galería de plantillas con previsualización"
-          className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-xs font-semibold text-stone-700 transition-colors"
-        >
-          <LayoutTemplate className="w-3.5 h-3.5 text-stone-600" />
-          <span>Plantillas</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onOpenPresentation}
-          title="Modo presentación en diapositivas"
-          className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold text-emerald-800 transition-colors"
-        >
-          <Play className="w-3.5 h-3.5 fill-current" />
-          <span>Presentar</span>
-        </button>
-
-        {/* Descargar / Exportar en 8K */}
-        <button
-          type="button"
-          onClick={onOpenExport}
-          title="Descargar en PNG 8K UHD, SVG, PDF, HTML, Markdown o JSON"
-          className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shadow-sm transition-colors"
-        >
-          <Download className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
-          <span className="hidden sm:inline">Descargar</span>
-        </button>
-
-        {/* Menú Organizado "Más Herramientas" (evita sobrepoblación manteniendo 100% de funciones) */}
-        <div className="relative">
+        {/* Desplegable organizado "Herramientas" con animación suave iOS */}
+        <div className="relative shrink-0">
           <button
             ref={toolsBtnRef}
             type="button"
@@ -555,14 +549,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               closeAllMenus();
               setToolsMenuOpen(next);
             }}
-            title="Más herramientas del estudio (Plantillas, Imagen, Relación, Presentación, Ajustes IA)"
-            className={`relative p-1.5 sm:p-2 rounded-xl border transition-colors ${
+            title="Herramientas adicionales (Presentar, Imagen, Relación Cruzada, Giro, Ajustes IA)"
+            className={`ios-btn relative flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
               toolsMenuOpen || isConnectMode
-                ? 'bg-orange-50 border-orange-300 text-orange-700'
-                : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+                ? 'bg-orange-50 border-orange-300 text-orange-800'
+                : 'bg-white/90 border-stone-200/90 text-stone-700 hover:bg-stone-100/80'
             }`}
           >
-            <MoreHorizontal className="w-4 h-4" />
+            <MoreHorizontal className="w-4 h-4 shrink-0" />
+            <span className="hidden 2xl:inline">Herramientas</span>
             {isConnectMode && (
               <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-orange-600 ring-2 ring-white" />
             )}
@@ -571,12 +566,40 @@ export const Navbar: React.FC<NavbarProps> = ({
           {toolsMenuOpen && (
             <div
               ref={toolsMenuRef}
-              className="fixed left-3 right-3 top-[60px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72 rounded-2xl bg-white border border-stone-200 edraw-panel-shadow p-2 z-50 max-h-[80dvh] overflow-y-auto space-y-1.5"
+              className="ios-popover fixed left-2.5 right-2.5 top-[60px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72 rounded-[22px] bg-white/95 backdrop-blur-xl border border-stone-200/90 edraw-panel-shadow p-2.5 z-50 max-h-[82dvh] overflow-y-auto space-y-1.5"
             >
-              {/* Sección 1: Crear y Explorar */}
+              {/* Fila rápida de Deshacer / Rehacer para celulares */}
+              <div className="sm:hidden grid grid-cols-2 gap-1.5 pb-2 border-b border-stone-100">
+                <button
+                  type="button"
+                  disabled={!canUndo}
+                  onClick={() => {
+                    onUndo();
+                    setToolsMenuOpen(false);
+                  }}
+                  className="ios-btn flex items-center justify-center gap-1.5 py-2 rounded-xl bg-stone-100 text-xs font-bold text-stone-700 disabled:opacity-40"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                  <span>Deshacer</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={!canRedo}
+                  onClick={() => {
+                    onRedo();
+                    setToolsMenuOpen(false);
+                  }}
+                  className="ios-btn flex items-center justify-center gap-1.5 py-2 rounded-xl bg-stone-100 text-xs font-bold text-stone-700 disabled:opacity-40"
+                >
+                  <Redo2 className="w-3.5 h-3.5" />
+                  <span>Rehacer</span>
+                </button>
+              </div>
+
+              {/* Sección 1: Creación y Exposición */}
               <div>
-                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                  Crear y Explorar
+                <div className="px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-stone-400">
+                  Estudio y Exposición
                 </div>
                 <button
                   type="button"
@@ -585,27 +608,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                     if (onOpenCreateChooser) onOpenCreateChooser();
                     else onCreateNewProject('mindmap');
                   }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-left text-xs font-semibold text-stone-700 transition-colors"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-100/75 text-left text-xs transition-colors"
                 >
                   <FilePlus2 className="w-4 h-4 text-orange-600 shrink-0" />
                   <div>
-                    <div className="font-bold text-stone-800">Nuevo Mapa Limpio</div>
-                    <div className="text-[10.5px] text-stone-400">Escoger título y estructura</div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setToolsMenuOpen(false);
-                    onOpenTemplates();
-                  }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-left text-xs font-semibold text-stone-700 transition-colors"
-                >
-                  <LayoutTemplate className="w-4 h-4 text-amber-600 shrink-0" />
-                  <div>
-                    <div className="font-bold text-stone-800">Galería de Plantillas</div>
-                    <div className="text-[10.5px] text-stone-400">Diseños listos con vista previa</div>
+                    <div className="font-bold text-stone-800">Dibujo en Blanco</div>
+                    <div className="text-[10.5px] text-stone-400">Elegir título y estructura</div>
                   </div>
                 </button>
 
@@ -615,12 +623,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setToolsMenuOpen(false);
                     onOpenPresentation();
                   }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-emerald-50/60 text-left text-xs font-semibold text-stone-700 transition-colors"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-emerald-50/70 text-left text-xs transition-colors"
                 >
                   <Play className="w-4 h-4 text-emerald-600 fill-current shrink-0" />
                   <div>
                     <div className="font-bold text-stone-800">Modo Presentación</div>
-                    <div className="text-[10.5px] text-stone-400">Exponer rama por rama</div>
+                    <div className="text-[10.5px] text-stone-400">Exponer diapositivas en vivo</div>
                   </div>
                 </button>
               </div>
@@ -629,7 +637,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* Sección 2: Elementos del Lienzo */}
               <div>
-                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                <div className="px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-stone-400">
                   Lienzo y Conexiones
                 </div>
                 <button
@@ -638,7 +646,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setToolsMenuOpen(false);
                     imageInputRef.current?.click();
                   }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-left text-xs font-semibold text-stone-700 transition-colors"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-100/75 text-left text-xs transition-colors"
                 >
                   <ImageIcon className="w-4 h-4 text-orange-600 shrink-0" />
                   <div>
@@ -653,10 +661,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setToolsMenuOpen(false);
                     onToggleConnectMode();
                   }}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold transition-colors ${
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs transition-colors ${
                     isConnectMode
                       ? 'bg-orange-50 text-orange-900 border border-orange-200'
-                      : 'hover:bg-stone-50 text-stone-700'
+                      : 'hover:bg-stone-100/75 text-stone-700'
                   }`}
                 >
                   <GitCompareArrows className="w-4 h-4 text-amber-600 shrink-0" />
@@ -665,15 +673,44 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {isConnectMode ? 'Cancelar Relación Cruzada' : 'Conectar Relación Cruzada'}
                     </div>
                     <div className="text-[10.5px] text-stone-400">
-                      Unir dos nodos cualesquiera
+                      Unir dos cuadros cualesquiera
                     </div>
                   </div>
                 </button>
+
+                {project.type === 'cartographic' && onChangeCartographicDirection && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChangeCartographicDirection(
+                        project.cartographicDirection === 'counterclockwise'
+                          ? 'clockwise'
+                          : 'counterclockwise'
+                      );
+                      setToolsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-orange-50/60 text-left text-xs transition-colors"
+                  >
+                    {project.cartographicDirection === 'counterclockwise' ? (
+                      <RotateCcw className="w-4 h-4 text-orange-600 shrink-0" />
+                    ) : (
+                      <RotateCw className="w-4 h-4 text-orange-600 shrink-0" />
+                    )}
+                    <div>
+                      <div className="font-bold text-stone-800">
+                        Giro 8 Ejes ({project.cartographicDirection === 'counterclockwise' ? 'Antihorario' : 'Horario'})
+                      </div>
+                      <div className="text-[10.5px] text-stone-400">
+                        Toca para invertir el orden de giro
+                      </div>
+                    </div>
+                  </button>
+                )}
               </div>
 
               <div className="border-t border-stone-100" />
 
-              {/* Sección 3: Ajustes IA */}
+              {/* Sección 3: Motor IA */}
               <div>
                 <button
                   type="button"
@@ -681,7 +718,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setToolsMenuOpen(false);
                     onOpenSettings();
                   }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-50 text-left text-xs font-semibold text-stone-700 transition-colors"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-stone-100/75 text-left text-xs transition-colors"
                 >
                   <Settings className="w-4 h-4 text-stone-600 shrink-0" />
                   <div>
@@ -694,15 +731,29 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* Botón Panel Derecho: Temas y Formato */}
+        {/* Botón Primordial: Exportar 8K */}
+        <button
+          type="button"
+          onClick={() => {
+            closeAllMenus();
+            onOpenExport();
+          }}
+          title="Exportar en PNG 8K UHD, SVG, PDF, HTML o JSON"
+          className="ios-btn flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shadow-xs shrink-0"
+        >
+          <Download className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="hidden md:inline">Exportar</span>
+        </button>
+
+        {/* Botón Panel Derecho */}
         <button
           type="button"
           onClick={onToggleRight}
-          title={rightOpen ? 'Ocultar panel de diseño' : 'Abrir temas de color y formato'}
-          className={`p-1.5 sm:p-2 rounded-xl border transition-colors shrink-0 ${
+          title={rightOpen ? 'Ocultar inspector de diseño' : 'Abrir temas, conectores y formato'}
+          className={`ios-btn p-1.5 sm:p-2 rounded-xl border shrink-0 ${
             rightOpen
-              ? 'bg-orange-50 border-orange-200 text-orange-700'
-              : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+              ? 'bg-orange-50 border-orange-200 text-orange-700 shadow-xs'
+              : 'bg-white/90 border-stone-200/90 text-stone-600 hover:bg-stone-100/80'
           }`}
         >
           <PanelRight className="w-4 h-4" />

@@ -211,6 +211,15 @@ export function applyLayout(
     case 'timeline':
       layoutTimeline(root.id, nodeMap, visibleChildren);
       break;
+    case 'radial':
+      layoutRadial(root.id, nodeMap, visibleChildren);
+      break;
+    case 'matrix':
+      layoutMatrix(root.id, nodeMap, visibleChildren);
+      break;
+    case 'cycle':
+      layoutCycle(root.id, nodeMap, visibleChildren);
+      break;
     default:
       layoutMindmap(root.id, nodeMap, visibleChildren);
   }
@@ -1009,6 +1018,237 @@ function layoutTimeline(
   const shiftX = -((minX + maxX) / 2);
   nodeMap.forEach(n => {
     n.x += shiftX;
+  });
+}
+
+/* ============================================================================
+ * 8. CÍRCULOS Y RADIOS / MAPA DE BURBUJAS (EdrawMax Circle & Spoke 360°)
+ * ============================================================================ */
+function layoutRadial(
+  rootId: string,
+  nodeMap: Map<string, OrganizerNode>,
+  visibleChildren: (id: string) => string[]
+) {
+  const root = nodeMap.get(rootId)!;
+  root.x = 0;
+  root.y = 0;
+  root.side = 'center';
+
+  const vGap = 28;
+  const spanMemo = new Map<string, number>();
+  computeVerticalSubtreeSpan(rootId, nodeMap, visibleChildren, vGap, spanMemo);
+
+  const mainKids = visibleChildren(rootId);
+  const m = mainKids.length;
+  if (m === 0) return;
+
+  const baseRadius = Math.max(250, (m * 245) / (2 * Math.PI));
+  const rx = baseRadius * 1.24;
+  const ry = baseRadius * 0.98;
+
+  const stackVerticalOutward = (
+    parentId: string,
+    startEdgeY: number,
+    dirSign: -1 | 1
+  ) => {
+    const kids = visibleChildren(parentId);
+    if (kids.length === 0) return;
+    const pNode = nodeMap.get(parentId)!;
+    let cursorEdgeY = startEdgeY;
+    for (const kidId of kids) {
+      const kNode = nodeMap.get(kidId);
+      if (!kNode) continue;
+      kNode.x = pNode.x;
+      kNode.y = cursorEdgeY + dirSign * (kNode.height / 2);
+      kNode.side = dirSign === -1 ? 'top' : 'bottom';
+      const nextEdgeY = kNode.y + dirSign * (kNode.height / 2 + 26);
+      stackVerticalOutward(kidId, nextEdgeY, dirSign);
+      cursorEdgeY = nextEdgeY;
+    }
+  };
+
+  mainKids.forEach((cid, idx) => {
+    const child = nodeMap.get(cid)!;
+    const angle = -Math.PI / 2 + (2 * Math.PI * idx) / m;
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+
+    child.x = Math.round(cosA * rx);
+    child.y = Math.round(sinA * ry);
+
+    if (Math.abs(sinA) > 0.85 && Math.abs(cosA) < 0.45) {
+      const dirSign: -1 | 1 = sinA < 0 ? -1 : 1;
+      child.side = dirSign === -1 ? 'top' : 'bottom';
+      stackVerticalOutward(
+        cid,
+        child.y + dirSign * (child.height / 2 + 56),
+        dirSign
+      );
+    } else {
+      const side: 'left' | 'right' = cosA >= 0 ? 'right' : 'left';
+      child.side = side;
+      placeHorizontalSubtree(
+        cid,
+        side,
+        child.y,
+        nodeMap,
+        visibleChildren,
+        spanMemo,
+        vGap
+      );
+    }
+  });
+}
+
+/* ============================================================================
+ * 9. MATRIZ DE BLOQUES 2x2 / FODA (EdrawMax Block & SWOT Matrix)
+ * ============================================================================ */
+function layoutMatrix(
+  rootId: string,
+  nodeMap: Map<string, OrganizerNode>,
+  visibleChildren: (id: string) => string[]
+) {
+  const root = nodeMap.get(rootId)!;
+  root.x = 0;
+  root.y = 0;
+  root.side = 'center';
+
+  const vGap = 26;
+  const quadrantGapY = 68;
+  const spanMemo = new Map<string, number>();
+  computeVerticalSubtreeSpan(rootId, nodeMap, visibleChildren, vGap, spanMemo);
+
+  const blocks = visibleChildren(rootId);
+  if (blocks.length === 0) return;
+
+  const leftBlocks: string[] = [];
+  const rightBlocks: string[] = [];
+
+  blocks.forEach((bid, idx) => {
+    // En FODA / Matriz 2x2: [0]=Arriba-Izq, [1]=Arriba-Der, [2]=Abajo-Izq, [3]=Abajo-Der
+    if (idx % 2 === 0) {
+      leftBlocks.push(bid);
+    } else {
+      rightBlocks.push(bid);
+    }
+  });
+
+  const placeQuadrantColumn = (group: string[], side: 'left' | 'right') => {
+    if (group.length === 0) return;
+    const totalH =
+      group.reduce((acc, bid) => acc + Math.max(96, spanMemo.get(bid) || 64), 0) +
+      (group.length - 1) * quadrantGapY;
+
+    let cursorY = -totalH / 2;
+    const hOffset = 128;
+
+    for (const bid of group) {
+      const bNode = nodeMap.get(bid)!;
+      const bSpan = Math.max(96, spanMemo.get(bid) || bNode.height);
+      const centerY = cursorY + bSpan / 2;
+
+      bNode.x =
+        side === 'right'
+          ? root.x + root.width / 2 + hOffset + bNode.width / 2
+          : root.x - root.width / 2 - hOffset - bNode.width / 2;
+      bNode.y = centerY;
+      bNode.side = side;
+
+      placeHorizontalSubtree(
+        bid,
+        side,
+        centerY,
+        nodeMap,
+        visibleChildren,
+        spanMemo,
+        vGap
+      );
+
+      cursorY += bSpan + quadrantGapY;
+    }
+  };
+
+  placeQuadrantColumn(leftBlocks, 'left');
+  placeQuadrantColumn(rightBlocks, 'right');
+}
+
+/* ============================================================================
+ * 10. DIAGRAMA DE CICLO CONTINUO (EdrawMax Circular Process)
+ * ============================================================================ */
+function layoutCycle(
+  rootId: string,
+  nodeMap: Map<string, OrganizerNode>,
+  visibleChildren: (id: string) => string[]
+) {
+  const root = nodeMap.get(rootId)!;
+  root.x = 0;
+  root.y = 0;
+  root.side = 'center';
+
+  const vGap = 28;
+  const spanMemo = new Map<string, number>();
+  computeVerticalSubtreeSpan(rootId, nodeMap, visibleChildren, vGap, spanMemo);
+
+  const stages = visibleChildren(rootId);
+  const m = stages.length;
+  if (m === 0) return;
+
+  const radius = Math.max(235, (m * 235) / (2 * Math.PI));
+  const rx = radius * 1.18;
+  const ry = radius * 1.02;
+
+  const stackVerticalOutward = (
+    parentId: string,
+    startEdgeY: number,
+    dirSign: -1 | 1
+  ) => {
+    const kids = visibleChildren(parentId);
+    if (kids.length === 0) return;
+    const pNode = nodeMap.get(parentId)!;
+    let cursorEdgeY = startEdgeY;
+    for (const kidId of kids) {
+      const kNode = nodeMap.get(kidId);
+      if (!kNode) continue;
+      kNode.x = pNode.x;
+      kNode.y = cursorEdgeY + dirSign * (kNode.height / 2);
+      kNode.side = dirSign === -1 ? 'top' : 'bottom';
+      const nextEdgeY = kNode.y + dirSign * (kNode.height / 2 + 26);
+      stackVerticalOutward(kidId, nextEdgeY, dirSign);
+      cursorEdgeY = nextEdgeY;
+    }
+  };
+
+  stages.forEach((sid, idx) => {
+    const sNode = nodeMap.get(sid)!;
+    const angle = -Math.PI / 2 + (2 * Math.PI * idx) / m;
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+
+    sNode.x = Math.round(cosA * rx);
+    sNode.y = Math.round(sinA * ry);
+    sNode.milestoneIndex = idx + 1;
+
+    if (Math.abs(sinA) > 0.85 && Math.abs(cosA) < 0.45) {
+      const dirSign: -1 | 1 = sinA < 0 ? -1 : 1;
+      sNode.side = dirSign === -1 ? 'top' : 'bottom';
+      stackVerticalOutward(
+        sid,
+        sNode.y + dirSign * (sNode.height / 2 + 54),
+        dirSign
+      );
+    } else {
+      const side: 'left' | 'right' = cosA >= 0 ? 'right' : 'left';
+      sNode.side = side;
+      placeHorizontalSubtree(
+        sid,
+        side,
+        sNode.y,
+        nodeMap,
+        visibleChildren,
+        spanMemo,
+        vGap
+      );
+    }
   });
 }
 

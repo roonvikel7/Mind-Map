@@ -89,8 +89,155 @@ textarea {
 
 .edraw-panel-shadow {
   box-shadow:
-    0 10px 30px -6px rgba(28, 25, 23, 0.09),
-    0 2px 8px -2px rgba(28, 25, 23, 0.04);
+    0 12px 34px -8px rgba(28, 25, 23, 0.11),
+    0 3px 10px -3px rgba(28, 25, 23, 0.05);
+}
+
+/* ============================================================================
+ * SISTEMA DE DISEÑO FLUIDO ESTILO iOS / APPLE FREEFORM (Spring Physics & Glass)
+ * ============================================================================ */
+@keyframes iosBackdropFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes iosSheetPop {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.955);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes iosPopoverDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes iosPopoverUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes iosDrawerSlideLeft {
+  0% {
+    opacity: 0.6;
+    transform: translateX(-100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes iosDrawerSlideRight {
+  0% {
+    opacity: 0.6;
+    transform: translateX(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.ios-glass-bar {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(24px) saturate(185%);
+  -webkit-backdrop-filter: blur(24px) saturate(185%);
+}
+
+.ios-popover {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(231, 229, 228, 0.9);
+  box-shadow:
+    0 22px 48px -12px rgba(28, 25, 23, 0.16),
+    0 6px 16px -4px rgba(28, 25, 23, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  animation: iosPopoverDown 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ios-popover-up {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(231, 229, 228, 0.9);
+  box-shadow:
+    0 22px 48px -12px rgba(28, 25, 23, 0.16),
+    0 6px 16px -4px rgba(28, 25, 23, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  animation: iosPopoverUp 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ios-modal-backdrop {
+  background: rgba(28, 25, 23, 0.34);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  animation: iosBackdropFade 200ms ease-out both;
+}
+
+.ios-modal-card {
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(30px) saturate(190%);
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+  border: 1px solid rgba(231, 229, 228, 0.95);
+  box-shadow:
+    0 28px 64px -14px rgba(28, 25, 23, 0.22),
+    0 8px 22px -6px rgba(28, 25, 23, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  animation: iosSheetPop 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@media (max-width: 1023px) {
+  .ios-drawer-left {
+    animation: iosDrawerSlideLeft 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  .ios-drawer-right {
+    animation: iosDrawerSlideRight 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+}
+
+.ios-btn {
+  transition:
+    transform 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+
+.ios-btn:active:not(:disabled) {
+  transform: scale(0.965);
+}
+
+/* Barra horizontal sin scrollbar visible para pestañas estilo iOS/EdrawMax */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .dragging-canvas {

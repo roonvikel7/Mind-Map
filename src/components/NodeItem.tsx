@@ -126,6 +126,10 @@ export const NodeItem: React.FC<NodeItemProps> = ({
       ? node.y < 0
         ? 'top'
         : 'bottom'
+      : node.side === 'top'
+      ? 'top'
+      : node.side === 'bottom'
+      ? 'bottom'
       : node.side === 'left'
       ? 'left'
       : 'right';

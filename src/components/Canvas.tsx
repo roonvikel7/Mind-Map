@@ -3,6 +3,7 @@ import {
   FileText,
   GitBranchPlus,
   GitCompareArrows,
+  Keyboard,
   LayoutGrid,
   Map as MapIcon,
   Maximize2,
@@ -94,8 +95,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const [spacePressed, setSpacePressed] = useState(false);
   const [showMinimap, setShowMinimap] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth >= 768 : true
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
   );
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [mouseWorldPos, setMouseWorldPos] = useState<{ x: number; y: number } | null>(null);
   const [isDraggingFileOver, setIsDraggingFileOver] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
@@ -1001,20 +1003,20 @@ export const Canvas: React.FC<CanvasProps> = ({
         ))}
       </div>
 
-      {/* Barra flotante contextual 1:1 en espacio de pantalla (legible a cualquier zoom y 0% recorte en bordes) */}
+      {/* Barra flotante contextual 1:1 en espacio de pantalla (fluidez iOS + 0% recorte en bordes) */}
       {selectedNode && !editingNodeId && !connectSourceId && !isPanning && (
         <div
           ref={nodeToolbarRef}
           onPointerDown={e => e.stopPropagation()}
           onClick={e => e.stopPropagation()}
           style={{ left: 8, top: 8 }}
-          className="absolute z-30 max-w-[calc(100%-16px)] overflow-x-auto flex items-center gap-0.5 px-1.5 py-1 rounded-xl bg-white/95 backdrop-blur-md border border-stone-200/90 edraw-panel-shadow whitespace-nowrap select-none"
+          className="ios-glass-bar absolute z-30 max-w-[calc(100%-16px)] overflow-x-auto no-scrollbar flex items-center gap-0.5 px-1.5 py-1 rounded-2xl border border-stone-200/90 edraw-panel-shadow whitespace-nowrap select-none"
         >
           <button
             type="button"
             onClick={() => onAddChild(selectedNode.id)}
             title="Añadir subtema (Tab)"
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-stone-700 hover:bg-orange-50 hover:text-orange-700 active:bg-orange-100 transition-colors shrink-0"
+            className="ios-btn flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-bold text-stone-700 hover:bg-orange-50 hover:text-orange-700 shrink-0"
           >
             <Plus className="w-3.5 h-3.5 text-orange-600" />
             <span>Subtema</span>
@@ -1023,7 +1025,6 @@ export const Canvas: React.FC<CanvasProps> = ({
           <button
             type="button"
             onClick={() => {
-              // Si el zoom es muy lejano en móvil, acercar suavemente al nodo para escribir cómodo
               if (zoomRef.current < 0.65 && containerRef.current) {
                 const rect = containerRef.current.getBoundingClientRect();
                 const targetZ = 0.85;
@@ -1036,7 +1037,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               setEditingNodeId(selectedNode.id);
             }}
             title="Editar texto del nodo (Doble clic / Doble toque)"
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-stone-700 hover:bg-amber-50 hover:text-amber-800 active:bg-amber-100 transition-colors shrink-0"
+            className="ios-btn flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold text-stone-700 hover:bg-amber-50 hover:text-amber-800 shrink-0"
           >
             <Pencil className="w-3 h-3 text-amber-600" />
             <span>Editar</span>
@@ -1046,7 +1047,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             type="button"
             onClick={() => onExpandAi(selectedNode)}
             title="Expandir ideas automáticamente con IA"
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-stone-700 hover:bg-purple-50 hover:text-purple-700 active:bg-purple-100 transition-colors shrink-0"
+            className="ios-btn flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold text-stone-700 hover:bg-purple-50 hover:text-purple-700 shrink-0"
           >
             <Sparkles className="w-3.5 h-3.5 text-purple-600" />
             <span>IA</span>
@@ -1057,7 +1058,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               type="button"
               onClick={() => onAddSibling(selectedNode.id)}
               title="Añadir nodo hermano al mismo nivel (Enter)"
-              className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition-colors shrink-0"
+              className="ios-btn p-1.5 rounded-xl text-stone-600 hover:bg-stone-100 hover:text-stone-900 shrink-0"
             >
               <GitBranchPlus className="w-3.5 h-3.5" />
             </button>
@@ -1067,7 +1068,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             type="button"
             onClick={() => onStartCrossLink(selectedNode.id)}
             title="Trazar flecha de relación cruzada hacia otro nodo"
-            className="p-1.5 rounded-lg text-stone-600 hover:bg-amber-50 hover:text-amber-700 transition-colors shrink-0"
+            className="ios-btn p-1.5 rounded-xl text-stone-600 hover:bg-amber-50 hover:text-amber-700 shrink-0"
           >
             <GitCompareArrows className="w-3.5 h-3.5" />
           </button>
@@ -1076,7 +1077,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             type="button"
             onClick={() => onOpenNotes(selectedNode.id)}
             title="Subtítulo, notas y enlace del nodo"
-            className="p-1.5 rounded-lg text-stone-600 hover:bg-blue-50 hover:text-blue-700 transition-colors shrink-0"
+            className="ios-btn p-1.5 rounded-xl text-stone-600 hover:bg-blue-50 hover:text-blue-700 shrink-0"
           >
             <FileText className="w-3.5 h-3.5" />
           </button>
@@ -1086,7 +1087,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               type="button"
               onClick={() => onDeleteNode(selectedNode.id)}
               title="Eliminar rama (Supr)"
-              className="p-1.5 rounded-lg text-stone-500 hover:bg-red-50 hover:text-red-600 transition-colors shrink-0"
+              className="ios-btn p-1.5 rounded-xl text-stone-500 hover:bg-red-50 hover:text-red-600 shrink-0"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -1094,25 +1095,25 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
 
-      {/* Minimapa de Radar Interactivo (Elegante y anclado sobre el dock de controles en la esquina inferior derecha) */}
-      {showMinimap && scene.visibleNodes.length > 0 && (
+      {/* Minimapa de Radar Interactivo (fluidez iOS anclado sobre el dock unificado) */}
+      {showMinimap && !showShortcuts && scene.visibleNodes.length > 0 && (
         <div
           onPointerDown={e => e.stopPropagation()}
-          className="absolute bottom-16 sm:bottom-14 right-3 sm:right-4 z-30 w-44 sm:w-48 h-28 sm:h-32 rounded-2xl bg-white/95 backdrop-blur-md border border-stone-200/90 edraw-panel-shadow p-2 overflow-hidden pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150"
+          className="ios-popover-up ios-glass-bar absolute bottom-16 sm:bottom-15 right-3 sm:right-4 z-30 w-44 sm:w-48 h-28 sm:h-32 rounded-[20px] border border-stone-200/90 edraw-panel-shadow p-2 overflow-hidden pointer-events-auto"
         >
           <div className="flex items-center justify-between px-1 mb-1">
             <span className="text-[9px] font-bold uppercase tracking-wider text-stone-400">
               Vista General
             </span>
             <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-semibold text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded-full">
+              <span className="text-[9px] font-semibold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded-full">
                 {scene.visibleNodes.length}n
               </span>
               <button
                 type="button"
                 onClick={() => setShowMinimap(false)}
                 title="Ocultar minimapa"
-                className="p-0.5 rounded hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+                className="p-0.5 rounded-md hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -1179,52 +1180,89 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
 
-      {/* Guía inferior izquierda de atajos rápidos (espacio protegido anti-colisión) */}
-      <div
-        onPointerDown={e => e.stopPropagation()}
-        className="hidden xl:flex absolute bottom-3 left-4 z-30 max-w-[calc(100vw-440px)] items-center gap-2 px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-stone-200/90 text-[11px] text-stone-600 shadow-sm select-none shrink-0"
-      >
-        <span className="px-1.5 py-0.5 rounded bg-stone-100 font-bold text-stone-700 text-[10px]">
-          Tab
-        </span>
-        <span className="whitespace-nowrap font-medium">Subtema</span>
-        <span className="text-stone-300">•</span>
-        <span className="px-1.5 py-0.5 rounded bg-stone-100 font-bold text-stone-700 text-[10px]">
-          Enter
-        </span>
-        <span className="whitespace-nowrap font-medium">Hermano</span>
-        <span className="text-stone-300">•</span>
-        <span className="px-1.5 py-0.5 rounded bg-stone-100 font-bold text-stone-700 text-[10px]">
-          2x Clic
-        </span>
-        <span className="whitespace-nowrap font-medium">Editar</span>
-      </div>
+      {/* Pestaña flotante desplegable de Atajos y Gestos (estilo iOS, cero sobreposición) */}
+      {showShortcuts && (
+        <div
+          onPointerDown={e => e.stopPropagation()}
+          className="ios-popover-up ios-glass-bar absolute bottom-16 sm:bottom-15 left-3 right-3 sm:left-auto sm:right-4 sm:w-72 z-30 rounded-[20px] border border-stone-200/90 edraw-panel-shadow p-3 pointer-events-auto"
+        >
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-200/70">
+            <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-stone-500">
+              Atajos y Gestos Rápidos
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(false)}
+              className="p-0.5 rounded-md hover:bg-stone-100 text-stone-400 hover:text-stone-700"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="space-y-1.5 text-[11px] text-stone-700">
+            {[
+              { k: 'Tab', v: 'Añadir nuevo subtema' },
+              { k: 'Enter', v: 'Añadir cuadro hermano' },
+              { k: '2× Clic', v: 'Editar texto en vivo' },
+              { k: 'Supr', v: 'Eliminar rama seleccionada' },
+              { k: 'F', v: 'Encuadrar todo el mapa' },
+              { k: '2 Dedos / Rueda', v: 'Zoom y paneo fluido' },
+            ].map(row => (
+              <div key={row.k} className="flex items-center justify-between gap-2">
+                <span className="text-stone-600">{row.v}</span>
+                <kbd className="px-2 py-0.5 rounded-md bg-stone-100 border border-stone-200/80 font-bold text-[10px] text-stone-800 shrink-0">
+                  {row.k}
+                </kbd>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {/* Controles flotantes de navegación, encuadre y auto-alineación (Adaptables Móvil/PC) */}
+      {/* Dock Flotante Único Unificado (Cero colisión garantizada en PC con paneles abiertos y en Celular) */}
       <div
         onPointerDown={e => e.stopPropagation()}
-        className="absolute bottom-3 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-4 z-30 max-w-[calc(100vw-16px)] flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-2xl bg-white/95 backdrop-blur-md border border-stone-200/90 edraw-panel-shadow whitespace-nowrap"
+        className="ios-glass-bar absolute bottom-3 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-4 z-30 max-w-[calc(100%-16px)] overflow-x-auto no-scrollbar flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-2xl border border-stone-200/90 edraw-panel-shadow whitespace-nowrap"
       >
         <button
           type="button"
-          onClick={() => setShowMinimap(v => !v)}
-          title={showMinimap ? 'Ocultar minimapa' : 'Mostrar minimapa'}
-          className={`p-1.5 rounded-lg transition-colors ${
-            showMinimap
-              ? 'bg-amber-50 text-amber-700'
+          onClick={() => {
+            setShowShortcuts(false);
+            setShowMinimap(v => !v);
+          }}
+          title={showMinimap ? 'Ocultar minimapa' : 'Mostrar minimapa de vista general'}
+          className={`ios-btn p-1.5 rounded-xl transition-colors shrink-0 ${
+            showMinimap && !showShortcuts
+              ? 'bg-amber-100/90 text-amber-800'
               : 'text-stone-500 hover:bg-stone-100'
           }`}
         >
           <MapIcon className="w-4 h-4" />
         </button>
 
-        <div className="w-px h-4 bg-stone-200" />
+        <button
+          type="button"
+          onClick={() => {
+            const next = !showShortcuts;
+            setShowShortcuts(next);
+            if (next) setShowMinimap(false);
+          }}
+          title="Ver atajos de teclado y gestos táctiles"
+          className={`ios-btn hidden min-[380px]:flex p-1.5 rounded-xl transition-colors shrink-0 ${
+            showShortcuts
+              ? 'bg-orange-100 text-orange-800'
+              : 'text-stone-500 hover:bg-stone-100'
+          }`}
+        >
+          <Keyboard className="w-4 h-4" />
+        </button>
+
+        <div className="w-px h-4 bg-stone-200 shrink-0" />
 
         <button
           type="button"
           onClick={() => applyZoomAtPoint(0.85)}
           title="Alejar lienzo (Ctrl -)"
-          className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 active:bg-stone-200 transition-colors"
+          className="ios-btn p-1.5 rounded-xl text-stone-600 hover:bg-stone-100 shrink-0"
         >
           <Minus className="w-4 h-4" />
         </button>
@@ -1239,7 +1277,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             setPan({ x: rect.width / 2, y: rect.height / 2 });
           }}
           title="Restablecer escala al 100%"
-          className="min-w-[42px] sm:min-w-[48px] text-center text-[11px] sm:text-xs font-bold text-stone-700 hover:text-orange-600 transition-colors"
+          className="ios-btn min-w-[40px] sm:min-w-[46px] text-center text-[11px] sm:text-xs font-bold text-stone-700 hover:text-orange-600 shrink-0"
         >
           {Math.round(zoom * 100)}%
         </button>
@@ -1248,21 +1286,21 @@ export const Canvas: React.FC<CanvasProps> = ({
           type="button"
           onClick={() => applyZoomAtPoint(1.18)}
           title="Acercar lienzo (Ctrl +)"
-          className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 active:bg-stone-200 transition-colors"
+          className="ios-btn p-1.5 rounded-xl text-stone-600 hover:bg-stone-100 shrink-0"
         >
           <Plus className="w-4 h-4" />
         </button>
 
-        <div className="w-px h-4 bg-stone-200" />
+        <div className="w-px h-4 bg-stone-200 shrink-0" />
 
         <button
           type="button"
           onClick={fitToScreen}
           title="Encuadrar todo el organizador en pantalla (Tecla F)"
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-stone-700 hover:bg-stone-100 active:bg-stone-200 transition-colors"
+          className="ios-btn flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 shrink-0"
         >
           <Maximize2 className="w-3.5 h-3.5 text-stone-600" />
-          <span className="hidden md:inline">Encuadrar</span>
+          <span className="hidden lg:inline">Encuadrar</span>
         </button>
 
         <button
@@ -1272,11 +1310,11 @@ export const Canvas: React.FC<CanvasProps> = ({
             requestAnimationFrame(() => fitToScreen());
           }}
           title="Reordenar y alinear matemáticamente todas las ramas y conexiones"
-          className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-800 border border-emerald-200/80 text-[11px] sm:text-xs font-bold transition-colors"
+          className="ios-btn flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 text-[11px] sm:text-xs font-bold shrink-0"
         >
           <LayoutGrid className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-          <span className="hidden sm:inline">Auto-Alinear</span>
-          <span className="sm:hidden">Alinear</span>
+          <span className="hidden md:inline">Auto-Alinear</span>
+          <span className="md:hidden">Alinear</span>
         </button>
       </div>
     </div>

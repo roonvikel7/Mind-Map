@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Sparkles, X } from 'lucide-react';
+import { ArrowRight, LayoutTemplate, Sparkles, X } from 'lucide-react';
 import { OrganizerType } from '../types/organizer';
 import { ORGANIZER_TYPES_META } from '../utils/themes';
 
@@ -9,6 +9,7 @@ interface CreateChooserModalProps {
   currentType: OrganizerType;
   currentTitle: string;
   onConfirm: (title: string, type: OrganizerType) => void;
+  onOpenTemplates?: () => void;
 }
 
 export const CreateChooserModal: React.FC<CreateChooserModalProps> = ({
@@ -17,6 +18,7 @@ export const CreateChooserModal: React.FC<CreateChooserModalProps> = ({
   currentType,
   currentTitle,
   onConfirm,
+  onOpenTemplates,
 }) => {
   const [selectedType, setSelectedType] = useState<OrganizerType>(currentType || 'mindmap');
   const [title, setTitle] = useState(currentTitle || 'Idea Central');
@@ -66,12 +68,12 @@ export const CreateChooserModal: React.FC<CreateChooserModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4"
+      className="ios-modal-backdrop fixed inset-0 z-50 bg-stone-900/35 flex items-center justify-center p-2.5 sm:p-4"
     >
       <div
         ref={modalBoxRef}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-3xl rounded-2xl sm:rounded-3xl bg-white border border-stone-200 edraw-panel-shadow overflow-hidden flex flex-col max-h-[92dvh] shadow-2xl"
+        className="ios-modal-card w-full max-w-4xl rounded-[24px] sm:rounded-[28px] bg-white/95 backdrop-blur-xl border border-stone-200 edraw-panel-shadow overflow-hidden flex flex-col max-h-[92dvh] shadow-2xl"
       >
         {/* Cabecera Cálida */}
         <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-stone-100 flex items-center justify-between gap-2 bg-gradient-to-r from-amber-50/90 to-orange-50/80 shrink-0">
@@ -84,18 +86,34 @@ export const CreateChooserModal: React.FC<CreateChooserModalProps> = ({
                 ¿Qué deseas crear hoy?
               </h2>
               <p className="text-[11px] sm:text-xs text-stone-500 line-clamp-1">
-                Escribe tu título y elige el tipo de organizador visual
+                Escribe tu título y elige cualquiera de los 12 motores visuales
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            title="Cerrar (o haz clic afuera)"
-            className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-white/80 transition-colors shrink-0"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {onOpenTemplates && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenTemplates();
+                }}
+                className="ios-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-orange-50 border border-stone-200/90 hover:border-orange-300 text-xs font-bold text-stone-800 shadow-2xs"
+              >
+                <LayoutTemplate className="w-3.5 h-3.5 text-orange-600" />
+                <span>Ver Plantillas</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              title="Cerrar (o haz clic afuera)"
+              className="ios-btn p-2 rounded-full bg-white/80 text-stone-400 hover:text-stone-700 hover:bg-white transition-colors shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5">

@@ -44,11 +44,11 @@ export const EdgeLabelModal: React.FC<EdgeLabelModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4"
+      className="ios-modal-backdrop fixed inset-0 z-50 bg-stone-900/35 flex items-center justify-center p-2.5 sm:p-4"
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-md rounded-2xl sm:rounded-3xl bg-white border border-stone-200 edraw-panel-shadow overflow-hidden max-h-[92dvh] flex flex-col"
+        className="ios-modal-card w-full max-w-md rounded-[24px] sm:rounded-[28px] bg-white/95 backdrop-blur-xl border border-stone-200 edraw-panel-shadow overflow-hidden max-h-[92dvh] flex flex-col"
       >
         <div className="px-4 py-3.5 sm:px-5 sm:py-4 border-b border-stone-100 flex items-center justify-between gap-2 bg-stone-50/70 shrink-0">
           <div className="flex items-center gap-2 min-w-0">

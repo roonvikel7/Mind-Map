@@ -124,8 +124,19 @@ export function resolveEffectiveShape(
   }
 
   if (node.isRoot || depth === 0) {
-    if (organizerType === 'mindmap' || organizerType === 'logic') return 'pill';
+    if (
+      organizerType === 'mindmap' ||
+      organizerType === 'logic' ||
+      organizerType === 'radial' ||
+      organizerType === 'cycle'
+    ) {
+      return 'pill';
+    }
     return 'rounded';
+  }
+
+  if (depth === 1 && (organizerType === 'radial' || organizerType === 'cycle')) {
+    return 'pill';
   }
 
   return node.shape || 'rounded';

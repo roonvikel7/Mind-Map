@@ -688,6 +688,98 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
           labelX,
           labelY,
         });
+      } else if (
+        project.type === 'radial' ||
+        project.type === 'matrix' ||
+        project.type === 'cycle'
+      ) {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const isVerticalPort =
+          to.side === 'top' ||
+          to.side === 'bottom' ||
+          (Math.abs(dy) > Math.abs(dx) * 1.45 && Math.abs(dx) < 90);
+
+        let x1: number, y1: number, x2: number, y2: number, d: string;
+
+        if (isVerticalPort) {
+          const goDown = dy >= 0;
+          x1 = from.x;
+          y1 = goDown ? from.y + from.height / 2 : from.y - from.height / 2;
+          x2 = to.x;
+          y2 = goDown ? to.y - to.height / 2 : to.y + to.height / 2;
+          d =
+            project.type === 'matrix'
+              ? elbowVertical(x1, y1, x2, y2, 28)
+              : cubicVertical(x1, y1, x2, y2);
+        } else {
+          const goRight = dx >= 0;
+          x1 = goRight ? from.x + from.width / 2 : from.x - from.width / 2;
+          y1 = from.y;
+          x2 = goRight ? to.x - to.width / 2 : to.x + to.width / 2;
+          y2 = to.y;
+          d =
+            project.type === 'matrix'
+              ? elbowHorizontal(x1, y1, x2, y2)
+              : cubicHorizontal(x1, y1, x2, y2);
+        }
+
+        // En ciclo continuo, los radios centrales son tenues porque el protagonismo lo lleva el anillo circular
+        const isCycleHubSpoke = project.type === 'cycle' && Boolean(from.isRoot);
+
+        paths.push({
+          id: e.id,
+          edgeId: e.id,
+          kind: isCycleHubSpoke ? 'dashed' : 'stroke',
+          d,
+          color: branchColor,
+          strokeWidth: isCycleHubSpoke ? 1.5 : from.isRoot ? 2.6 : 2.05,
+          label: e.label,
+          labelX: (x1 + x2) / 2,
+          labelY: (y1 + y2) / 2,
+        });
+      }
+    }
+
+    // Anillo direccional continuo para Diagrama de Ciclo (conecta Etapa 1 -> 2 -> ... -> 1)
+    if (project.type === 'cycle' && root) {
+      const stageIds = (childrenMap.get(root.id) || []).filter(sid => nodeMap.has(sid));
+      if (stageIds.length >= 2) {
+        for (let i = 0; i < stageIds.length; i++) {
+          const curr = nodeMap.get(stageIds[i])!;
+          const next = nodeMap.get(stageIds[(i + 1) % stageIds.length])!;
+          const arcColor = curr.color || theme.palette[i % theme.palette.length];
+
+          const vx = next.x - curr.x;
+          const vy = next.y - curr.y;
+          const dist = Math.hypot(vx, vy) || 1;
+          const ux = vx / dist;
+          const uy = vy / dist;
+
+          const startX = curr.x + ux * (curr.width / 2 + 4);
+          const startY = curr.y + uy * (curr.height / 2 + 4);
+          const endX = next.x - ux * (next.width / 2 + 6);
+          const endY = next.y - uy * (next.height / 2 + 6);
+
+          // Curvatura convexa hacia el exterior del centro (0,0) para formar un círculo armónico
+          const midX = (startX + endX) / 2;
+          const midY = (startY + endY) / 2;
+          const outLen = Math.hypot(midX, midY) || 1;
+          const bend = Math.min(64, dist * 0.24);
+          const ctrlX = midX + (midX / outLen) * bend;
+          const ctrlY = midY + (midY / outLen) * bend;
+
+          const endAngle = (Math.atan2(endY - ctrlY, endX - ctrlX) * 180) / Math.PI;
+
+          paths.push({
+            id: `cycle-ring-${curr.id}-${next.id}`,
+            kind: 'stroke',
+            d: `M ${r2(startX)} ${r2(startY)} Q ${r2(ctrlX)} ${r2(ctrlY)} ${r2(endX)} ${r2(endY)}`,
+            color: arcColor,
+            strokeWidth: 2.8,
+            arrowEnd: { x: endX, y: endY, angleDeg: endAngle, color: arcColor },
+          });
+        }
       }
     }
   }

@@ -7,7 +7,10 @@ export type OrganizerType =
   | 'fishbone'     // Diagrama Causa-Efecto (Ishikawa / Espina de Pescado a 55°)
   | 'tree'         // Organigrama Jerárquico Vertical (Bus ortogonal redondeado)
   | 'flowchart'    // Diagrama de Flujo de Procesos (Formas semánticas + Sí/No)
-  | 'timeline';    // Línea de Tiempo Cronológica (Eje horizontal e hitos alternados)
+  | 'timeline'     // Línea de Tiempo / Hoja de Ruta Gantt (Eje horizontal e hitos)
+  | 'radial'       // Diagrama de Círculos y Radios / Burbujas (EdrawMax Circle & Spoke)
+  | 'matrix'       // Matriz de Bloques 2x2 / FODA (EdrawMax Block & SWOT Matrix)
+  | 'cycle';       // Diagrama de Ciclo Continuo (EdrawMax Circular Process)
 
 export type NodeShape =
   | 'rounded'        // Tarjeta redondeada moderna
@@ -28,11 +31,13 @@ export type EdgeStyle =
 
 export type ThemeId =
   | 'vitality-warm'     // Vitalidad Cálida (Crema suave + paleta viva armónica)
+  | 'edraw-azure'       // Azul Ejecutivo EdrawMax (Limpio corporativo moderno)
   | 'miro-pastel'       // Pastel Creativo (Marfil + rellenos pastel suaves)
+  | 'edraw-underline'   // Clásico Subrayado EdrawMax (Ramas continuas subrayadas)
   | 'nature-sage'       // Bosque Salvia (Tonos orgánicos tierra y esmeralda)
   | 'academic-classic'  // Académico Editorial (Papel limpio + azul/índigo serio)
   | 'sunset-amber'      // Atardecer Dorado (Tonos cálidos ámbar, coral y ciruela)
-  | 'edraw-underline';  // Clásico Subrayado EdrawMax (Ramas continuas subrayadas)
+  | 'minimal-slate';    // Estudio Pizarra iOS (Estética Apple limpia y serena)
 
 export type CanvasBgStyle = 'dots' | 'grid' | 'clean';
 

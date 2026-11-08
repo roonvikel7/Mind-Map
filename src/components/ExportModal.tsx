@@ -88,11 +88,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4"
+      className="ios-modal-backdrop fixed inset-0 z-50 bg-stone-900/35 flex items-center justify-center p-2.5 sm:p-4"
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-3xl rounded-2xl sm:rounded-3xl bg-white border border-stone-200 edraw-panel-shadow overflow-hidden flex flex-col max-h-[92dvh]"
+        className="ios-modal-card w-full max-w-3xl rounded-[24px] sm:rounded-[28px] bg-white/95 backdrop-blur-xl border border-stone-200 edraw-panel-shadow overflow-hidden flex flex-col max-h-[92dvh]"
       >
         {/* Cabecera */}
         <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-stone-100 flex items-center justify-between gap-2 bg-stone-50/70 shrink-0">

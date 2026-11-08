@@ -168,6 +168,56 @@ export const EDRAW_THEMES: Record<ThemeId, EdrawThemeConfig> = {
       '#BE185D', // Vino cálido
     ],
   },
+  'edraw-azure': {
+    id: 'edraw-azure',
+    name: 'Azul Ejecutivo Edraw',
+    description: 'Paleta corporativa clásica de Wondershare EdrawMax de alta claridad',
+    canvasBg: '#F7F9FC',
+    rootBg: '#0284C7',
+    rootText: '#FFFFFF',
+    rootBorder: '#0369A1',
+    topicFillMode: 'white-accent',
+    subtopicStyle: 'card',
+    defaultConnector: 'bezier',
+    textPrimary: '#0F172A',
+    textSecondary: '#475569',
+    spineColor: '#0369A1',
+    palette: [
+      '#0284C7', // Azul Edraw
+      '#0D9488', // Turquesa pro
+      '#4F46E5', // Índigo moderno
+      '#EA580C', // Naranja energía
+      '#16A34A', // Esmeralda limpio
+      '#9333EA', // Púrpura innovación
+      '#E11D48', // Coral ejecutivo
+      '#CA8A04', // Oro métrica
+    ],
+  },
+  'minimal-slate': {
+    id: 'minimal-slate',
+    name: 'Estudio Pizarra iOS',
+    description: 'Estética minimalista estilo Apple Freeform con contraste sereno',
+    canvasBg: '#F9F9FB',
+    rootBg: '#18181B',
+    rootText: '#FFFFFF',
+    rootBorder: '#27272A',
+    topicFillMode: 'tinted-pastel',
+    subtopicStyle: 'card',
+    defaultConnector: 'bezier',
+    textPrimary: '#18181B',
+    textSecondary: '#52525B',
+    spineColor: '#3F3F46',
+    palette: [
+      '#2563EB', // Azul sistema iOS
+      '#059669', // Verde sistema iOS
+      '#D97706', // Ámbar sistema iOS
+      '#7C3AED', // Púrpura sistema iOS
+      '#E11D48', // Rosa sistema iOS
+      '#0891B2', // Cian sistema iOS
+      '#4F46E5', // Índigo sistema iOS
+      '#EA580C', // Naranja sistema iOS
+    ],
+  },
 };
 
 export function getThemeConfig(themeId?: string): EdrawThemeConfig {
@@ -211,13 +261,23 @@ export const PRIORITY_BADGES: Record<number, { label: string; bg: string; text: 
   5: { label: 'P5', bg: '#64748B', text: '#FFFFFF' },
 };
 
+export type OrganizerCategory = 'mental' | 'academic' | 'process' | 'strategy';
+
 export interface OrganizerTypeMeta {
   type: OrganizerType;
   label: string;
   shortLabel: string;
   emoji: string;
   description: string;
+  category: OrganizerCategory;
 }
+
+export const ORGANIZER_CATEGORY_LABELS: Record<OrganizerCategory, string> = {
+  mental: 'Mapas Mentales y Radiales',
+  academic: 'Educación y Síntesis',
+  process: 'Flujos, Ciclos y Cronogramas',
+  strategy: 'Empresa, Bloques y Calidad',
+};
 
 export const ORGANIZER_TYPES_META: OrganizerTypeMeta[] = [
   {
@@ -225,69 +285,120 @@ export const ORGANIZER_TYPES_META: OrganizerTypeMeta[] = [
     label: 'Mapa Mental Radial',
     shortLabel: 'Mapa Mental',
     emoji: '🧠',
-    description: 'Idea central equilibrada a ambos lados con ramas orgánicas',
-  },
-  {
-    type: 'cartographic',
-    label: 'Cartografía Conceptual (8 Ejes)',
-    shortLabel: 'Cartografía Conceptual',
-    emoji: '🧭',
-    description: 'Los 8 ejes de Tobón con cuadros de redacción directa listos para escribir',
+    description: 'Idea central equilibrada a ambos lados con ramas orgánicas EdrawMax',
+    category: 'mental',
   },
   {
     type: 'logic',
     label: 'Mapa Lógico Derecho',
     shortLabel: 'Mapa Lógico',
     emoji: '🌿',
-    description: 'Desglose estructurado de izquierda a derecha estilo Edraw',
+    description: 'Desglose estructurado de izquierda a derecha con jerarquía limpia',
+    category: 'mental',
   },
   {
-    type: 'synoptic',
-    label: 'Cuadro Sinóptico de Llaves',
-    shortLabel: 'Cuadro Sinóptico',
-    emoji: '🗂️',
-    description: 'Llaves académicas { grupales que abrazan ideas y subtemas',
+    type: 'radial',
+    label: 'Círculos y Radios (Burbujas)',
+    shortLabel: 'Círculos y Radios',
+    emoji: '🫧',
+    description: 'Núcleo central con temas orbitando en 360° estilo EdrawMax',
+    category: 'mental',
+  },
+  {
+    type: 'cartographic',
+    label: 'Cartografía Conceptual (8 Ejes)',
+    shortLabel: 'Cartografía',
+    emoji: '🧭',
+    description: 'Los 8 ejes de Tobón equilibrados y listos para redactar',
+    category: 'academic',
   },
   {
     type: 'concept',
     label: 'Mapa Conceptual',
     shortLabel: 'Mapa Conceptual',
     emoji: '🕸️',
-    description: 'Jerarquía de conceptos unidos por palabras de enlace editables',
+    description: 'Jerarquía de conceptos unidos por conectores textuales editables',
+    category: 'academic',
   },
   {
-    type: 'fishbone',
-    label: 'Diagrama de Ishikawa (Espina)',
-    shortLabel: 'Ishikawa',
-    emoji: '🐟',
-    description: 'Análisis de causas y sub-causas a 55° hacia el efecto principal',
-  },
-  {
-    type: 'tree',
-    label: 'Organigrama Jerárquico',
-    shortLabel: 'Organigrama',
-    emoji: '🏛️',
-    description: 'Estructura piramidal vertical con conectores ortogonales limpios',
+    type: 'synoptic',
+    label: 'Cuadro Sinóptico de Llaves',
+    shortLabel: 'Cuadro Sinóptico',
+    emoji: '🗂️',
+    description: 'Llaves caligráficas { grupales que abrazan categorías y subtemas',
+    category: 'academic',
   },
   {
     type: 'flowchart',
     label: 'Diagrama de Flujo',
     shortLabel: 'Flujograma',
     emoji: '⚡',
-    description: 'Secuencia de procesos, datos y rombos de decisión Sí / No',
+    description: 'Algoritmos, procesos, datos y rombos de decisión Sí / No',
+    category: 'process',
+  },
+  {
+    type: 'cycle',
+    label: 'Diagrama de Ciclo Continuo',
+    shortLabel: 'Ciclo Circular',
+    emoji: '🔄',
+    description: 'Fases conectadas en anillo continuo de mejora o proceso iterativo',
+    category: 'process',
   },
   {
     type: 'timeline',
-    label: 'Línea de Tiempo',
+    label: 'Línea de Tiempo / Gantt',
     shortLabel: 'Línea de Tiempo',
     emoji: '⏳',
-    description: 'Eje cronológico horizontal con hitos alternados arriba y abajo',
+    description: 'Hoja de ruta cronológica con hitos numerados y entregables',
+    category: 'process',
+  },
+  {
+    type: 'tree',
+    label: 'Organigrama y Genograma',
+    shortLabel: 'Organigrama',
+    emoji: '🏛️',
+    description: 'Estructura piramidal automatizada con conectores ortogonales',
+    category: 'strategy',
+  },
+  {
+    type: 'matrix',
+    label: 'Matriz de Bloques / FODA',
+    shortLabel: 'Matriz Bloques',
+    emoji: '⊞',
+    description: 'Cuadrantes estratégicos organizados alrededor del eje central',
+    category: 'strategy',
+  },
+  {
+    type: 'fishbone',
+    label: 'Diagrama de Ishikawa (6M)',
+    shortLabel: 'Ishikawa',
+    emoji: '🐟',
+    description: 'Espina de pescado a 55° para análisis profundo de causas y efecto',
+    category: 'strategy',
   },
 ];
 
-export const CURATED_ICONS = [
-  '💡', '🎯', '🚀', '🧠', '⚡', '📌', '⭐', '🔥',
-  '📊', '🔬', '🛠️', '⚙️', '📚', '🎓', '🌱', '🌍',
-  '🛡️', '⚖️', '💬', '🤝', '💻', '🎨', '🏆', '✅',
-  '⚠️', '🔍', '📈', '🧩', '🏛️', '💎', '🧭', '🕒',
+export const ICON_CATEGORIES: { id: string; label: string; icons: string[] }[] = [
+  {
+    id: 'ideas',
+    label: 'Ideas y Estrategia',
+    icons: ['💡', '🎯', '🚀', '🧠', '⭐', '🔥', '🏆', '💎', '🧭', '📈', '📊', '🤝'],
+  },
+  {
+    id: 'tech',
+    label: 'Tecnología y Flujos',
+    icons: ['⚡', '💻', '⚙️', '🛠️', '🔍', '🧩', '🛡️', '🌐', '📱', '☁️', '🔒', '🤖'],
+  },
+  {
+    id: 'academic',
+    label: 'Educación y Ciencia',
+    icons: ['📚', '🎓', '🔬', '🌱', '🌍', '⚖️', '🏛️', '📖', '✍️', '🧬', '🧪', '🎨'],
+  },
+  {
+    id: 'status',
+    label: 'Estado y Alertas',
+    icons: ['✅', '⚠️', '📌', '🕒', '💬', '❤️', '🔔', '🏁', '🔄', '➕', '❓', '✨'],
+  },
 ];
+
+export const CURATED_ICONS = ICON_CATEGORIES.flatMap(c => c.icons);

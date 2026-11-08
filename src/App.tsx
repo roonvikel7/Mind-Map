@@ -46,8 +46,12 @@ export function App() {
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [connectSourceId, setConnectSourceId] = useState<string | null>(null);
 
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [leftOpen, setLeftOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
+  const [rightOpen, setRightOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
   const [toast, setToast] = useState<string | null>(null);
 
   // Historial Deshacer / Rehacer
@@ -77,17 +81,25 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    // En pantallas pequeñas y tablets iniciar con paneles colapsados para dar 100% de aire al lienzo
-    if (window.innerWidth < 1024) {
-      setLeftOpen(false);
-      setRightOpen(false);
-    }
+    let wasDesktop = window.innerWidth >= 1024;
+    const handleViewportChange = () => {
+      const isNowDesktop = window.innerWidth >= 1024;
+      if (wasDesktop && !isNowDesktop) {
+        setLeftOpen(false);
+        setRightOpen(false);
+      }
+      wasDesktop = isNowDesktop;
+    };
+    window.addEventListener('resize', handleViewportChange);
+
     loadInitialProjects().then(({ projects: loaded, activeId }) => {
       setProjects(loaded);
       setActiveProjectId(activeId);
       // Al inicio o cuando el usuario abra la web, mostrar el selector para escoger qué crear
       setCreateChooserOpen(true);
     });
+
+    return () => window.removeEventListener('resize', handleViewportChange);
   }, []);
 
   const handleToggleLeft = useCallback(() => {
@@ -180,9 +192,9 @@ export function App() {
     commitProjectPatch({ nodes: next.nodes, edges: next.edges });
   }, [activeProject, commitProjectPatch, historyFuture]);
 
-  // Añadir hijo con auto-layout determinista inmediato
+  // Añadir hijo con auto-layout determinista inmediato (soporta presets de formas de flujo EdrawMax)
   const handleAddChild = useCallback(
-    (parentNodeId: string) => {
+    (parentNodeId: string, preset?: Partial<OrganizerNode>) => {
       if (!activeProject) return;
       pushHistory(activeProject.nodes, activeProject.edges);
 
@@ -194,19 +206,25 @@ export function App() {
         n => n.parentId === parentNodeId
       ).length;
       const newId = `node-${Date.now()}`;
-      const branchColor = parent.isRoot
-        ? theme.palette[siblingCount % theme.palette.length]
-        : parent.color || theme.palette[0];
+      const branchColor =
+        activeProject.rainbowBranches === false
+          ? theme.palette[0]
+          : parent.isRoot
+          ? theme.palette[siblingCount % theme.palette.length]
+          : parent.color || theme.palette[0];
 
       const newNode: OrganizerNode = {
         id: newId,
-        text: 'Nuevo Subtema',
+        text: preset?.text || 'Nuevo Subtema',
         parentId: parentNodeId,
         x: parent.x + 160,
         y: parent.y,
         width: 136,
         height: 42,
         color: branchColor,
+        shape: preset?.shape,
+        flowType: preset?.flowType,
+        icon: preset?.icon,
       };
 
       const newEdge: OrganizerEdge = {
@@ -649,6 +667,60 @@ export function App() {
         targetNodes = generated.nodes;
         targetEdges = generated.edges;
         showToast('Cartografía lista: 8 ejes con cuadros para escribir directamente.');
+      } else if (newType === 'matrix' && targetNodes.length <= 1) {
+        const root = targetNodes[0];
+        const stamp = Date.now();
+        const quadrants = [
+          { text: 'Fortalezas Internas', icon: '💪' },
+          { text: 'Oportunidades del Entorno', icon: '🚀' },
+          { text: 'Debilidades Operativas', icon: '🛠️' },
+          { text: 'Amenazas Externas', icon: '⚠️' },
+        ];
+        targetNodes = [
+          { ...root, isRoot: true, icon: '⊞' },
+          ...quadrants.map((q, idx) => ({
+            id: `quad-${stamp}-${idx + 1}`,
+            parentId: root.id,
+            text: q.text,
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 50,
+            icon: q.icon,
+          })),
+        ];
+        targetEdges = quadrants.map((_, idx) => ({
+          id: `edge-${stamp}-q-${idx + 1}`,
+          from: root.id,
+          to: `quad-${stamp}-${idx + 1}`,
+        }));
+      } else if (newType === 'cycle' && targetNodes.length <= 1) {
+        const root = targetNodes[0];
+        const stamp = Date.now();
+        const stages = [
+          { text: '1. Planificación Inicial', icon: '📋' },
+          { text: '2. Ejecución Controlada', icon: '⚡' },
+          { text: '3. Evaluación de Resultados', icon: '📊' },
+          { text: '4. Mejora Continua', icon: '🔄' },
+        ];
+        targetNodes = [
+          { ...root, isRoot: true, icon: '🔄' },
+          ...stages.map((st, idx) => ({
+            id: `stage-${stamp}-${idx + 1}`,
+            parentId: root.id,
+            text: st.text,
+            x: 0,
+            y: 0,
+            width: 175,
+            height: 48,
+            icon: st.icon,
+          })),
+        ];
+        targetEdges = stages.map((_, idx) => ({
+          id: `edge-${stamp}-s-${idx + 1}`,
+          from: root.id,
+          to: `stage-${stamp}-${idx + 1}`,
+        }));
       }
 
       const relaid = applyLayout(
@@ -703,6 +775,41 @@ export function App() {
     },
     [commitProjectPatch]
   );
+
+  const handleToggleRainbowBranches = useCallback(() => {
+    if (!activeProject) return;
+    const nextRainbow = activeProject.rainbowBranches === false;
+    const themeCfg = getThemeConfig(activeProject.theme);
+
+    if (!nextRainbow) {
+      const uniform = themeCfg.palette[0];
+      const updatedNodes = activeProject.nodes.map(n =>
+        n.isRoot ? n : { ...n, color: uniform }
+      );
+      const updatedEdges = activeProject.edges.map(e =>
+        e.isCrossLink ? e : { ...e, color: uniform }
+      );
+      commitProjectPatch({
+        rainbowBranches: false,
+        nodes: updatedNodes,
+        edges: updatedEdges,
+      });
+    } else {
+      const relaid = applyLayout(
+        activeProject.nodes,
+        activeProject.edges,
+        activeProject.type,
+        activeProject.theme,
+        true,
+        activeProject.cartographicDirection || 'clockwise'
+      );
+      commitProjectPatch({
+        rainbowBranches: true,
+        nodes: relaid.nodes,
+        edges: relaid.edges,
+      });
+    }
+  }, [activeProject, commitProjectPatch]);
 
   const handleExpandOrCollapseAll = useCallback(
     (collapse: boolean) => {
@@ -866,6 +973,74 @@ export function App() {
       const built = buildCartographicProjectNodes(title, rootId);
       initialNodes = built.nodes;
       initialEdges = built.edges;
+    } else if (type === 'matrix') {
+      const quadrants = [
+        { text: 'Fortalezas Internas', icon: '💪' },
+        { text: 'Oportunidades del Entorno', icon: '🚀' },
+        { text: 'Debilidades Operativas', icon: '🛠️' },
+        { text: 'Amenazas Externas', icon: '⚠️' },
+      ];
+      initialNodes = [
+        {
+          id: rootId,
+          text: title,
+          x: 0,
+          y: 0,
+          width: 190,
+          height: 54,
+          isRoot: true,
+          icon: '⊞',
+        },
+        ...quadrants.map((q, idx) => ({
+          id: `quad-${stamp}-${idx + 1}`,
+          parentId: rootId,
+          text: q.text,
+          x: 0,
+          y: 0,
+          width: 180,
+          height: 50,
+          icon: q.icon,
+        })),
+      ];
+      initialEdges = quadrants.map((_, idx) => ({
+        id: `edge-${stamp}-q-${idx + 1}`,
+        from: rootId,
+        to: `quad-${stamp}-${idx + 1}`,
+      }));
+    } else if (type === 'cycle') {
+      const stages = [
+        { text: '1. Planificación Inicial', icon: '📋' },
+        { text: '2. Ejecución Controlada', icon: '⚡' },
+        { text: '3. Evaluación de Resultados', icon: '📊' },
+        { text: '4. Mejora Continua', icon: '🔄' },
+      ];
+      initialNodes = [
+        {
+          id: rootId,
+          text: title,
+          x: 0,
+          y: 0,
+          width: 180,
+          height: 54,
+          isRoot: true,
+          icon: '🔄',
+        },
+        ...stages.map((st, idx) => ({
+          id: `stage-${stamp}-${idx + 1}`,
+          parentId: rootId,
+          text: st.text,
+          x: 0,
+          y: 0,
+          width: 175,
+          height: 48,
+          icon: st.icon,
+        })),
+      ];
+      initialEdges = stages.map((_, idx) => ({
+        id: `edge-${stamp}-s-${idx + 1}`,
+        from: rootId,
+        to: `stage-${stamp}-${idx + 1}`,
+      }));
     } else {
       initialNodes = [
         {
@@ -1072,6 +1247,7 @@ export function App() {
           onUpdateNode={handleUpdateNode}
           onToggleCollapse={handleToggleCollapse}
           onAddImageFile={handleAddImageFile}
+          onOpenTemplates={() => setTemplatesOpen(true)}
           onClose={() => setLeftOpen(false)}
         />
 
@@ -1133,6 +1309,7 @@ export function App() {
           onChangeTheme={handleChangeTheme}
           onChangeConnectorStyle={handleChangeConnectorStyle}
           onChangeCanvasBg={handleChangeCanvasBg}
+          onToggleRainbowBranches={handleToggleRainbowBranches}
           onExpandOrCollapseAll={handleExpandOrCollapseAll}
           onChangeCartographicDirection={handleChangeCartographicDirection}
           onClose={() => setRightOpen(false)}
@@ -1152,10 +1329,11 @@ export function App() {
         onClose={() => setCreateChooserOpen(false)}
         currentType={activeProject?.type || 'mindmap'}
         currentTitle={activeProject?.title || 'Idea Central'}
+        onOpenTemplates={() => setTemplatesOpen(true)}
         onConfirm={(title, type) => {
-          if (type === 'cartographic') {
-            handleCreateNewProject('cartographic', title);
-            showToast(`Cartografía lista: «${title}» con 8 ejes y cuadros`);
+          if (type === 'cartographic' || type === 'matrix' || type === 'cycle') {
+            handleCreateNewProject(type, title);
+            showToast(`Estructura lista: «${title}»`);
           } else if (activeProject && activeProject.nodes.length <= 1) {
             const baseNode: OrganizerNode = {
               ...(activeProject.nodes[0] || {
@@ -1203,6 +1381,8 @@ export function App() {
         isOpen={templatesOpen}
         onClose={() => setTemplatesOpen(false)}
         onSelectTemplate={handleSelectTemplate}
+        onCreateBlank={() => setCreateChooserOpen(true)}
+        onOpenAiGenerator={() => setAiModalOpen(true)}
       />
 
       <ExportModal
