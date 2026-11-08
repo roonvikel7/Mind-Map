@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Lock, Trash2, Unlock } from 'lucide-react';
 import type { CanvasImage } from '../types/organizer';
 
@@ -12,7 +12,7 @@ interface CanvasImageItemProps {
   onToggleLock: (id: string) => void;
 }
 
-export const CanvasImageItem: React.FC<CanvasImageItemProps> = ({
+const CanvasImageItemInner: React.FC<CanvasImageItemProps> = ({
   image,
   isSelected,
   onSelect,
@@ -136,3 +136,6 @@ export const CanvasImageItem: React.FC<CanvasImageItemProps> = ({
     </div>
   );
 };
+
+export const CanvasImageItem = memo(CanvasImageItemInner);
+CanvasImageItem.displayName = 'CanvasImageItem';

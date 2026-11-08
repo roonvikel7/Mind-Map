@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { memo, useEffect, useRef, useState } from 'react';
 import {
   Check,
   ExternalLink,
@@ -33,7 +33,7 @@ interface NodeItemProps {
   onOpenNotes: (id: string) => void;
 }
 
-export const NodeItem: React.FC<NodeItemProps> = ({
+const NodeItemInner: React.FC<NodeItemProps> = ({
   node,
   organizerType,
   themeId,
@@ -197,10 +197,11 @@ export const NodeItem: React.FC<NodeItemProps> = ({
       data-node-id={node.id}
       style={{
         position: 'absolute',
-        left: `${left}px`,
-        top: `${top}px`,
+        left: 0,
+        top: 0,
         width: `${w}px`,
         height: `${h}px`,
+        transform: `translate3d(${left}px, ${top}px, 0)`,
         zIndex: isSelected ? 35 : isRoot ? 20 : 12,
       }}
       className="group select-none"
@@ -267,7 +268,6 @@ export const NodeItem: React.FC<NodeItemProps> = ({
               stroke={isSelected ? '#EA580C' : strokeColor}
               strokeWidth={strokeWidth}
               strokeLinejoin="round"
-              style={{ filter: 'drop-shadow(0 4px 10px rgba(28,25,23,0.08))' }}
             />
           )}
           {shape === 'parallelogram' && (
@@ -277,7 +277,6 @@ export const NodeItem: React.FC<NodeItemProps> = ({
               stroke={isSelected ? '#EA580C' : strokeColor}
               strokeWidth={strokeWidth}
               strokeLinejoin="round"
-              style={{ filter: 'drop-shadow(0 4px 10px rgba(28,25,23,0.08))' }}
             />
           )}
           {shape === 'hexagon' && (
@@ -287,7 +286,6 @@ export const NodeItem: React.FC<NodeItemProps> = ({
               stroke={isSelected ? '#EA580C' : strokeColor}
               strokeWidth={strokeWidth}
               strokeLinejoin="round"
-              style={{ filter: 'drop-shadow(0 4px 10px rgba(28,25,23,0.08))' }}
             />
           )}
         </svg>
@@ -324,12 +322,12 @@ export const NodeItem: React.FC<NodeItemProps> = ({
               ? '8px'
               : `${typo.padX}px`,
         }}
-        className={`relative flex items-center transition-shadow duration-150 ${
+        className={`relative flex items-center ${
           isPolygonShape || shape === 'underline'
             ? ''
             : isSelected
             ? 'edraw-node-shadow-selected ring-4 ring-orange-500/15'
-            : 'edraw-node-shadow hover:brightness-[0.99]'
+            : 'edraw-node-shadow'
         } ${
           isConnectMode
             ? 'cursor-crosshair ring-2 ring-amber-400/70 hover:scale-[1.03]'
@@ -551,3 +549,6 @@ export const NodeItem: React.FC<NodeItemProps> = ({
     </div>
   );
 };
+
+export const NodeItem = memo(NodeItemInner);
+NodeItem.displayName = 'NodeItem';

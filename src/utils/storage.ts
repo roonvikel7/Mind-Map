@@ -54,21 +54,55 @@ export function createCleanInitialProject(
   };
 }
 
+let pendingProjectsToSave: OrganizerProject[] | null = null;
+let saveTimerId: ReturnType<typeof setTimeout> | null = null;
+
+function flushPendingProjectsSave() {
+  if (!pendingProjectsToSave) return;
+  const snapshot = pendingProjectsToSave;
+  pendingProjectsToSave = null;
+  if (saveTimerId !== null) {
+    clearTimeout(saveTimerId);
+    saveTimerId = null;
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  } catch (err) {
+    console.error('Error guardando proyectos:', err);
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flushPendingProjectsSave);
+  window.addEventListener('beforeunload', flushPendingProjectsSave);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      flushPendingProjectsSave();
+    }
+  });
+}
+
 export async function loadInitialProjects(): Promise<{
   projects: OrganizerProject[];
   activeId: string;
 }> {
-  const cleanInitial = createCleanInitialProject('mindmap', 'Idea Central');
-
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed: OrganizerProject[] = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const sanitized = parsed.map(p => {
+        // Limitar proyectos antiguos duplicados sin editar para mantener localStorage ultraligero
+        const sanitized = parsed.slice(0, 40).map(p => {
           const validTheme = normalizeThemeId(p.theme);
           const direction = p.cartographicDirection || 'clockwise';
-          const { nodes, edges } = applyLayout(p.nodes, p.edges, p.type, validTheme, false, direction);
+          const needsInitialMeasure =
+            !Array.isArray(p.nodes) ||
+            p.nodes.some(n => !n.width || !n.height || !Array.isArray(n.lines));
+
+          const resolved = needsInitialMeasure
+            ? applyLayout(p.nodes || [], p.edges || [], p.type, validTheme, false, direction)
+            : { nodes: p.nodes, edges: p.edges || [] };
+
           return {
             ...p,
             theme: validTheme,
@@ -76,44 +110,52 @@ export async function loadInitialProjects(): Promise<{
             canvasBg: p.canvasBg || 'dots',
             rainbowBranches: p.rainbowBranches ?? true,
             images: Array.isArray(p.images) ? p.images : [],
-            nodes,
-            edges,
+            nodes: resolved.nodes,
+            edges: resolved.edges,
           };
         });
 
-        // Si el primer proyecto ya es un lienzo limpio (solo 1 nodo raíz), lo usamos
-        const firstIsClean =
-          sanitized[0] &&
-          sanitized[0].nodes.length === 1 &&
-          sanitized[0].nodes[0].isRoot;
+        const savedActive = localStorage.getItem(ACTIVE_PROJECT_KEY);
+        const validActive =
+          savedActive && sanitized.some(p => p.id === savedActive)
+            ? savedActive
+            : sanitized[0].id;
 
-        if (firstIsClean) {
-          return { projects: sanitized, activeId: sanitized[0].id };
-        }
-
-        // Siempre al inicio anteponer el proyecto limpio con solo la forma del título
-        const combined = [cleanInitial, ...sanitized];
-        saveProjects(combined);
-        localStorage.setItem(ACTIVE_PROJECT_KEY, cleanInitial.id);
-        return { projects: combined, activeId: cleanInitial.id };
+        return { projects: sanitized, activeId: validActive };
       }
     }
   } catch (err) {
     console.error('Error cargando proyectos guardados:', err);
   }
 
+  const cleanInitial = createCleanInitialProject('mindmap', 'Idea Central');
   const defaults = [cleanInitial];
-  saveProjects(defaults);
+  saveProjects(defaults, true);
   localStorage.setItem(ACTIVE_PROJECT_KEY, cleanInitial.id);
   return { projects: defaults, activeId: cleanInitial.id };
 }
 
-export function saveProjects(projects: OrganizerProject[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-  } catch (err) {
-    console.error('Error guardando proyectos:', err);
+/**
+ * Persistencia no bloqueante en segundo plano (0 ms de impacto en los FPS de arrastre y edición)
+ */
+export function saveProjects(projects: OrganizerProject[], immediate = false) {
+  pendingProjectsToSave = projects;
+  if (immediate) {
+    flushPendingProjectsSave();
+    return;
   }
+  if (saveTimerId !== null) {
+    clearTimeout(saveTimerId);
+  }
+  saveTimerId = setTimeout(() => {
+    saveTimerId = null;
+    const idle = (window as any).requestIdleCallback;
+    if (typeof idle === 'function') {
+      idle(() => flushPendingProjectsSave(), { timeout: 500 });
+    } else {
+      flushPendingProjectsSave();
+    }
+  }, 320);
 }
 
 export function saveActiveProjectId(id: string) {

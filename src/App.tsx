@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import {
   CanvasBgStyle,
   CanvasImage,
@@ -21,7 +21,6 @@ import { expandNodeWithAi, generateOrganizer } from './utils/aiService';
 import { getThemeConfig } from './utils/themes';
 import { parseImportedProjectJson } from './utils/exporter';
 import {
-  buildCartographicProjectNodes,
   buildStarterProjectNodes,
   getDefaultTitleForType,
   isCartographicStructure,
@@ -31,14 +30,31 @@ import { Navbar } from './components/Navbar';
 import { LeftSidebar } from './components/LeftSidebar';
 import { RightInspector } from './components/RightInspector';
 import { Canvas } from './components/Canvas';
-import { AiModal } from './components/AiModal';
-import { TemplatesModal } from './components/TemplatesModal';
-import { ExportModal } from './components/ExportModal';
-import { NodeNotesModal } from './components/NodeNotesModal';
-import { EdgeLabelModal } from './components/EdgeLabelModal';
-import { SettingsModal } from './components/SettingsModal';
-import { PresentationView } from './components/PresentationView';
 import { CreateChooserModal } from './components/CreateChooserModal';
+
+// Carga diferida inteligente de modales secundarios para aligerar el bundle inicial
+const loadAiModal = () =>
+  import('./components/AiModal').then(m => ({ default: m.AiModal }));
+const loadTemplatesModal = () =>
+  import('./components/TemplatesModal').then(m => ({ default: m.TemplatesModal }));
+const loadExportModal = () =>
+  import('./components/ExportModal').then(m => ({ default: m.ExportModal }));
+const loadNodeNotesModal = () =>
+  import('./components/NodeNotesModal').then(m => ({ default: m.NodeNotesModal }));
+const loadEdgeLabelModal = () =>
+  import('./components/EdgeLabelModal').then(m => ({ default: m.EdgeLabelModal }));
+const loadSettingsModal = () =>
+  import('./components/SettingsModal').then(m => ({ default: m.SettingsModal }));
+const loadPresentationView = () =>
+  import('./components/PresentationView').then(m => ({ default: m.PresentationView }));
+
+const AiModal = lazy(loadAiModal);
+const TemplatesModal = lazy(loadTemplatesModal);
+const ExportModal = lazy(loadExportModal);
+const NodeNotesModal = lazy(loadNodeNotesModal);
+const EdgeLabelModal = lazy(loadEdgeLabelModal);
+const SettingsModal = lazy(loadSettingsModal);
+const PresentationView = lazy(loadPresentationView);
 
 export function App() {
   const [projects, setProjects] = useState<OrganizerProject[]>([]);
@@ -99,6 +115,25 @@ export function App() {
       setActiveProjectId(activeId);
       // Al inicio o cuando el usuario abra la web, mostrar el selector para escoger qué crear
       setCreateChooserOpen(true);
+
+      // Precarga en tiempo ocioso para que abrir cualquier pestaña o modal sea en 0ms
+      const preloadChunks = () => {
+        void loadTemplatesModal();
+        void loadAiModal();
+        void loadExportModal();
+        void loadNodeNotesModal();
+        void loadEdgeLabelModal();
+        void loadSettingsModal();
+        void loadPresentationView();
+      };
+      const w = window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      };
+      if (typeof w.requestIdleCallback === 'function') {
+        w.requestIdleCallback(preloadChunks, { timeout: 2500 });
+      } else {
+        setTimeout(preloadChunks, 1200);
+      }
     });
 
     return () => window.removeEventListener('resize', handleViewportChange);
@@ -148,6 +183,13 @@ export function App() {
   const activeProject =
     projects.find(p => p.id === activeProjectId) || projects[0];
 
+  const activeProjectRef = useRef(activeProject);
+  activeProjectRef.current = activeProject;
+  const selectedNodeIdRef = useRef(selectedNodeId);
+  selectedNodeIdRef.current = selectedNodeId;
+  const connectSourceIdRef = useRef(connectSourceId);
+  connectSourceIdRef.current = connectSourceId;
+
   const pushHistory = useCallback(
     (nodes: OrganizerNode[], edges: OrganizerEdge[]) => {
       setHistoryPast(past => [...past.slice(-30), { nodes, edges }]);
@@ -158,10 +200,12 @@ export function App() {
 
   const commitProjectPatch = useCallback(
     (patch: Partial<OrganizerProject>) => {
-      if (!activeProject) return;
+      const currentProj = activeProjectRef.current;
+      if (!currentProj) return;
+      const targetId = currentProj.id;
       setProjects(prev => {
         const updated = prev.map(p =>
-          p.id === activeProject.id
+          p.id === targetId
             ? { ...p, ...patch, updatedAt: Date.now() }
             : p
         );
@@ -169,7 +213,7 @@ export function App() {
         return updated;
       });
     },
-    [activeProject]
+    []
   );
 
   const handleUndo = useCallback(() => {
@@ -1000,14 +1044,110 @@ export function App() {
   };
 
   // Guardar etiqueta de conector
-  const handleSaveEdgeLabel = (edgeId: string, label: string) => {
-    if (!activeProject) return;
-    pushHistory(activeProject.nodes, activeProject.edges);
-    const updatedEdges = activeProject.edges.map(e =>
-      e.id === edgeId ? { ...e, label: label || undefined } : e
-    );
-    commitProjectPatch({ edges: updatedEdges });
-  };
+  const handleSaveEdgeLabel = useCallback(
+    (edgeId: string, label: string) => {
+      const currentProj = activeProjectRef.current;
+      if (!currentProj) return;
+      pushHistory(currentProj.nodes, currentProj.edges);
+      const updatedEdges = currentProj.edges.map(e =>
+        e.id === edgeId ? { ...e, label: label || undefined } : e
+      );
+      commitProjectPatch({ edges: updatedEdges });
+    },
+    [commitProjectPatch, pushHistory]
+  );
+
+  // Callbacks memorizados para evitar re-renders innecesarios en barras e inspectores
+  const handleSelectProject = useCallback((id: string) => {
+    setActiveProjectId(id);
+    saveActiveProjectId(id);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    setSelectedImageId(null);
+    setConnectSourceId(null);
+    setHistoryPast([]);
+    setHistoryFuture([]);
+  }, []);
+
+  const handleUpdateTitle = useCallback(
+    (title: string) => {
+      commitProjectPatch({ title });
+    },
+    [commitProjectPatch]
+  );
+
+  const handleToggleConnectMode = useCallback(() => {
+    if (connectSourceIdRef.current) {
+      setConnectSourceId(null);
+    } else {
+      const currentProj = activeProjectRef.current;
+      const startId =
+        selectedNodeIdRef.current ||
+        currentProj?.nodes.find(n => n.isRoot)?.id ||
+        currentProj?.nodes[0]?.id;
+      if (startId) {
+        setConnectSourceId(startId);
+      }
+    }
+  }, []);
+
+  const handleOpenAiModal = useCallback(() => setAiModalOpen(true), []);
+  const handleOpenTemplates = useCallback(() => setTemplatesOpen(true), []);
+  const handleOpenExport = useCallback(() => setExportOpen(true), []);
+  const handleOpenSettings = useCallback(() => setSettingsOpen(true), []);
+  const handleOpenPresentation = useCallback(() => setPresentationOpen(true), []);
+  const handleOpenCreateChooser = useCallback(() => setCreateChooserOpen(true), []);
+
+  const handleSidebarSelectNode = useCallback((id: string) => {
+    setSelectedEdgeId(null);
+    setSelectedImageId(null);
+    setSelectedNodeId(id);
+  }, []);
+
+  const handleSidebarStartCrossLink = useCallback(() => {
+    const currentProj = activeProjectRef.current;
+    const fromId =
+      selectedNodeIdRef.current ||
+      currentProj?.nodes.find(n => n.isRoot)?.id ||
+      currentProj?.nodes[0]?.id;
+    if (fromId) setConnectSourceId(fromId);
+  }, []);
+
+  const handleCloseLeft = useCallback(() => setLeftOpen(false), []);
+  const handleCloseRight = useCallback(() => setRightOpen(false), []);
+
+  const handleCanvasSelectNode = useCallback((id: string | null) => {
+    setSelectedNodeId(id);
+    if (id) setSelectedImageId(null);
+  }, []);
+
+  const handleCanvasSelectEdge = useCallback((id: string | null) => {
+    setSelectedEdgeId(id);
+    if (id) setSelectedImageId(null);
+  }, []);
+
+  const handleCanvasSelectImage = useCallback((id: string | null) => {
+    setSelectedImageId(id);
+    if (id) {
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+    }
+  }, []);
+
+  const handleCancelConnect = useCallback(() => setConnectSourceId(null), []);
+  const handleStartCrossLinkFromNode = useCallback(
+    (fromId: string) => setConnectSourceId(fromId),
+    []
+  );
+  const handleCommitNodeText = useCallback(
+    (id: string, text: string) => handleUpdateNode(id, { text }),
+    [handleUpdateNode]
+  );
+  const handleOpenNotes = useCallback((id: string) => setNotesNodeId(id), []);
+  const handleEditEdgeLabel = useCallback(
+    (id: string, label: string) => setEditingEdge({ id, label }),
+    []
+  );
 
   if (!activeProject) {
     return (
@@ -1040,44 +1180,23 @@ export function App() {
         isConnectMode={Boolean(connectSourceId)}
         onToggleLeft={handleToggleLeft}
         onToggleRight={handleToggleRight}
-        onSelectProject={id => {
-          setActiveProjectId(id);
-          saveActiveProjectId(id);
-          setSelectedNodeId(null);
-          setSelectedEdgeId(null);
-          setSelectedImageId(null);
-          setConnectSourceId(null);
-          setHistoryPast([]);
-          setHistoryFuture([]);
-        }}
+        onSelectProject={handleSelectProject}
         onCreateNewProject={handleCreateNewProject}
         onDeleteProject={handleDeleteProject}
         onImportJsonFile={handleImportJsonFile}
-        onUpdateTitle={title => commitProjectPatch({ title })}
+        onUpdateTitle={handleUpdateTitle}
         onChangeType={handleChangeType}
-        onToggleConnectMode={() => {
-          if (connectSourceId) {
-            setConnectSourceId(null);
-          } else {
-            const startId =
-              selectedNodeId ||
-              activeProject.nodes.find(n => n.isRoot)?.id ||
-              activeProject.nodes[0]?.id;
-            if (startId) {
-              setConnectSourceId(startId);
-            }
-          }
-        }}
-        onOpenAiModal={() => setAiModalOpen(true)}
-        onOpenTemplates={() => setTemplatesOpen(true)}
-        onOpenExport={() => setExportOpen(true)}
-        onOpenSettings={() => setSettingsOpen(true)}
-        onOpenPresentation={() => setPresentationOpen(true)}
+        onToggleConnectMode={handleToggleConnectMode}
+        onOpenAiModal={handleOpenAiModal}
+        onOpenTemplates={handleOpenTemplates}
+        onOpenExport={handleOpenExport}
+        onOpenSettings={handleOpenSettings}
+        onOpenPresentation={handleOpenPresentation}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onChangeCartographicDirection={handleChangeCartographicDirection}
         onAddImageFile={handleAddImageFile}
-        onOpenCreateChooser={() => setCreateChooserOpen(true)}
+        onOpenCreateChooser={handleOpenCreateChooser}
       />
 
       {/* Área Central: Biblioteca Izquierda + Lienzo Infinito + Inspector Derecho */}
@@ -1089,7 +1208,7 @@ export function App() {
               setLeftOpen(false);
               setRightOpen(false);
             }}
-            className="lg:hidden fixed inset-0 top-14 bg-stone-900/25 backdrop-blur-[1px] z-30"
+            className="lg:hidden fixed inset-0 top-14 bg-stone-900/25 z-30"
           />
         )}
 
@@ -1097,26 +1216,16 @@ export function App() {
           isOpen={leftOpen}
           project={activeProject}
           selectedNode={selectedNode}
-          onSelectNode={id => {
-            setSelectedEdgeId(null);
-            setSelectedImageId(null);
-            setSelectedNodeId(id);
-          }}
+          onSelectNode={handleSidebarSelectNode}
           onAddChild={handleAddChild}
           onAddSibling={handleAddSibling}
           onExpandAi={handleExpandAi}
-          onStartCrossLink={() => {
-            const fromId =
-              selectedNodeId ||
-              activeProject.nodes.find(n => n.isRoot)?.id ||
-              activeProject.nodes[0]?.id;
-            if (fromId) setConnectSourceId(fromId);
-          }}
+          onStartCrossLink={handleSidebarStartCrossLink}
           onUpdateNode={handleUpdateNode}
           onToggleCollapse={handleToggleCollapse}
           onAddImageFile={handleAddImageFile}
-          onOpenTemplates={() => setTemplatesOpen(true)}
-          onClose={() => setLeftOpen(false)}
+          onOpenTemplates={handleOpenTemplates}
+          onClose={handleCloseLeft}
         />
 
         <Canvas
@@ -1125,23 +1234,11 @@ export function App() {
           selectedEdgeId={selectedEdgeId}
           selectedImageId={selectedImageId}
           connectSourceId={connectSourceId}
-          onSelectNode={id => {
-            setSelectedNodeId(id);
-            if (id) setSelectedImageId(null);
-          }}
-          onSelectEdge={id => {
-            setSelectedEdgeId(id);
-            if (id) setSelectedImageId(null);
-          }}
-          onSelectImage={id => {
-            setSelectedImageId(id);
-            if (id) {
-              setSelectedNodeId(null);
-              setSelectedEdgeId(null);
-            }
-          }}
-          onCancelConnect={() => setConnectSourceId(null)}
-          onStartCrossLink={fromId => setConnectSourceId(fromId)}
+          onSelectNode={handleCanvasSelectNode}
+          onSelectEdge={handleCanvasSelectEdge}
+          onSelectImage={handleCanvasSelectImage}
+          onCancelConnect={handleCancelConnect}
+          onStartCrossLink={handleStartCrossLinkFromNode}
           onCompleteCrossLink={handleCompleteCrossLink}
           onMoveNode={handleMoveNode}
           onMoveImage={handleMoveImage}
@@ -1150,7 +1247,7 @@ export function App() {
           onToggleLockImage={handleToggleLockImage}
           onAddImageFile={handleAddImageFile}
           onBeginDragHistory={handleBeginDragHistory}
-          onCommitNodeText={(id, text) => handleUpdateNode(id, { text })}
+          onCommitNodeText={handleCommitNodeText}
           onToggleCollapse={handleToggleCollapse}
           onCycleProgress={handleCycleProgress}
           onAddChild={handleAddChild}
@@ -1158,8 +1255,8 @@ export function App() {
           onDeleteNode={handleDeleteNode}
           onDeleteEdge={handleDeleteEdge}
           onExpandAi={handleExpandAi}
-          onOpenNotes={id => setNotesNodeId(id)}
-          onEditEdgeLabel={(id, label) => setEditingEdge({ id, label })}
+          onOpenNotes={handleOpenNotes}
+          onEditEdgeLabel={handleEditEdgeLabel}
           onAutoAlign={handleAutoAlign}
           onUndo={handleUndo}
           onRedo={handleRedo}
@@ -1180,7 +1277,7 @@ export function App() {
           onToggleRainbowBranches={handleToggleRainbowBranches}
           onExpandOrCollapseAll={handleExpandOrCollapseAll}
           onChangeCartographicDirection={handleChangeCartographicDirection}
-          onClose={() => setRightOpen(false)}
+          onClose={handleCloseRight}
         />
 
         {/* Notificación flotante cálida */}
@@ -1191,13 +1288,13 @@ export function App() {
         )}
       </div>
 
-      {/* Modales del Estudio */}
+      {/* Modal inicial rápido (cargado en el núcleo principal) */}
       <CreateChooserModal
         isOpen={createChooserOpen}
         onClose={() => setCreateChooserOpen(false)}
         currentType={activeProject?.type || 'mindmap'}
         currentTitle={activeProject?.title || 'Idea Central'}
-        onOpenTemplates={() => setTemplatesOpen(true)}
+        onOpenTemplates={handleOpenTemplates}
         onConfirm={(title, type) => {
           const actualTitle = (title && title.trim()) || getDefaultTitleForType(type);
           if (activeProject && activeProject.nodes.length <= 1) {
@@ -1225,51 +1322,68 @@ export function App() {
         }}
       />
 
-      <AiModal
-        isOpen={aiModalOpen}
-        onClose={() => setAiModalOpen(false)}
-        onGenerate={handleGenerateAi}
-      />
+      {/* Modales secundarios divididos por code-splitting y montados solo al abrirse */}
+      <Suspense fallback={null}>
+        {aiModalOpen && (
+          <AiModal
+            isOpen={aiModalOpen}
+            onClose={() => setAiModalOpen(false)}
+            onGenerate={handleGenerateAi}
+          />
+        )}
 
-      <TemplatesModal
-        isOpen={templatesOpen}
-        onClose={() => setTemplatesOpen(false)}
-        onSelectTemplate={handleSelectTemplate}
-        onCreateBlank={() => setCreateChooserOpen(true)}
-        onOpenAiGenerator={() => setAiModalOpen(true)}
-      />
+        {templatesOpen && (
+          <TemplatesModal
+            isOpen={templatesOpen}
+            onClose={() => setTemplatesOpen(false)}
+            onSelectTemplate={handleSelectTemplate}
+            onCreateBlank={handleOpenCreateChooser}
+            onOpenAiGenerator={handleOpenAiModal}
+          />
+        )}
 
-      <ExportModal
-        isOpen={exportOpen}
-        onClose={() => setExportOpen(false)}
-        project={activeProject}
-      />
+        {exportOpen && (
+          <ExportModal
+            isOpen={exportOpen}
+            onClose={() => setExportOpen(false)}
+            project={activeProject}
+          />
+        )}
 
-      <NodeNotesModal
-        isOpen={Boolean(notesNodeId)}
-        onClose={() => setNotesNodeId(null)}
-        node={notesNode}
-        onSave={handleUpdateNode}
-      />
+        {Boolean(notesNodeId) && (
+          <NodeNotesModal
+            isOpen={Boolean(notesNodeId)}
+            onClose={() => setNotesNodeId(null)}
+            node={notesNode}
+            onSave={handleUpdateNode}
+          />
+        )}
 
-      <EdgeLabelModal
-        isOpen={Boolean(editingEdge)}
-        onClose={() => setEditingEdge(null)}
-        edgeId={editingEdge?.id || null}
-        currentLabel={editingEdge?.label || ''}
-        onSave={handleSaveEdgeLabel}
-      />
+        {Boolean(editingEdge) && (
+          <EdgeLabelModal
+            isOpen={Boolean(editingEdge)}
+            onClose={() => setEditingEdge(null)}
+            edgeId={editingEdge?.id || null}
+            currentLabel={editingEdge?.label || ''}
+            onSave={handleSaveEdgeLabel}
+          />
+        )}
 
-      <SettingsModal
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-      />
+        {settingsOpen && (
+          <SettingsModal
+            isOpen={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+          />
+        )}
 
-      <PresentationView
-        isOpen={presentationOpen}
-        onClose={() => setPresentationOpen(false)}
-        project={activeProject}
-      />
+        {presentationOpen && (
+          <PresentationView
+            isOpen={presentationOpen}
+            onClose={() => setPresentationOpen(false)}
+            project={activeProject}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

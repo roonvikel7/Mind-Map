@@ -47,7 +47,7 @@ const SHAPE_OPTIONS: { shape: NodeShape; label: string; preview: string }[] = [
 
 const PROGRESS_STEPS: (0 | 25 | 50 | 75 | 100)[] = [0, 25, 50, 75, 100];
 
-export const LeftSidebar: React.FC<LeftSidebarProps> = ({
+const LeftSidebarComponent: React.FC<LeftSidebarProps> = ({
   isOpen,
   project,
   selectedNode,
@@ -79,10 +79,25 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   );
 
   const filteredFlatNodes = useMemo(() => {
+    if (!isOpen || activeTab !== 'outline') return [];
     const q = outlineQuery.trim().toLowerCase();
     if (!q) return [];
     return project.nodes.filter(n => n.text.toLowerCase().includes(q));
-  }, [outlineQuery, project.nodes]);
+  }, [isOpen, activeTab, outlineQuery, project.nodes]);
+
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, OrganizerNode[]>();
+    if (!isOpen || activeTab !== 'outline') return map;
+    for (let i = 0; i < project.nodes.length; i++) {
+      const n = project.nodes[i];
+      if (!n.isRoot && n.parentId) {
+        const list = map.get(n.parentId);
+        if (list) list.push(n);
+        else map.set(n.parentId, [n]);
+      }
+    }
+    return map;
+  }, [isOpen, activeTab, project.nodes]);
 
   if (!isOpen) return null;
 
@@ -95,7 +110,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   const targetNode = selectedNode || rootNode;
 
   const renderOutlineBranch = (node: OrganizerNode, level: number) => {
-    const kids = project.nodes.filter(n => n.parentId === node.id && !n.isRoot);
+    const kids = childrenByParent.get(node.id) || [];
     const isSelected = selectedNode?.id === node.id;
 
     return (
@@ -688,3 +703,5 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     </aside>
   );
 };
+
+export const LeftSidebar = React.memo(LeftSidebarComponent);

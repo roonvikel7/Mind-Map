@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import type { OrganizerType, ThemeId } from '../types/organizer';
 import { EDRAW_THEMES } from '../utils/themes';
 
@@ -8,10 +8,11 @@ interface TemplateThumbnailProps {
   title: string;
 }
 
-export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
+const TemplateThumbnailComponent: React.FC<TemplateThumbnailProps> = ({
   type,
   theme,
 }) => {
+  const uid = useId();
   const themeObj = EDRAW_THEMES[theme] || EDRAW_THEMES['vitality-warm'];
   const palette = themeObj.palette;
   const c0 = palette[0] || '#EA580C';
@@ -26,7 +27,7 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
   return (
     <div
       style={{ backgroundColor: themeObj.canvasBg }}
-      className="w-full h-28 rounded-xl overflow-hidden border border-stone-200/80 relative flex items-center justify-center select-none shadow-inner"
+      className="w-full h-28 rounded-xl overflow-hidden border border-stone-200/80 relative flex items-center justify-center select-none shadow-inner canvas-bg-dots"
     >
       <svg
         className="w-full h-full"
@@ -34,15 +35,10 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>
-          <pattern id={`dot-grid-${type}-${theme}`} width="14" height="14" patternUnits="userSpaceOnUse">
-            <circle cx="2" cy="2" r="0.85" fill="#E7E5E4" />
-          </pattern>
-          <filter id={`shadow-${type}`} x="-20%" y="-20%" width="140%" height="140%">
+          <filter id={`shadow-${type}-${uid}`} x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="1.5" stdDeviation="2" floodColor="#1C1917" floodOpacity="0.08" />
           </filter>
         </defs>
-
-        <rect width="360" height="140" fill={`url(#dot-grid-${type}-${theme})`} />
 
         {/* 1. CARTOGRAFÍA CONCEPTUAL (SIMETRÍA 1-3-1-3 DE 8 EJES DE TOBÓN) */}
         {type === 'cartographic' && (
@@ -58,7 +54,7 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
             <path d="M 130 64 Q 102 42 82 34" fill="none" stroke={c7} strokeWidth="1.8" />
 
             {/* Nodo Raíz Central */}
-            <rect x="128" y="54" width="104" height="32" rx="10" fill={themeObj.rootBg} filter={`url(#shadow-${type})`} />
+            <rect x="128" y="54" width="104" height="32" rx="10" fill={themeObj.rootBg} filter={`url(#shadow-${type}-${uid})`} />
             <text x="180" y="74" textAnchor="middle" fill={themeObj.rootText} fontSize="10" fontWeight="800">
               Tema Central
             </text>
@@ -112,19 +108,19 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
             <path d="M 85 102 Q 65 96 45 90" fill="none" stroke={c3} strokeWidth="1.6" />
             <path d="M 85 102 Q 65 108 45 114" fill="none" stroke={c3} strokeWidth="1.6" />
 
-            <rect x="245" y="28" width="62" height="20" rx="8" fill="#FFFFFF" stroke={c0} strokeWidth="1.6" filter={`url(#shadow-${type})`} />
+            <rect x="245" y="28" width="62" height="20" rx="8" fill="#FFFFFF" stroke={c0} strokeWidth="1.6" filter={`url(#shadow-${type}-${uid})`} />
             <text x="276" y="42" textAnchor="middle" fill="#1C1917" fontSize="8.5" fontWeight="700">Objetivos</text>
 
-            <rect x="245" y="92" width="62" height="20" rx="8" fill="#FFFFFF" stroke={c1} strokeWidth="1.6" filter={`url(#shadow-${type})`} />
+            <rect x="245" y="92" width="62" height="20" rx="8" fill="#FFFFFF" stroke={c1} strokeWidth="1.6" filter={`url(#shadow-${type}-${uid})`} />
             <text x="276" y="106" textAnchor="middle" fill="#1C1917" fontSize="8.5" fontWeight="700">Métricas</text>
 
-            <rect x="52" y="28" width="62" height="20" rx="8" fill="#FFFFFF" stroke={c2} strokeWidth="1.6" filter={`url(#shadow-${type})`} />
+            <rect x="52" y="28" width="62" height="20" rx="8" fill="#FFFFFF" stroke={c2} strokeWidth="1.6" filter={`url(#shadow-${type}-${uid})`} />
             <text x="83" y="42" textAnchor="middle" fill="#1C1917" fontSize="8.5" fontWeight="700">Hipótesis</text>
 
-            <rect x="52" y="92" width="62" height="20" rx="8" fill="#FFFFFF" stroke={c3} strokeWidth="1.6" filter={`url(#shadow-${type})`} />
+            <rect x="52" y="92" width="62" height="20" rx="8" fill="#FFFFFF" stroke={c3} strokeWidth="1.6" filter={`url(#shadow-${type}-${uid})`} />
             <text x="83" y="106" textAnchor="middle" fill="#1C1917" fontSize="8.5" fontWeight="700">Recursos</text>
 
-            <rect x="135" y="53" width="90" height="34" rx="12" fill={themeObj.rootBg} filter={`url(#shadow-${type})`} />
+            <rect x="135" y="53" width="90" height="34" rx="12" fill={themeObj.rootBg} filter={`url(#shadow-${type}-${uid})`} />
             <text x="180" y="74" textAnchor="middle" fill={themeObj.rootText} fontSize="10.5" fontWeight="800">
               Idea Central
             </text>
@@ -167,7 +163,7 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
             <text x="83" y="41" textAnchor="middle" fill={c5} fontSize="7.8" fontWeight="700">Personas</text>
 
             {/* Núcleo Circular */}
-            <circle cx="180" cy="70" r="24" fill={themeObj.rootBg} filter={`url(#shadow-${type})`} />
+            <circle cx="180" cy="70" r="24" fill={themeObj.rootBg} filter={`url(#shadow-${type}-${uid})`} />
             <text x="180" y="73.5" textAnchor="middle" fill={themeObj.rootText} fontSize="9.5" fontWeight="800">
               Núcleo
             </text>
@@ -177,7 +173,7 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
         {/* 4. MAPA LÓGICO DERECHO */}
         {type === 'logic' && (
           <g>
-            <rect x="25" y="53" width="80" height="34" rx="10" fill={themeObj.rootBg} filter={`url(#shadow-${type})`} />
+            <rect x="25" y="53" width="80" height="34" rx="10" fill={themeObj.rootBg} filter={`url(#shadow-${type}-${uid})`} />
             <text x="65" y="74" textAnchor="middle" fill={themeObj.rootText} fontSize="10" fontWeight="800">
               Proyecto
             </text>
@@ -212,7 +208,7 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
         {/* 5. CUADRO SINÓPTICO DE LLAVES */}
         {type === 'synoptic' && (
           <g>
-            <rect x="20" y="52" width="78" height="36" rx="8" fill={themeObj.rootBg} filter={`url(#shadow-${type})`} />
+            <rect x="20" y="52" width="78" height="36" rx="8" fill={themeObj.rootBg} filter={`url(#shadow-${type}-${uid})`} />
             <text x="59" y="74" textAnchor="middle" fill={themeObj.rootText} fontSize="9.5" fontWeight="800">
               Categoría
             </text>
@@ -296,7 +292,7 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
         {/* 7. MAPA CONCEPTUAL DE NOVAK */}
         {type === 'concept' && (
           <g>
-            <rect x="135" y="16" width="90" height="26" rx="7" fill={themeObj.rootBg} filter={`url(#shadow-${type})`} />
+            <rect x="135" y="16" width="90" height="26" rx="7" fill={themeObj.rootBg} filter={`url(#shadow-${type}-${uid})`} />
             <text x="180" y="33" textAnchor="middle" fill={themeObj.rootText} fontSize="9.5" fontWeight="800">
               Fotosíntesis
             </text>
@@ -327,7 +323,7 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
         {/* 8. ORGANIGRAMA JERÁRQUICO */}
         {type === 'tree' && (
           <g>
-            <rect x="135" y="14" width="90" height="28" rx="8" fill={themeObj.rootBg} filter={`url(#shadow-${type})`} />
+            <rect x="135" y="14" width="90" height="28" rx="8" fill={themeObj.rootBg} filter={`url(#shadow-${type}-${uid})`} />
             <text x="180" y="32" textAnchor="middle" fill={themeObj.rootText} fontSize="9.5" fontWeight="800">
               Dirección CEO
             </text>
@@ -339,15 +335,15 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
             <line x1="180" y1="60" x2="180" y2="78" stroke="#78716C" strokeWidth="2" />
             <line x1="285" y1="60" x2="285" y2="78" stroke="#78716C" strokeWidth="2" />
 
-            <rect x="35" y="78" width="80" height="42" rx="7" fill="#FFFFFF" stroke={c0} strokeWidth="1.6" filter={`url(#shadow-${type})`} />
+            <rect x="35" y="78" width="80" height="42" rx="7" fill="#FFFFFF" stroke={c0} strokeWidth="1.6" filter={`url(#shadow-${type}-${uid})`} />
             <text x="75" y="94" textAnchor="middle" fill="#1C1917" fontSize="8.5" fontWeight="700">Ingeniería</text>
             <text x="75" y="108" textAnchor="middle" fill="#78716C" fontSize="7.5">CTO & Devs</text>
 
-            <rect x="140" y="78" width="80" height="42" rx="7" fill="#FFFFFF" stroke={c1} strokeWidth="1.6" filter={`url(#shadow-${type})`} />
+            <rect x="140" y="78" width="80" height="42" rx="7" fill="#FFFFFF" stroke={c1} strokeWidth="1.6" filter={`url(#shadow-${type}-${uid})`} />
             <text x="180" y="94" textAnchor="middle" fill="#1C1917" fontSize="8.5" fontWeight="700">Diseño</text>
             <text x="180" y="108" textAnchor="middle" fill="#78716C" fontSize="7.5">UX/UI Leads</text>
 
-            <rect x="245" y="78" width="80" height="42" rx="7" fill="#FFFFFF" stroke={c2} strokeWidth="1.6" filter={`url(#shadow-${type})`} />
+            <rect x="245" y="78" width="80" height="42" rx="7" fill="#FFFFFF" stroke={c2} strokeWidth="1.6" filter={`url(#shadow-${type}-${uid})`} />
             <text x="285" y="94" textAnchor="middle" fill="#1C1917" fontSize="8.5" fontWeight="700">Marketing</text>
             <text x="285" y="108" textAnchor="middle" fill="#78716C" fontSize="7.5">Growth & Ads</text>
           </g>
@@ -413,7 +409,7 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
             <text x="79" y="73" textAnchor="middle" fill={c3} fontSize="8" fontWeight="800">4. Actuar</text>
 
             {/* Centro */}
-            <rect x="138" y="56" width="84" height="28" rx="14" fill={themeObj.rootBg} filter={`url(#shadow-${type})`} />
+            <rect x="138" y="56" width="84" height="28" rx="14" fill={themeObj.rootBg} filter={`url(#shadow-${type}-${uid})`} />
             <text x="180" y="73.5" textAnchor="middle" fill={themeObj.rootText} fontSize="8.8" fontWeight="800">
               Ciclo PDCA
             </text>
@@ -430,31 +426,31 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
             <line x1="180" y1="70" x2="264" y2="104" stroke={c3} strokeWidth="1.6" strokeDasharray="3 2" />
 
             {/* Cuadrante Sup-Izq: Fortalezas */}
-            <rect x="30" y="14" width="112" height="44" rx="8" fill="#FFFFFF" stroke={c0} strokeWidth="1.6" filter={`url(#shadow-${type})`} />
+            <rect x="30" y="14" width="112" height="44" rx="8" fill="#FFFFFF" stroke={c0} strokeWidth="1.6" filter={`url(#shadow-${type}-${uid})`} />
             <text x="86" y="29" textAnchor="middle" fill={c0} fontSize="8.5" fontWeight="800">Fortalezas</text>
             <text x="86" y="42" textAnchor="middle" fill="#57534E" fontSize="7">• Talento propio</text>
             <text x="86" y="52" textAnchor="middle" fill="#57534E" fontSize="7">• Liquidez sana</text>
 
             {/* Cuadrante Sup-Der: Oportunidades */}
-            <rect x="218" y="14" width="112" height="44" rx="8" fill="#FFFFFF" stroke={c1} strokeWidth="1.6" filter={`url(#shadow-${type})`} />
+            <rect x="218" y="14" width="112" height="44" rx="8" fill="#FFFFFF" stroke={c1} strokeWidth="1.6" filter={`url(#shadow-${type}-${uid})`} />
             <text x="274" y="29" textAnchor="middle" fill={c1} fontSize="8.5" fontWeight="800">Oportunidades</text>
             <text x="274" y="42" textAnchor="middle" fill="#57534E" fontSize="7">• Nuevos mercados</text>
             <text x="274" y="52" textAnchor="middle" fill="#57534E" fontSize="7">• Automatización</text>
 
             {/* Cuadrante Inf-Izq: Debilidades */}
-            <rect x="30" y="82" width="112" height="44" rx="8" fill="#FFFFFF" stroke={c2} strokeWidth="1.6" filter={`url(#shadow-${type})`} />
+            <rect x="30" y="82" width="112" height="44" rx="8" fill="#FFFFFF" stroke={c2} strokeWidth="1.6" filter={`url(#shadow-${type}-${uid})`} />
             <text x="86" y="97" textAnchor="middle" fill={c2} fontSize="8.5" fontWeight="800">Debilidades</text>
             <text x="86" y="110" textAnchor="middle" fill="#57534E" fontSize="7">• Procesos lentos</text>
             <text x="86" y="120" textAnchor="middle" fill="#57534E" fontSize="7">• Baja presencia</text>
 
             {/* Cuadrante Inf-Der: Amenazas */}
-            <rect x="218" y="82" width="112" height="44" rx="8" fill="#FFFFFF" stroke={c3} strokeWidth="1.6" filter={`url(#shadow-${type})`} />
+            <rect x="218" y="82" width="112" height="44" rx="8" fill="#FFFFFF" stroke={c3} strokeWidth="1.6" filter={`url(#shadow-${type}-${uid})`} />
             <text x="274" y="97" textAnchor="middle" fill={c3} fontSize="8.5" fontWeight="800">Amenazas</text>
             <text x="274" y="110" textAnchor="middle" fill="#57534E" fontSize="7">• Competencia</text>
             <text x="274" y="120" textAnchor="middle" fill="#57534E" fontSize="7">• Regulación</text>
 
             {/* Píldora Central */}
-            <rect x="136" y="56" width="88" height="28" rx="14" fill={themeObj.rootBg} filter={`url(#shadow-${type})`} />
+            <rect x="136" y="56" width="88" height="28" rx="14" fill={themeObj.rootBg} filter={`url(#shadow-${type}-${uid})`} />
             <text x="180" y="73.5" textAnchor="middle" fill={themeObj.rootText} fontSize="9" fontWeight="800">
               Matriz FODA
             </text>
@@ -499,3 +495,5 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
     </div>
   );
 };
+
+export const TemplateThumbnail = React.memo(TemplateThumbnailComponent);

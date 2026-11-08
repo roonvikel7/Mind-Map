@@ -56,7 +56,7 @@ const CANVAS_BG_OPTIONS: { id: CanvasBgStyle; label: string }[] = [
   { id: 'clean', label: 'Liso' },
 ];
 
-export const RightInspector: React.FC<RightInspectorProps> = ({
+const RightInspectorComponent: React.FC<RightInspectorProps> = ({
   isOpen,
   project,
   selectedNode,
@@ -736,3 +736,5 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
     </aside>
   );
 };
+
+export const RightInspector = React.memo(RightInspectorComponent);

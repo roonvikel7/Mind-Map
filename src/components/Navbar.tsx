@@ -64,7 +64,7 @@ const CATEGORY_ORDER: OrganizerCategory[] = [
   'strategy',
 ];
 
-export const Navbar: React.FC<NavbarProps> = ({
+const NavbarComponent: React.FC<NavbarProps> = ({
   project,
   projects,
   leftOpen,
@@ -762,3 +762,5 @@ export const Navbar: React.FC<NavbarProps> = ({
     </header>
   );
 };
+
+export const Navbar = React.memo(NavbarComponent);

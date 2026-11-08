@@ -1,4 +1,12 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   FileText,
   GitBranchPlus,
@@ -55,7 +63,21 @@ interface CanvasProps {
   onRedo: () => void;
 }
 
-export const Canvas: React.FC<CanvasProps> = ({
+interface LiveNodeDrag {
+  ids: Set<string>;
+  dx: number;
+  dy: number;
+}
+
+interface LiveImageDrag {
+  id: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+}
+
+const CanvasInner: React.FC<CanvasProps> = ({
   project,
   selectedNodeId,
   selectedEdgeId,
@@ -89,10 +111,14 @@ export const Canvas: React.FC<CanvasProps> = ({
   onRedo,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const worldLayerRef = useRef<HTMLDivElement | null>(null);
+  const zoomLabelRef = useRef<HTMLButtonElement | null>(null);
+  const nodeToolbarRef = useRef<HTMLDivElement | null>(null);
 
   const [zoom, setZoom] = useState(0.92);
   const [pan, setPan] = useState({ x: 520, y: 340 });
   const [isPanning, setIsPanning] = useState(false);
+  const [isDraggingObject, setIsDraggingObject] = useState(false);
   const [spacePressed, setSpacePressed] = useState(false);
   const [showMinimap, setShowMinimap] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
@@ -101,12 +127,54 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [mouseWorldPos, setMouseWorldPos] = useState<{ x: number; y: number } | null>(null);
   const [isDraggingFileOver, setIsDraggingFileOver] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
-  const nodeToolbarRef = useRef<HTMLDivElement | null>(null);
+
+  // Estado efímero local a 120fps para mover nodos/imágenes sin re-renderizar App, Navbar ni paneles
+  const [liveNodeDrag, setLiveNodeDrag] = useState<LiveNodeDrag | null>(null);
+  const [liveImageDrag, setLiveImageDrag] = useState<LiveImageDrag | null>(null);
 
   const zoomRef = useRef(zoom);
   const panRef = useRef(pan);
-  zoomRef.current = zoom;
-  panRef.current = pan;
+  const hostSizeRef = useRef({ w: 1200, h: 720 });
+  const toolbarSizeRef = useRef({ w: 260, h: 38 });
+  const lastGridPxRef = useRef<number>(-1);
+  const viewportRafRef = useRef<number | null>(null);
+  const wheelSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const objectDragRafRef = useRef<number | null>(null);
+  const pendingNodeDragRef = useRef<LiveNodeDrag | null>(null);
+  const pendingImageDragRef = useRef<LiveImageDrag | null>(null);
+
+  // Referencia estable de acciones para evitar recrear callbacks en NodeItem / EdgeRenderer
+  const actionsRef = useRef({
+    connectSourceId,
+    onSelectNode,
+    onSelectEdge,
+    onSelectImage,
+    onCompleteCrossLink,
+    onCancelConnect,
+    onDeleteImage,
+    onToggleLockImage,
+    onMoveNode,
+    onMoveImage,
+    onResizeImage,
+    onBeginDragHistory,
+  });
+  actionsRef.current = {
+    connectSourceId,
+    onSelectNode,
+    onSelectEdge,
+    onSelectImage,
+    onCompleteCrossLink,
+    onCancelConnect,
+    onDeleteImage,
+    onToggleLockImage,
+    onMoveNode,
+    onMoveImage,
+    onResizeImage,
+    onBeginDragHistory,
+  };
+
+  const projectRef = useRef(project);
+  projectRef.current = project;
 
   // Mapa de punteros activos para soporte multitáctil (Pinch-to-Zoom + Pan con 2 dedos)
   const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -129,12 +197,17 @@ export const Canvas: React.FC<CanvasProps> = ({
     initialNodeX?: number;
     initialNodeY?: number;
     moveSubtree?: boolean;
+    subtreeIds?: Set<string>;
     hasMoved?: boolean;
+    lastDxWorld?: number;
+    lastDyWorld?: number;
     imageId?: string;
     initialImageX?: number;
     initialImageY?: number;
     initialImageWidth?: number;
     initialImageHeight?: number;
+    lastImageW?: number;
+    lastImageH?: number;
   }>({
     mode: 'none',
     startClientX: 0,
@@ -144,7 +217,57 @@ export const Canvas: React.FC<CanvasProps> = ({
   });
 
   const theme = getThemeConfig(project.theme);
-  const scene = useMemo(() => buildProjectSceneGeometry(project), [project]);
+
+  // Proyecto proyectado en vivo durante el arrastre: mantiene referencias === intactas en los nodos no movidos
+  const effectiveProject = useMemo<OrganizerProject>(() => {
+    if (!liveNodeDrag && !liveImageDrag) return project;
+
+    let nextNodes = project.nodes;
+    if (liveNodeDrag) {
+      const { ids, dx, dy } = liveNodeDrag;
+      nextNodes = project.nodes.map(n =>
+        ids.has(n.id)
+          ? {
+              ...n,
+              x: n.x + dx,
+              y: n.y + dy,
+              ribTipX: n.ribTipX !== undefined ? n.ribTipX + dx : undefined,
+              ribTipY: n.ribTipY !== undefined ? n.ribTipY + dy : undefined,
+              ribAnchorX: n.ribAnchorX !== undefined ? n.ribAnchorX + dx : undefined,
+            }
+          : n
+      );
+    }
+
+    let nextImages = project.images;
+    if (liveImageDrag && project.images) {
+      nextImages = project.images.map(img =>
+        img.id === liveImageDrag.id
+          ? {
+              ...img,
+              x: liveImageDrag.x ?? img.x,
+              y: liveImageDrag.y ?? img.y,
+              width: liveImageDrag.width ?? img.width,
+              height: liveImageDrag.height ?? img.height,
+            }
+          : img
+      );
+    }
+
+    return {
+      ...project,
+      nodes: nextNodes,
+      images: nextImages,
+    };
+  }, [project, liveNodeDrag, liveImageDrag]);
+
+  const scene = useMemo(
+    () => buildProjectSceneGeometry(effectiveProject),
+    [effectiveProject]
+  );
+
+  // Escena estabilizada para el minimapa: evita repintar el radar SVG en cada pixel de arrastre
+  const baseScene = useMemo(() => buildProjectSceneGeometry(project), [project]);
 
   const selectedNode = useMemo(
     () =>
@@ -153,6 +276,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         : null,
     [selectedNodeId, scene.visibleNodes]
   );
+  const selectedNodeRef = useRef<OrganizerNode | null>(selectedNode);
+  selectedNodeRef.current = selectedNode;
 
   useEffect(() => {
     if (editingNodeId && editingNodeId !== selectedNodeId) {
@@ -160,36 +285,99 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [selectedNodeId, editingNodeId]);
 
-  // Posicionar la barra flotante contextual 1:1 en pantalla garantizando que jamás se corte en bordes
+  /** Posiciona la barra flotante contextual directamente por GPU (translate3d) sin disparar Layout */
+  const updateToolbarTransform = useCallback(
+    (px: number, py: number, z: number, node: OrganizerNode | null) => {
+      const tb = nodeToolbarRef.current;
+      if (!tb || !node) return;
+
+      const hostW = hostSizeRef.current.w;
+      const hostH = hostSizeRef.current.h;
+      const tbW = toolbarSizeRef.current.w;
+      const tbH = toolbarSizeRef.current.h;
+
+      const cx = px + node.x * z;
+      const halfH = ((node.height || 48) * z) / 2;
+      const topEdge = py + node.y * z - halfH;
+      const bottomEdge = py + node.y * z + halfH;
+
+      const clampedLeft = Math.max(
+        8,
+        Math.min(Math.max(8, hostW - tbW - 8), cx - tbW / 2)
+      );
+      const idealTop = topEdge - tbH - 10;
+      const maxSafeTop = Math.max(8, hostH - 66 - tbH);
+      const clampedTop =
+        idealTop >= 8
+          ? Math.min(maxSafeTop, idealTop)
+          : Math.max(8, Math.min(maxSafeTop, bottomEdge + 10));
+
+      tb.style.transform = `translate3d(${Math.round(clampedLeft)}px, ${Math.round(
+        clampedTop
+      )}px, 0)`;
+    },
+    []
+  );
+
+  /** Aplica Pan y Zoom directamente en GPU (Compositor) a 120fps sin re-renderizar React */
+  const applyViewportToDomImmediate = useCallback(
+    (px: number, py: number, z: number) => {
+      if (worldLayerRef.current) {
+        worldLayerRef.current.style.transform = `translate3d(${px}px, ${py}px, 0) scale(${z})`;
+      }
+      if (containerRef.current && projectRef.current.canvasBg !== 'clean') {
+        containerRef.current.style.backgroundPosition = `${Math.round(px)}px ${Math.round(py)}px`;
+        const gridPx = Math.max(12, Math.round(24 * z));
+        if (lastGridPxRef.current !== gridPx) {
+          lastGridPxRef.current = gridPx;
+          containerRef.current.style.backgroundSize = `${gridPx}px ${gridPx}px`;
+        }
+      }
+      if (zoomLabelRef.current) {
+        zoomLabelRef.current.textContent = `${Math.round(z * 100)}%`;
+      }
+      updateToolbarTransform(px, py, z, selectedNodeRef.current);
+    },
+    [updateToolbarTransform]
+  );
+
+  const scheduleViewportDomFlush = useCallback(() => {
+    if (viewportRafRef.current !== null) return;
+    viewportRafRef.current = requestAnimationFrame(() => {
+      viewportRafRef.current = null;
+      applyViewportToDomImmediate(
+        panRef.current.x,
+        panRef.current.y,
+        zoomRef.current
+      );
+    });
+  }, [applyViewportToDomImmediate]);
+
+  const commitViewportState = useCallback((nextPan: { x: number; y: number }, nextZoom: number) => {
+    panRef.current = nextPan;
+    zoomRef.current = nextZoom;
+    applyViewportToDomImmediate(nextPan.x, nextPan.y, nextZoom);
+    setPan(nextPan);
+    setZoom(nextZoom);
+  }, [applyViewportToDomImmediate]);
+
+  // Medir la barra contextual solo cuando cambia el nodo seleccionado (evita Layout Thrashing)
   useLayoutEffect(() => {
     const tb = nodeToolbarRef.current;
-    const host = containerRef.current;
-    if (!tb || !host || !selectedNode) return;
-
-    const hostW = host.clientWidth;
-    const hostH = host.clientHeight;
-    const tbW = tb.offsetWidth;
-    const tbH = tb.offsetHeight || 38;
-
-    const cx = pan.x + selectedNode.x * zoom;
-    const halfH = ((selectedNode.height || 48) * zoom) / 2;
-    const topEdge = pan.y + selectedNode.y * zoom - halfH;
-    const bottomEdge = pan.y + selectedNode.y * zoom + halfH;
-
-    const clampedLeft = Math.max(
-      8,
-      Math.min(Math.max(8, hostW - tbW - 8), cx - tbW / 2)
-    );
-    const idealTop = topEdge - tbH - 10;
-    const maxSafeTop = Math.max(8, hostH - 66 - tbH);
-    const clampedTop =
-      idealTop >= 8
-        ? Math.min(maxSafeTop, idealTop)
-        : Math.max(8, Math.min(maxSafeTop, bottomEdge + 10));
-
-    tb.style.left = `${Math.round(clampedLeft)}px`;
-    tb.style.top = `${Math.round(clampedTop)}px`;
-  }, [selectedNode, pan.x, pan.y, zoom, editingNodeId, connectSourceId, isPanning]);
+    if (tb && selectedNode) {
+      const w = tb.offsetWidth;
+      const h = tb.offsetHeight;
+      if (w > 0 && h > 0) {
+        toolbarSizeRef.current = { w, h };
+      }
+      updateToolbarTransform(
+        panRef.current.x,
+        panRef.current.y,
+        zoomRef.current,
+        selectedNode
+      );
+    }
+  }, [selectedNode, editingNodeId, connectSourceId, isPanning, isDraggingObject, updateToolbarTransform]);
 
   const childrenExistSet = useMemo(() => {
     const s = new Set<string>();
@@ -203,27 +391,30 @@ export const Canvas: React.FC<CanvasProps> = ({
   const fitToScreen = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    const rect = el.getBoundingClientRect();
-    if (rect.width < 80 || rect.height < 80) return;
+    const widthHost = el.clientWidth || hostSizeRef.current.w;
+    const heightHost = el.clientHeight || hostSizeRef.current.h;
+    if (widthHost < 80 || heightHost < 80) return;
 
-    const { minX, maxX, minY, maxY, width, height } = scene.bounds;
-    const isMobile = rect.width < 640;
+    const { minX, maxX, minY, maxY, width, height } = baseScene.bounds;
+    const isMobile = widthHost < 640;
     const padW = isMobile ? 48 : 130;
     const padH = isMobile ? 96 : 130;
 
-    const scaleX = (rect.width - padW) / Math.max(width, 200);
-    const scaleY = (rect.height - padH) / Math.max(height, 140);
+    const scaleX = (widthHost - padW) / Math.max(width, 200);
+    const scaleY = (heightHost - padH) / Math.max(height, 140);
     const idealZoom = Math.min(1.08, Math.max(0.22, Math.min(scaleX, scaleY)));
 
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
 
-    setZoom(idealZoom);
-    setPan({
-      x: rect.width / 2 - centerX * idealZoom,
-      y: (rect.height - (isMobile ? 20 : 0)) / 2 - centerY * idealZoom,
-    });
-  }, [scene.bounds]);
+    commitViewportState(
+      {
+        x: widthHost / 2 - centerX * idealZoom,
+        y: (heightHost - (isMobile ? 20 : 0)) / 2 - centerY * idealZoom,
+      },
+      idealZoom
+    );
+  }, [baseScene.bounds, commitViewportState]);
 
   const prevNodeCountRef = useRef<number>(project.nodes.length);
   const lastContainerSizeRef = useRef<{ w: number; h: number } | null>(null);
@@ -248,16 +439,17 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [project.nodes.length, fitToScreen]);
 
-  // Al seleccionar o crear un nodo, asegurar que él y su barra flotante superior queden dentro del área visible
+  // Al seleccionar o crear un nodo (solo cuando NO se está arrastrando), asegurar que quede visible
   useEffect(() => {
     if (!selectedNodeId || !containerRef.current) return;
     if (dragStateRef.current.mode !== 'none') return;
 
-    const target = scene.visibleNodes.find(n => n.id === selectedNodeId);
+    const target = baseScene.visibleNodes.find(n => n.id === selectedNodeId);
     if (!target) return;
 
-    const rect = containerRef.current.getBoundingClientRect();
-    if (rect.width < 80 || rect.height < 80) return;
+    const rectW = hostSizeRef.current.w;
+    const rectH = hostSizeRef.current.h;
+    if (rectW < 80 || rectH < 80) return;
 
     const z = zoomRef.current;
     const px = panRef.current.x;
@@ -269,55 +461,62 @@ export const Canvas: React.FC<CanvasProps> = ({
     const cy = py + target.y * z;
 
     const marginX = 24;
-    const marginTop = 64; // espacio para la barra contextual flotante del nodo
-    const marginBottom = 72; // espacio para la barra de controles inferior
+    const marginTop = 64;
+    const marginBottom = 72;
 
     let shiftX = 0;
     let shiftY = 0;
 
     if (cx - halfW < marginX) {
       shiftX = marginX - (cx - halfW);
-    } else if (cx + halfW > rect.width - marginX) {
-      shiftX = rect.width - marginX - (cx + halfW);
+    } else if (cx + halfW > rectW - marginX) {
+      shiftX = rectW - marginX - (cx + halfW);
     }
 
     if (cy - halfH < marginTop) {
       shiftY = marginTop - (cy - halfH);
-    } else if (cy + halfH > rect.height - marginBottom) {
-      shiftY = rect.height - marginBottom - (cy + halfH);
+    } else if (cy + halfH > rectH - marginBottom) {
+      shiftY = rectH - marginBottom - (cy + halfH);
     }
 
     if (Math.abs(shiftX) > 2 || Math.abs(shiftY) > 2) {
-      setPan(prev => ({
-        x: prev.x + shiftX,
-        y: prev.y + shiftY,
-      }));
+      commitViewportState(
+        {
+          x: px + shiftX,
+          y: py + shiftY,
+        },
+        z
+      );
     }
-  }, [selectedNodeId, scene.visibleNodes]);
+  }, [selectedNodeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mantener el centro visual cuando se abren/cierran los paneles laterales en escritorio o cambia el tamaño
+  // Mantener dimensiones del host en caché y centrar cuando se abren/cierran los paneles laterales
   useEffect(() => {
     const el = containerRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
+
+    hostSizeRef.current = { w: el.clientWidth, h: el.clientHeight };
 
     const ro = new ResizeObserver(entries => {
       const entry = entries[0];
       if (!entry) return;
       const { width, height } = entry.contentRect;
       if (width < 80 || height < 80) return;
+      hostSizeRef.current = { w: width, h: height };
       const prev = lastContainerSizeRef.current;
       lastContainerSizeRef.current = { w: width, h: height };
       if (prev && (Math.abs(width - prev.w) > 4 || Math.abs(height - prev.h) > 4)) {
-        setPan(p => ({
-          x: p.x + (width - prev.w) / 2,
-          y: p.y + (height - prev.h) / 2,
-        }));
+        const nextPan = {
+          x: panRef.current.x + (width - prev.w) / 2,
+          y: panRef.current.y + (height - prev.h) / 2,
+        };
+        commitViewportState(nextPan, zoomRef.current);
       }
     });
 
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [commitViewportState]);
 
   // Reencuadrar suavemente si rota la pantalla en móvil/tablet
   useEffect(() => {
@@ -329,26 +528,43 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, [fitToScreen]);
 
   /** Zoom centrado exactamente sobre un punto de la pantalla */
-  const applyZoomAtPoint = useCallback((factor: number, clientX?: number, clientY?: number) => {
-    const el = containerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const cx = clientX !== undefined ? clientX - rect.left : rect.width / 2;
-    const cy = clientY !== undefined ? clientY - rect.top : rect.height / 2;
+  const applyZoomAtPoint = useCallback(
+    (factor: number, clientX?: number, clientY?: number, immediateState = true) => {
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const cx = clientX !== undefined ? clientX - rect.left : rect.width / 2;
+      const cy = clientY !== undefined ? clientY - rect.top : rect.height / 2;
 
-    const prevZoom = zoomRef.current;
-    const prevPan = panRef.current;
-    const nextZoom = Math.min(2.8, Math.max(0.18, prevZoom * factor));
+      const prevZoom = zoomRef.current;
+      const prevPan = panRef.current;
+      const nextZoom = Math.min(2.8, Math.max(0.18, prevZoom * factor));
 
-    const worldX = (cx - prevPan.x) / prevZoom;
-    const worldY = (cy - prevPan.y) / prevZoom;
+      const worldX = (cx - prevPan.x) / prevZoom;
+      const worldY = (cy - prevPan.y) / prevZoom;
+      const nextPan = {
+        x: cx - worldX * nextZoom,
+        y: cy - worldY * nextZoom,
+      };
 
-    setZoom(nextZoom);
-    setPan({
-      x: cx - worldX * nextZoom,
-      y: cy - worldY * nextZoom,
-    });
-  }, []);
+      panRef.current = nextPan;
+      zoomRef.current = nextZoom;
+
+      if (immediateState) {
+        applyViewportToDomImmediate(nextPan.x, nextPan.y, nextZoom);
+        setZoom(nextZoom);
+        setPan(nextPan);
+      } else {
+        scheduleViewportDomFlush();
+        if (wheelSyncTimerRef.current) clearTimeout(wheelSyncTimerRef.current);
+        wheelSyncTimerRef.current = setTimeout(() => {
+          setZoom(zoomRef.current);
+          setPan({ ...panRef.current });
+        }, 140);
+      }
+    },
+    [applyViewportToDomImmediate, scheduleViewportDomFlush]
+  );
 
   /** Inicializa el estado matemático de pellizco con 2 dedos */
   const startPinchGesture = useCallback(() => {
@@ -370,9 +586,10 @@ export const Canvas: React.FC<CanvasProps> = ({
     };
     dragStateRef.current.mode = 'none';
     setIsPanning(false);
+    setIsDraggingObject(false);
   }, []);
 
-  // Bloqueo total del zoom nativo del navegador en rueda/trackpad y zoom fluido interno 60fps
+  // Zoom y paneo en rueda / trackpad a 120fps puros por DOM directo sin bloquear React
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -381,32 +598,47 @@ export const Canvas: React.FC<CanvasProps> = ({
       e.preventDefault();
       e.stopPropagation();
 
-      if (!e.ctrlKey && !e.metaKey && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8 && Math.abs(e.deltaX) > 2) {
-        setPan(prev => ({
-          x: prev.x - e.deltaX,
-          y: prev.y - e.deltaY,
-        }));
+      if (
+        !e.ctrlKey &&
+        !e.metaKey &&
+        Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8 &&
+        Math.abs(e.deltaX) > 2
+      ) {
+        panRef.current = {
+          x: panRef.current.x - e.deltaX,
+          y: panRef.current.y - e.deltaY,
+        };
+        scheduleViewportDomFlush();
+        if (wheelSyncTimerRef.current) clearTimeout(wheelSyncTimerRef.current);
+        wheelSyncTimerRef.current = setTimeout(() => {
+          setPan({ ...panRef.current });
+        }, 140);
         return;
       }
 
       if (e.shiftKey && !e.ctrlKey) {
-        setPan(prev => ({
-          x: prev.x - (e.deltaY || e.deltaX),
-          y: prev.y,
-        }));
+        panRef.current = {
+          x: panRef.current.x - (e.deltaY || e.deltaX),
+          y: panRef.current.y,
+        };
+        scheduleViewportDomFlush();
+        if (wheelSyncTimerRef.current) clearTimeout(wheelSyncTimerRef.current);
+        wheelSyncTimerRef.current = setTimeout(() => {
+          setPan({ ...panRef.current });
+        }, 140);
         return;
       }
 
       const sensitivity = e.ctrlKey ? 0.009 : 0.0016;
       const factor = Math.exp(-e.deltaY * sensitivity);
-      applyZoomAtPoint(factor, e.clientX, e.clientY);
+      applyZoomAtPoint(factor, e.clientX, e.clientY, false);
     };
 
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
-  }, [applyZoomAtPoint]);
+  }, [applyZoomAtPoint, scheduleViewportDomFlush]);
 
-  // Atajos de teclado globales estilo EdrawMax + bloqueo de Ctrl +/-/0 del navegador
+  // Atajos de teclado globales estilo EdrawMax
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -416,7 +648,10 @@ export const Canvas: React.FC<CanvasProps> = ({
           target.tagName === 'TEXTAREA' ||
           target.isContentEditable);
 
-      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '0')) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '0')
+      ) {
         e.preventDefault();
         if (e.key === '0') fitToScreen();
         else if (e.key === '-') applyZoomAtPoint(0.86);
@@ -468,7 +703,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           e.preventDefault();
           onAddSibling(selectedNodeId);
         } else if (e.key === 'Delete' || e.key === 'Backspace') {
-          const node = project.nodes.find(n => n.id === selectedNodeId);
+          const node = projectRef.current.nodes.find(n => n.id === selectedNodeId);
           if (node && !node.isRoot) {
             e.preventDefault();
             onDeleteNode(selectedNodeId);
@@ -509,11 +744,50 @@ export const Canvas: React.FC<CanvasProps> = ({
     onSelectEdge,
     onSelectNode,
     onUndo,
-    project.nodes,
     selectedEdgeId,
     selectedImageId,
     selectedNodeId,
   ]);
+
+  // Callbacks estables para hijos memorizados (React.memo)
+  const handleNodeSelectStable = useCallback((id: string) => {
+    const act = actionsRef.current;
+    if (act.connectSourceId) {
+      if (act.connectSourceId !== id) {
+        act.onCompleteCrossLink(act.connectSourceId, id);
+      } else {
+        act.onCancelConnect();
+      }
+      return;
+    }
+    act.onSelectEdge(null);
+    act.onSelectNode(id);
+  }, []);
+
+  const handleNodeEditingStable = useCallback((id: string, editing: boolean) => {
+    setEditingNodeId(editing ? id : null);
+  }, []);
+
+  const handleEdgeSelectStable = useCallback((id: string | null) => {
+    const act = actionsRef.current;
+    act.onSelectNode(null);
+    act.onSelectEdge(id);
+  }, []);
+
+  const handleImageSelectStable = useCallback((id: string) => {
+    const act = actionsRef.current;
+    act.onSelectNode(null);
+    act.onSelectEdge(null);
+    act.onSelectImage?.(id);
+  }, []);
+
+  const handleImageDeleteStable = useCallback((id: string) => {
+    actionsRef.current.onDeleteImage?.(id);
+  }, []);
+
+  const handleImageToggleLockStable = useCallback((id: string) => {
+    actionsRef.current.onToggleLockImage?.(id);
+  }, []);
 
   // Manejo de arrastre de lienzo (Pan) y gestos táctiles en el fondo
   const handleCanvasPointerDown = (e: React.PointerEvent) => {
@@ -521,7 +795,6 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    // Si hay 2 dedos apoyados, activar Pinch-to-Zoom + Pan simultáneo
     if (activePointersRef.current.size >= 2) {
       startPinchGesture();
       return;
@@ -530,9 +803,9 @@ export const Canvas: React.FC<CanvasProps> = ({
     if (connectSourceId) {
       onCancelConnect();
     }
-    onSelectNode(null);
-    onSelectEdge(null);
-    onSelectImage?.(null);
+    if (selectedNodeId) onSelectNode(null);
+    if (selectedEdgeId) onSelectEdge(null);
+    if (selectedImageId) onSelectImage?.(null);
     setIsPanning(true);
     dragStateRef.current = {
       mode: 'pan',
@@ -568,6 +841,24 @@ export const Canvas: React.FC<CanvasProps> = ({
         return;
       }
 
+      // Precalcular subrama 1 sola vez al tocar el cuadro (0 BFS durante los frames de movimiento)
+      const moveSubtree = !e.altKey;
+      const subtreeIds = new Set<string>([node.id]);
+      if (moveSubtree && !node.isRoot) {
+        const allNodes = projectRef.current.nodes;
+        const queue = [node.id];
+        while (queue.length > 0) {
+          const curr = queue.shift()!;
+          for (let i = 0; i < allNodes.length; i++) {
+            const candidate = allNodes[i];
+            if (candidate.parentId === curr && !subtreeIds.has(candidate.id)) {
+              subtreeIds.add(candidate.id);
+              queue.push(candidate.id);
+            }
+          }
+        }
+      }
+
       dragStateRef.current = {
         mode: 'node',
         pointerId: e.pointerId,
@@ -579,8 +870,11 @@ export const Canvas: React.FC<CanvasProps> = ({
         nodeId: node.id,
         initialNodeX: node.x,
         initialNodeY: node.y,
-        moveSubtree: !e.altKey,
+        moveSubtree,
+        subtreeIds,
         hasMoved: false,
+        lastDxWorld: 0,
+        lastDyWorld: 0,
       };
     },
     [spacePressed, startPinchGesture]
@@ -596,7 +890,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       }
 
       if (spacePressed) return;
-      const img = project.images?.find(i => i.id === id);
+      const img = projectRef.current.images?.find(i => i.id === id);
       if (!img || img.locked) return;
 
       dragStateRef.current = {
@@ -611,9 +905,11 @@ export const Canvas: React.FC<CanvasProps> = ({
         initialImageX: img.x,
         initialImageY: img.y,
         hasMoved: false,
+        lastDxWorld: 0,
+        lastDyWorld: 0,
       };
     },
-    [project.images, spacePressed, startPinchGesture]
+    [spacePressed, startPinchGesture]
   );
 
   const handleImageStartResize = useCallback(
@@ -625,7 +921,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         return;
       }
 
-      const img = project.images?.find(i => i.id === id);
+      const img = projectRef.current.images?.find(i => i.id === id);
       if (!img || img.locked) return;
 
       dragStateRef.current = {
@@ -640,18 +936,36 @@ export const Canvas: React.FC<CanvasProps> = ({
         initialImageWidth: img.width,
         initialImageHeight: img.height,
         hasMoved: false,
+        lastImageW: img.width,
+        lastImageH: img.height,
       };
     },
-    [project.images, startPinchGesture]
+    [startPinchGesture]
   );
 
   useEffect(() => {
+    const flushObjectDragFrame = () => {
+      objectDragRafRef.current = null;
+      if (pendingNodeDragRef.current) {
+        setLiveNodeDrag(pendingNodeDragRef.current);
+      }
+      if (pendingImageDragRef.current) {
+        setLiveImageDrag(pendingImageDragRef.current);
+      }
+    };
+
+    const scheduleObjectDragFlush = () => {
+      if (objectDragRafRef.current === null) {
+        objectDragRafRef.current = requestAnimationFrame(flushObjectDragFrame);
+      }
+    };
+
     const handlePointerMove = (e: PointerEvent) => {
       if (activePointersRef.current.has(e.pointerId)) {
         activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       }
 
-      // Gesto multitáctil de 2 dedos: Pinch-to-Zoom + Pan simultáneo a 60fps
+      // Gesto multitáctil de 2 dedos: Pinch-to-Zoom + Pan directo por GPU a 120fps
       if (activePointersRef.current.size >= 2 && containerRef.current) {
         if (!pinchStateRef.current) {
           startPinchGesture();
@@ -670,16 +984,17 @@ export const Canvas: React.FC<CanvasProps> = ({
             Math.max(0.18, pinch.initialZoom * (dist / pinch.initialDist))
           );
 
-          setZoom(nextZoom);
-          setPan({
+          zoomRef.current = nextZoom;
+          panRef.current = {
             x: midX - pinch.worldMidX * nextZoom,
             y: midY - pinch.worldMidY * nextZoom,
-          });
+          };
+          scheduleViewportDomFlush();
         }
         return;
       }
 
-      if (connectSourceId && containerRef.current) {
+      if (actionsRef.current.connectSourceId && containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
         const wx = (e.clientX - rect.left - panRef.current.x) / zoomRef.current;
         const wy = (e.clientY - rect.top - panRef.current.y) / zoomRef.current;
@@ -690,54 +1005,129 @@ export const Canvas: React.FC<CanvasProps> = ({
       if (st.mode === 'none') return;
       if (st.pointerId !== undefined && e.pointerId !== st.pointerId) return;
 
-      const moveThreshold = st.pointerType === 'touch' ? 6 : 3;
+      const moveThreshold = st.pointerType === 'touch' ? 5 : 2.5;
 
       if (st.mode === 'pan') {
         const dx = e.clientX - st.startClientX;
         const dy = e.clientY - st.startClientY;
-        setPan({
+        panRef.current = {
           x: st.initialPanX + dx,
           y: st.initialPanY + dy,
-        });
-      } else if (st.mode === 'node' && st.nodeId) {
+        };
+        scheduleViewportDomFlush();
+      } else if (st.mode === 'node' && st.nodeId && st.subtreeIds) {
         const dxScreen = e.clientX - st.startClientX;
         const dyScreen = e.clientY - st.startClientY;
         if (!st.hasMoved && Math.hypot(dxScreen, dyScreen) > moveThreshold) {
           st.hasMoved = true;
-          onBeginDragHistory();
+          setIsDraggingObject(true);
+          actionsRef.current.onBeginDragHistory();
         }
         if (st.hasMoved) {
-          const newX = (st.initialNodeX || 0) + dxScreen / zoomRef.current;
-          const newY = (st.initialNodeY || 0) + dyScreen / zoomRef.current;
-          onMoveNode(st.nodeId, newX, newY, Boolean(st.moveSubtree));
+          const dxWorld = dxScreen / zoomRef.current;
+          const dyWorld = dyScreen / zoomRef.current;
+          st.lastDxWorld = dxWorld;
+          st.lastDyWorld = dyWorld;
+          pendingNodeDragRef.current = {
+            ids: st.subtreeIds,
+            dx: dxWorld,
+            dy: dyWorld,
+          };
+          scheduleObjectDragFlush();
         }
       } else if (st.mode === 'image' && st.imageId) {
         const dxScreen = e.clientX - st.startClientX;
         const dyScreen = e.clientY - st.startClientY;
         if (!st.hasMoved && Math.hypot(dxScreen, dyScreen) > moveThreshold) {
           st.hasMoved = true;
+          setIsDraggingObject(true);
         }
         if (st.hasMoved) {
-          const newX = (st.initialImageX || 0) + dxScreen / zoomRef.current;
-          const newY = (st.initialImageY || 0) + dyScreen / zoomRef.current;
-          onMoveImage?.(st.imageId, newX, newY);
+          const dxWorld = dxScreen / zoomRef.current;
+          const dyWorld = dyScreen / zoomRef.current;
+          st.lastDxWorld = dxWorld;
+          st.lastDyWorld = dyWorld;
+          pendingImageDragRef.current = {
+            id: st.imageId,
+            x: Math.round((st.initialImageX || 0) + dxWorld),
+            y: Math.round((st.initialImageY || 0) + dyWorld),
+          };
+          scheduleObjectDragFlush();
         }
       } else if (st.mode === 'resize-image' && st.imageId) {
         const dxScreen = e.clientX - st.startClientX;
         const dyScreen = e.clientY - st.startClientY;
-        const newW = Math.max(60, (st.initialImageWidth || 100) + dxScreen / zoomRef.current);
-        const newH = Math.max(50, (st.initialImageHeight || 80) + dyScreen / zoomRef.current);
-        onResizeImage?.(st.imageId, Math.round(newW), Math.round(newH));
+        if (!st.hasMoved) {
+          st.hasMoved = true;
+          setIsDraggingObject(true);
+        }
+        const newW = Math.round(
+          Math.max(60, (st.initialImageWidth || 100) + dxScreen / zoomRef.current)
+        );
+        const newH = Math.round(
+          Math.max(50, (st.initialImageHeight || 80) + dyScreen / zoomRef.current)
+        );
+        st.lastImageW = newW;
+        st.lastImageH = newH;
+        pendingImageDragRef.current = {
+          id: st.imageId,
+          width: newW,
+          height: newH,
+        };
+        scheduleObjectDragFlush();
       }
+    };
+
+    const finalizeActiveDrag = () => {
+      if (objectDragRafRef.current !== null) {
+        cancelAnimationFrame(objectDragRafRef.current);
+        objectDragRafRef.current = null;
+      }
+      const st = dragStateRef.current;
+      const act = actionsRef.current;
+
+      if (st.mode === 'pan') {
+        setPan({ ...panRef.current });
+      } else if (st.mode === 'node' && st.hasMoved && st.nodeId) {
+        const finalX = (st.initialNodeX || 0) + (st.lastDxWorld || 0);
+        const finalY = (st.initialNodeY || 0) + (st.lastDyWorld || 0);
+        pendingNodeDragRef.current = null;
+        setLiveNodeDrag(null);
+        act.onMoveNode(st.nodeId, finalX, finalY, Boolean(st.moveSubtree));
+      } else if (st.mode === 'image' && st.hasMoved && st.imageId) {
+        const finalX = Math.round((st.initialImageX || 0) + (st.lastDxWorld || 0));
+        const finalY = Math.round((st.initialImageY || 0) + (st.lastDyWorld || 0));
+        pendingImageDragRef.current = null;
+        setLiveImageDrag(null);
+        act.onMoveImage?.(st.imageId, finalX, finalY);
+      } else if (st.mode === 'resize-image' && st.hasMoved && st.imageId) {
+        pendingImageDragRef.current = null;
+        setLiveImageDrag(null);
+        act.onResizeImage?.(
+          st.imageId,
+          st.lastImageW || st.initialImageWidth || 100,
+          st.lastImageH || st.initialImageHeight || 80
+        );
+      } else {
+        pendingNodeDragRef.current = null;
+        pendingImageDragRef.current = null;
+        setLiveNodeDrag(null);
+        setLiveImageDrag(null);
+      }
+
+      dragStateRef.current.mode = 'none';
+      setIsPanning(false);
+      setIsDraggingObject(false);
     };
 
     const handlePointerEnd = (e: PointerEvent) => {
       activePointersRef.current.delete(e.pointerId);
 
-      // Si veníamos de un pellizco de 2 dedos y queda 1 dedo apoyado, pasar suavemente a pan
       if (pinchStateRef.current) {
         if (activePointersRef.current.size < 2) {
           pinchStateRef.current = null;
+          setZoom(zoomRef.current);
+          setPan({ ...panRef.current });
           if (activePointersRef.current.size === 1) {
             const [remId, remPos] = Array.from(activePointersRef.current.entries())[0];
             setIsPanning(true);
@@ -763,19 +1153,19 @@ export const Canvas: React.FC<CanvasProps> = ({
         (dragStateRef.current.pointerId === undefined ||
           dragStateRef.current.pointerId === e.pointerId)
       ) {
-        dragStateRef.current.mode = 'none';
-        setIsPanning(false);
+        finalizeActiveDrag();
       }
     };
 
     const handleWindowBlur = () => {
       activePointersRef.current.clear();
       pinchStateRef.current = null;
-      dragStateRef.current.mode = 'none';
-      setIsPanning(false);
+      if (dragStateRef.current.mode !== 'none') {
+        finalizeActiveDrag();
+      }
     };
 
-    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
     window.addEventListener('pointerup', handlePointerEnd);
     window.addEventListener('pointercancel', handlePointerEnd);
     window.addEventListener('blur', handleWindowBlur);
@@ -785,7 +1175,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       window.removeEventListener('pointercancel', handlePointerEnd);
       window.removeEventListener('blur', handleWindowBlur);
     };
-  }, [connectSourceId, onBeginDragHistory, onMoveImage, onMoveNode, onResizeImage, startPinchGesture]);
+  }, [scheduleViewportDomFlush, startPinchGesture]);
 
   // Soporte de pegado de imágenes desde portapapeles (Ctrl+V)
   useEffect(() => {
@@ -825,7 +1215,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, [onAddImageFile]);
 
   const connectingFromNode = connectSourceId
-    ? project.nodes.find(n => n.id === connectSourceId) || null
+    ? effectiveProject.nodes.find(n => n.id === connectSourceId) || null
     : null;
 
   const bgPatternClass =
@@ -880,7 +1270,8 @@ export const Canvas: React.FC<CanvasProps> = ({
           project.canvasBg === 'clean'
             ? undefined
             : `${gridPixelSize}px ${gridPixelSize}px`,
-        backgroundPosition: `${pan.x}px ${pan.y}px`,
+        backgroundPosition: `${Math.round(pan.x)}px ${Math.round(pan.y)}px`,
+        contain: 'layout paint style',
       }}
       className={`canvas-touch-surface relative flex-1 h-full overflow-hidden select-none ${bgPatternClass} ${
         isPanning || spacePressed ? 'dragging-canvas' : 'cursor-grab'
@@ -888,8 +1279,8 @@ export const Canvas: React.FC<CanvasProps> = ({
     >
       {/* Indicador visual al arrastrar archivos de imagen sobre el lienzo */}
       {isDraggingFileOver && (
-        <div className="absolute inset-0 z-50 pointer-events-none bg-orange-500/10 backdrop-blur-[2px] border-4 border-dashed border-orange-500/80 rounded-2xl flex items-center justify-center animate-fade-in m-2">
-          <div className="px-6 py-4 rounded-2xl bg-white/95 shadow-2xl border border-orange-200 text-center space-y-1">
+        <div className="absolute inset-0 z-50 pointer-events-none bg-orange-500/10 border-4 border-dashed border-orange-500/80 rounded-2xl flex items-center justify-center m-2">
+          <div className="px-6 py-4 rounded-2xl bg-white shadow-2xl border border-orange-200 text-center space-y-1">
             <div className="text-sm font-bold text-orange-950">
               Soltar imagen aquí en el lienzo
             </div>
@@ -920,8 +1311,9 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
 
-      {/* Escenario del mundo escalable y trasladable a 60fps */}
+      {/* Escenario del mundo escalable y trasladable a 120fps por GPU */}
       <div
+        ref={worldLayerRef}
         style={{
           position: 'absolute',
           left: 0,
@@ -930,15 +1322,13 @@ export const Canvas: React.FC<CanvasProps> = ({
           height: 0,
           transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
           transformOrigin: '0 0',
+          willChange: 'transform',
         }}
       >
         <EdgeRenderer
           scene={scene}
           selectedEdgeId={selectedEdgeId}
-          onSelectEdge={id => {
-            onSelectNode(null);
-            onSelectEdge(id);
-          }}
+          onSelectEdge={handleEdgeSelectStable}
           onEditEdgeLabel={onEditEdgeLabel}
           onDeleteEdge={onDeleteEdge}
           connectingFrom={
@@ -950,21 +1340,17 @@ export const Canvas: React.FC<CanvasProps> = ({
         />
 
         {/* Capa de imágenes libres colocadas en el lienzo */}
-        {project.images &&
-          project.images.map(img => (
+        {effectiveProject.images &&
+          effectiveProject.images.map(img => (
             <CanvasImageItem
               key={img.id}
               image={img}
               isSelected={selectedImageId === img.id}
-              onSelect={id => {
-                onSelectNode(null);
-                onSelectEdge(null);
-                onSelectImage?.(id);
-              }}
+              onSelect={handleImageSelectStable}
               onStartDrag={handleImageStartDrag}
               onStartResize={handleImageStartResize}
-              onDelete={id => onDeleteImage?.(id)}
-              onToggleLock={id => onToggleLockImage?.(id)}
+              onDelete={handleImageDeleteStable}
+              onToggleLock={handleImageToggleLockStable}
             />
           ))}
 
@@ -980,19 +1366,8 @@ export const Canvas: React.FC<CanvasProps> = ({
             isConnectMode={Boolean(connectSourceId)}
             descendantCount={scene.descendantCount.get(node.id) || 0}
             hasChildren={childrenExistSet.has(node.id)}
-            onSelect={id => {
-              if (connectSourceId) {
-                if (connectSourceId !== id) {
-                  onCompleteCrossLink(connectSourceId, id);
-                } else {
-                  onCancelConnect();
-                }
-                return;
-              }
-              onSelectEdge(null);
-              onSelectNode(id);
-            }}
-            onEditingChange={(id, editing) => setEditingNodeId(editing ? id : null)}
+            onSelect={handleNodeSelectStable}
+            onEditingChange={handleNodeEditingStable}
             onStartDrag={handleNodeStartDrag}
             onCommitText={onCommitNodeText}
             onToggleCollapse={onToggleCollapse}
@@ -1003,13 +1378,13 @@ export const Canvas: React.FC<CanvasProps> = ({
         ))}
       </div>
 
-      {/* Barra flotante contextual 1:1 en espacio de pantalla (fluidez iOS + 0% recorte en bordes) */}
-      {selectedNode && !editingNodeId && !connectSourceId && !isPanning && (
+      {/* Barra flotante contextual posicionada por GPU translate3d (se oculta limpiamente al arrastrar) */}
+      {selectedNode && !editingNodeId && !connectSourceId && !isPanning && !isDraggingObject && (
         <div
           ref={nodeToolbarRef}
           onPointerDown={e => e.stopPropagation()}
           onClick={e => e.stopPropagation()}
-          style={{ left: 8, top: 8 }}
+          style={{ left: 0, top: 0, willChange: 'transform' }}
           className="ios-glass-bar absolute z-30 max-w-[calc(100%-16px)] overflow-x-auto no-scrollbar flex items-center gap-0.5 px-1.5 py-1 rounded-2xl border border-stone-200/90 edraw-panel-shadow whitespace-nowrap select-none"
         >
           <button
@@ -1028,11 +1403,13 @@ export const Canvas: React.FC<CanvasProps> = ({
               if (zoomRef.current < 0.65 && containerRef.current) {
                 const rect = containerRef.current.getBoundingClientRect();
                 const targetZ = 0.85;
-                setZoom(targetZ);
-                setPan({
-                  x: rect.width / 2 - selectedNode.x * targetZ,
-                  y: Math.max(120, rect.height * 0.36) - selectedNode.y * targetZ,
-                });
+                commitViewportState(
+                  {
+                    x: rect.width / 2 - selectedNode.x * targetZ,
+                    y: Math.max(120, rect.height * 0.36) - selectedNode.y * targetZ,
+                  },
+                  targetZ
+                );
               }
               setEditingNodeId(selectedNode.id);
             }}
@@ -1095,8 +1472,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
 
-      {/* Minimapa de Radar Interactivo (fluidez iOS anclado sobre el dock unificado) */}
-      {showMinimap && !showShortcuts && scene.visibleNodes.length > 0 && (
+      {/* Minimapa de Radar Interactivo (usa baseScene estabilizada para 0 costo durante el arrastre) */}
+      {showMinimap && !showShortcuts && baseScene.visibleNodes.length > 0 && (
         <div
           onPointerDown={e => e.stopPropagation()}
           className="ios-popover-up ios-glass-bar absolute bottom-16 sm:bottom-15 right-3 sm:right-4 z-30 w-44 sm:w-48 h-28 sm:h-32 rounded-[20px] border border-stone-200/90 edraw-panel-shadow p-2 overflow-hidden pointer-events-auto"
@@ -1107,7 +1484,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             </span>
             <div className="flex items-center gap-1.5">
               <span className="text-[9px] font-semibold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded-full">
-                {scene.visibleNodes.length}n
+                {baseScene.visibleNodes.length}n
               </span>
               <button
                 type="button"
@@ -1120,9 +1497,9 @@ export const Canvas: React.FC<CanvasProps> = ({
             </div>
           </div>
           <svg
-            viewBox={`${scene.bounds.minX - 60} ${scene.bounds.minY - 60} ${
-              scene.bounds.width + 120
-            } ${scene.bounds.height + 120}`}
+            viewBox={`${baseScene.bounds.minX - 60} ${baseScene.bounds.minY - 60} ${
+              baseScene.bounds.width + 120
+            } ${baseScene.bounds.height + 120}`}
             className="w-full h-[76px] sm:h-[84px] rounded-xl cursor-pointer"
             style={{ backgroundColor: theme.canvasBg }}
             onClick={e => {
@@ -1130,19 +1507,22 @@ export const Canvas: React.FC<CanvasProps> = ({
               const rx = (e.clientX - svgRect.left) / svgRect.width;
               const ry = (e.clientY - svgRect.top) / svgRect.height;
               const targetWX =
-                scene.bounds.minX - 60 + rx * (scene.bounds.width + 120);
+                baseScene.bounds.minX - 60 + rx * (baseScene.bounds.width + 120);
               const targetWY =
-                scene.bounds.minY - 60 + ry * (scene.bounds.height + 120);
+                baseScene.bounds.minY - 60 + ry * (baseScene.bounds.height + 120);
               const hostRect = containerRef.current?.getBoundingClientRect();
               if (hostRect) {
-                setPan({
-                  x: hostRect.width / 2 - targetWX * zoom,
-                  y: hostRect.height / 2 - targetWY * zoom,
-                });
+                commitViewportState(
+                  {
+                    x: hostRect.width / 2 - targetWX * zoomRef.current,
+                    y: hostRect.height / 2 - targetWY * zoomRef.current,
+                  },
+                  zoomRef.current
+                );
               }
             }}
           >
-            {scene.paths.map(p => (
+            {baseScene.paths.map(p => (
               <path
                 key={p.id}
                 d={p.d}
@@ -1152,7 +1532,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 opacity={0.45}
               />
             ))}
-            {scene.visibleNodes.map(n => (
+            {baseScene.visibleNodes.map(n => (
               <rect
                 key={n.id}
                 x={n.x - n.width / 2}
@@ -1180,7 +1560,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
 
-      {/* Pestaña flotante desplegable de Atajos y Gestos (estilo iOS, cero sobreposición) */}
+      {/* Pestaña flotante desplegable de Atajos y Gestos */}
       {showShortcuts && (
         <div
           onPointerDown={e => e.stopPropagation()}
@@ -1218,7 +1598,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
 
-      {/* Dock Flotante Único Unificado (Cero colisión garantizada en PC con paneles abiertos y en Celular) */}
+      {/* Dock Flotante Único Unificado */}
       <div
         onPointerDown={e => e.stopPropagation()}
         className="ios-glass-bar absolute bottom-3 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-4 z-30 max-w-[calc(100%-16px)] overflow-x-auto no-scrollbar flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-2xl border border-stone-200/90 edraw-panel-shadow whitespace-nowrap"
@@ -1268,13 +1648,13 @@ export const Canvas: React.FC<CanvasProps> = ({
         </button>
 
         <button
+          ref={zoomLabelRef}
           type="button"
           onClick={() => {
             const el = containerRef.current;
             if (!el) return;
             const rect = el.getBoundingClientRect();
-            setZoom(1);
-            setPan({ x: rect.width / 2, y: rect.height / 2 });
+            commitViewportState({ x: rect.width / 2, y: rect.height / 2 }, 1);
           }}
           title="Restablecer escala al 100%"
           className="ios-btn min-w-[40px] sm:min-w-[46px] text-center text-[11px] sm:text-xs font-bold text-stone-700 hover:text-orange-600 shrink-0"
@@ -1320,3 +1700,6 @@ export const Canvas: React.FC<CanvasProps> = ({
     </div>
   );
 };
+
+export const Canvas = memo(CanvasInner);
+Canvas.displayName = 'Canvas';
