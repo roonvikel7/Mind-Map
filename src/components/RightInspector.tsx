@@ -24,6 +24,7 @@ import {
   ThemeId,
 } from '../types/organizer';
 import { EDRAW_THEMES, getThemeConfig } from '../utils/themes';
+import { buildAiImageUrl } from '../utils/aiService';
 
 interface RightInspectorProps {
   isOpen: boolean;
@@ -655,6 +656,80 @@ const RightInspectorComponent: React.FC<RightInspectorProps> = ({
                     />
                   ))}
                 </div>
+              </div>
+
+              {/* Ilustración IA del Cuadro */}
+              <div className="pt-2 border-t border-stone-100">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">
+                    Ilustración del Cuadro
+                  </label>
+                  {selectedNode.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdateNode(selectedNode.id, {
+                          imageUrl: undefined,
+                          imagePrompt: undefined,
+                        })
+                      }
+                      className="text-[10px] font-semibold text-red-600 hover:underline"
+                    >
+                      Quitar
+                    </button>
+                  )}
+                </div>
+
+                {selectedNode.imageUrl ? (
+                  <div className="space-y-2">
+                    <div className="w-full h-24 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 relative">
+                      <img
+                        src={selectedNode.imageUrl}
+                        alt={selectedNode.text}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const prompt =
+                          selectedNode.imagePrompt ||
+                          `${selectedNode.text} realistic conceptual illustration`;
+                        const newUrl = buildAiImageUrl(
+                          prompt,
+                          Date.now() % 100000
+                        );
+                        onUpdateNode(selectedNode.id, {
+                          imageUrl: newUrl,
+                          imagePrompt: prompt,
+                        });
+                      }}
+                      className="ios-btn w-full flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold border border-orange-200"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Regenerar Variante con IA</span>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prompt = `${selectedNode.text} realistic conceptual photographic illustration`;
+                      const newUrl = buildAiImageUrl(
+                        prompt,
+                        Date.now() % 100000
+                      );
+                      onUpdateNode(selectedNode.id, {
+                        imageUrl: newUrl,
+                        imagePrompt: prompt,
+                      });
+                    }}
+                    className="ios-btn w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold shadow-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Generar Ilustración IA</span>
+                  </button>
+                )}
               </div>
             </div>
 

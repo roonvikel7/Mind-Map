@@ -862,7 +862,8 @@ export function App() {
     topic: string,
     type: OrganizerType,
     details?: string,
-    depth: 'standard' | 'deep' = 'deep'
+    depth: 'standard' | 'deep' = 'deep',
+    includeImages?: boolean
   ) => {
     const apiSettings = loadApiSettings();
     const effectiveProvider = apiSettings.geminiApiKey?.trim()
@@ -879,7 +880,13 @@ export function App() {
         : undefined;
 
     if (effectiveProvider === 'gemini' && apiKey) {
-      showToast(`Generando organizador sobre «${topic}» con Google Gemini API...`);
+      showToast(
+        type === 'cartographic' && includeImages !== false
+          ? `Generando Cartografía con ilustraciones IA para «${topic}» con Gemini...`
+          : `Generando organizador sobre «${topic}» con Google Gemini API...`
+      );
+    } else if (type === 'cartographic' && includeImages !== false) {
+      showToast(`Generando Cartografía con ilustraciones visuales para «${topic}»...`);
     }
 
     const themeToUse: ThemeId = activeProject?.theme || 'vitality-warm';
@@ -891,6 +898,7 @@ export function App() {
         depth,
         apiKey,
         provider: effectiveProvider,
+        includeImages,
       },
       themeToUse
     );

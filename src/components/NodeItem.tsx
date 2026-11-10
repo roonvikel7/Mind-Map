@@ -61,10 +61,17 @@ const NodeItemInner: React.FC<NodeItemProps> = ({
   const [draftText, setDraftText] = useState(node.text);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lastTapRef = useRef<number>(0);
+  const [imgSrc, setImgSrc] = useState(node.imageUrl);
+  const [imgFailed, setImgFailed] = useState(false);
 
   useEffect(() => {
     setDraftText(node.text);
   }, [node.text]);
+
+  useEffect(() => {
+    setImgSrc(node.imageUrl);
+    setImgFailed(false);
+  }, [node.imageUrl]);
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -310,19 +317,27 @@ const NodeItemInner: React.FC<NodeItemProps> = ({
           borderRadius: borderRadiusStyle,
           color: textColor,
           paddingLeft:
-            shape === 'diamond'
+            node.imageUrl
+              ? '10px'
+              : shape === 'diamond'
               ? `${Math.round(w * 0.16)}px`
               : shape === 'underline'
               ? '8px'
               : `${typo.padX}px`,
           paddingRight:
-            shape === 'diamond'
+            node.imageUrl
+              ? '10px'
+              : shape === 'diamond'
               ? `${Math.round(w * 0.16)}px`
               : shape === 'underline'
               ? '8px'
               : `${typo.padX}px`,
+          paddingTop: node.imageUrl ? '8px' : undefined,
+          paddingBottom: node.imageUrl ? '10px' : undefined,
         }}
-        className={`relative flex items-center ${
+        className={`relative flex ${
+          node.imageUrl ? 'flex-col justify-start' : 'items-center'
+        } ${
           isPolygonShape || shape === 'underline'
             ? ''
             : isSelected
@@ -338,11 +353,46 @@ const NodeItemInner: React.FC<NodeItemProps> = ({
             : 'justify-start text-left'
         }`}
       >
+        {/* Ilustración visual contextual para los 8 puntos de Cartografía o nodos destacados */}
+        {node.imageUrl && (
+          <div className="w-full h-[96px] mb-2 rounded-lg overflow-hidden bg-stone-100/90 border border-stone-200/70 relative group/img shrink-0">
+            <img
+              src={imgSrc || node.imageUrl}
+              alt={node.text}
+              loading="lazy"
+              onError={() => {
+                if (imgSrc && !imgSrc.includes('picsum.photos')) {
+                  const seed = Math.abs(
+                    node.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+                  );
+                  setImgSrc(`https://picsum.photos/seed/${seed}/480/280`);
+                }
+              }}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105 pointer-events-none"
+            />
+            <div className="absolute top-1 right-1 opacity-0 group-hover/img:opacity-100 transition-opacity">
+              <button
+                type="button"
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => {
+                  e.stopPropagation();
+                  window.open(imgSrc || node.imageUrl, '_blank');
+                }}
+                title="Ver imagen en tamaño completo"
+                className="p-1 rounded-md bg-stone-900/75 hover:bg-stone-900 text-white shadow-sm"
+              >
+                <ExternalLink className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Barra de acento lateral estilo Edraw en tarjetas blancas */}
         {!isRoot &&
           !node.bgColor &&
           theme.topicFillMode === 'white-accent' &&
-          (shape === 'rounded' || shape === 'rectangle') && (
+          (shape === 'rounded' || shape === 'rectangle') &&
+          !node.imageUrl && (
             <span
               style={{ backgroundColor: branchColor }}
               className="absolute left-1.5 top-2 bottom-2 w-1 rounded-full"

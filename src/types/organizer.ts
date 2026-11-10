@@ -77,6 +77,9 @@ export interface OrganizerNode {
   ribAnchorX?: number;    // X exacto sobre la espina diagonal para sub-causas Ishikawa
   milestoneIndex?: number;
   cartographicSector?: 'top' | 'right' | 'bottom' | 'left';
+  // Ilustración visual contextual generada por IA o añadida por el usuario
+  imageUrl?: string;
+  imagePrompt?: string;
 }
 
 export interface CanvasImage {
@@ -128,4 +131,5 @@ export interface AiGenerationRequest {
   depth?: 'compact' | 'standard' | 'deep';
   apiKey?: string;
   provider?: 'local' | 'gemini' | 'openai';
+  includeImages?: boolean; // Generar imágenes contextuales para los puntos (en especial Cartografía)
 }

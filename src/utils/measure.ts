@@ -197,6 +197,12 @@ export function measureNodeDimensions(
     Math.ceil(textBlockH + typo.padY * 2)
   );
 
+  // Si el nodo incluye una ilustración visual, reservar altura y ancho para el banner
+  if (node.imageUrl) {
+    width = Math.max(width, 210);
+    height += 105;
+  }
+
   if (resolvedShape === 'underline') {
     width = Math.max(96, Math.ceil(contentW + 20));
     height = Math.max(32, Math.ceil(textBlockH + 12));

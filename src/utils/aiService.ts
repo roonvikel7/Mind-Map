@@ -21,6 +21,30 @@ interface TemplateSeedNode {
   priority?: 1 | 2 | 3 | 4 | 5;
   progress?: 0 | 25 | 50 | 75 | 100;
   notes?: string;
+  imageUrl?: string;
+  imagePrompt?: string;
+}
+
+/**
+ * Genera una URL de imagen ilustrativa en alta resolución basada en el contenido conceptual del punto,
+ * utilizando un servicio de fotografía temática de alta calidad sin restricciones de cuota ni costo.
+ */
+export function buildAiImageUrl(prompt: string, seed?: number): string {
+  const words = prompt
+    .replace(/[^\w\s]/gi, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(
+      w =>
+        w.length > 2 &&
+        !['with', 'from', 'that', 'this', 'have', 'more', 'about', 'real'].includes(
+          w.toLowerCase()
+        )
+    )
+    .slice(0, 3)
+    .join('-');
+  const s = seed || Math.floor(Math.random() * 900000) + 100000;
+  return `https://picsum.photos/seed/${encodeURIComponent(words || 'concept')}-${s}/480/280`;
 }
 
 const BUILTIN_KNOWLEDGE: Record<
@@ -569,7 +593,8 @@ export async function generateOrganizer(
           req.type || preset.type,
           preset.nodes,
           themeId,
-          preset.crossLinks
+          preset.crossLinks,
+          req.includeImages !== false
         );
       }
     }
@@ -584,15 +609,26 @@ function buildFromTemplate(
   type: OrganizerType,
   rawNodes: TemplateSeedNode[],
   themeId: ThemeId,
-  crossLinks?: { fromIndex: number; toIndex: number; label: string }[]
+  crossLinks?: { fromIndex: number; toIndex: number; label: string }[],
+  includeImages = true
 ) {
   const nodes: OrganizerNode[] = [];
   const edges: OrganizerEdge[] = [];
   const prefix = `n-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+  const isCarto = type === 'cartographic';
 
   rawNodes.forEach((rn, index) => {
     const id = `${prefix}-${index}`;
     const parentId = rn.parentIndex !== null ? `${prefix}-${rn.parentIndex}` : null;
+    const isCartoChild = isCarto && rn.parentIndex !== null && rn.parentIndex !== 0;
+
+    let imageUrl = rn.imageUrl;
+    let imagePrompt = rn.imagePrompt;
+
+    if (isCarto && includeImages && isCartoChild && !imageUrl) {
+      imagePrompt = rn.imagePrompt || `${title} ${rn.text.slice(0, 70)} photographic scientific illustration`;
+      imageUrl = buildAiImageUrl(imagePrompt, index * 41 + 101);
+    }
 
     nodes.push({
       id,
@@ -603,12 +639,14 @@ function buildFromTemplate(
       y: 0,
       width: 140,
       height: 48,
-      icon: rn.icon,
+      icon: isCarto ? undefined : rn.icon,
       shape: rn.shape,
       flowType: rn.flowType,
       priority: rn.priority,
       progress: rn.progress,
       notes: rn.notes,
+      imageUrl,
+      imagePrompt,
       isRoot: index === 0,
     });
 
@@ -650,24 +688,81 @@ function generateHeuristicOrganizer(req: AiGenerationRequest, themeId: ThemeId) 
   const prefix = `h-${Date.now().toString(36)}`;
 
   if (type === 'cartographic') {
+    const withImg = req.includeImages !== false;
     const seed: TemplateSeedNode[] = [
       { text: topic, subtitle: 'Cartografía Conceptual de Ocho Ejes', parentIndex: null, shape: 'rounded' },
+      // 1. Ejemplificación
       { text: '1. Ejemplificación', parentIndex: 0 },
-      { text: `un caso documentado y verificable donde se observa la aplicación práctica y resolución de problemas vinculados a ${topic}`, label: 'se ejemplifica mediante', parentIndex: 1 },
+      {
+        text: `un caso documentado y verificable donde se observa la aplicación práctica y resolución de problemas vinculados a ${topic}`,
+        label: 'se ejemplifica mediante',
+        parentIndex: 1,
+        imagePrompt: `${topic} practical real world case study documentary photograph`,
+        imageUrl: withImg ? buildAiImageUrl(`${topic} real world practical example documentary`, 101) : undefined,
+      },
+      // 2. Noción
       { text: '2. Noción', parentIndex: 0 },
-      { text: `el significado etimológico y conceptual esencial que fundamenta y delimita el estudio riguroso de ${topic}`, label: 'se define como', parentIndex: 3 },
+      {
+        text: `el significado etimológico y conceptual esencial que fundamenta y delimita el estudio riguroso de ${topic}`,
+        label: 'se define como',
+        parentIndex: 3,
+        imagePrompt: `${topic} core scientific concept visual diagram`,
+        imageUrl: withImg ? buildAiImageUrl(`${topic} core scientific definition concept diagram`, 202) : undefined,
+      },
+      // 3. Categorización
       { text: '3. Categorización', parentIndex: 0 },
-      { text: `la disciplina o clase mayor del conocimiento humano en la que se inscribe y fundamenta ${topic}`, label: 'pertenece a', parentIndex: 5 },
+      {
+        text: `la disciplina o clase mayor del conocimiento humano en la que se inscribe y fundamenta ${topic}`,
+        label: 'pertenece a',
+        parentIndex: 5,
+        imagePrompt: `${topic} broader academic field taxonomy classification`,
+        imageUrl: withImg ? buildAiImageUrl(`${topic} academic taxonomy discipline classification`, 303) : undefined,
+      },
+      // 4. Características
       { text: '4. Características', parentIndex: 0 },
-      { text: `los principios rectores, propiedades distintivas y rasgos esenciales que estructuran a ${topic}`, label: 'se caracteriza por', parentIndex: 7 },
+      {
+        text: `los principios rectores, propiedades distintivas y rasgos esenciales que estructuran a ${topic}`,
+        label: 'se caracteriza por',
+        parentIndex: 7,
+        imagePrompt: `${topic} distinctive features essential properties detailed view`,
+        imageUrl: withImg ? buildAiImageUrl(`${topic} key distinctive characteristics detailed visual`, 404) : undefined,
+      },
+      // 5. Diferencias
       { text: '5. Diferencias', parentIndex: 0 },
-      { text: `las nociones cercanas y enfoques paralelos de los cuales se distingue formalmente ${topic} para evitar confusiones`, label: 'se distingue de', parentIndex: 9 },
+      {
+        text: `las nociones cercanas y enfoques paralelos de los cuales se distingue formalmente ${topic} para evitar confusiones`,
+        label: 'se distingue de',
+        parentIndex: 9,
+        imagePrompt: `${topic} contrasting concepts clear distinction comparison`,
+        imageUrl: withImg ? buildAiImageUrl(`${topic} contrasting comparison distinction visual`, 505) : undefined,
+      },
+      // 6. Subdivisión
       { text: '6. Subdivisión', parentIndex: 0 },
-      { text: `las tipologías, clases y componentes internos fundamentales que integran la estructura de ${topic}`, label: 'se subdivide en', parentIndex: 11 },
+      {
+        text: `las tipologías, clases y componentes internos fundamentales que integran la estructura de ${topic}`,
+        label: 'se subdivide en',
+        parentIndex: 11,
+        imagePrompt: `${topic} internal structural components classification breakdown`,
+        imageUrl: withImg ? buildAiImageUrl(`${topic} structural components types breakdown`, 606) : undefined,
+      },
+      // 7. Vinculación
       { text: '7. Vinculación', parentIndex: 0 },
-      { text: `los marcos teóricos, leyes científicas y disciplinas complementarias que fortalecen a ${topic}`, label: 'se vincula con', parentIndex: 13 },
+      {
+        text: `los marcos teóricos, leyes científicas y disciplinas complementarias que fortalecen a ${topic}`,
+        label: 'se vincula con',
+        parentIndex: 13,
+        imagePrompt: `${topic} interconnected scientific laws complementary theories`,
+        imageUrl: withImg ? buildAiImageUrl(`${topic} interconnected theories scientific network`, 707) : undefined,
+      },
+      // 8. Metodología
       { text: '8. Metodología', parentIndex: 0 },
-      { text: `la secuencia ordenada de fases metodológicas y protocolos rigurosos para la implementación de ${topic}`, label: 'se aplica mediante', parentIndex: 15 },
+      {
+        text: `la secuencia ordenada de fases metodológicas y protocolos rigurosos para la implementación de ${topic}`,
+        label: 'se aplica mediante',
+        parentIndex: 15,
+        imagePrompt: `${topic} step by step practical methodology experimental process`,
+        imageUrl: withImg ? buildAiImageUrl(`${topic} experimental scientific process step by step`, 808) : undefined,
+      },
     ];
     return buildFromTemplate(topic, type, seed, themeId);
   }
@@ -984,8 +1079,10 @@ TIPO: Cartografía Conceptual (Metodología Pedagógica de los 8 Ejes de Sergio 
    - Eje "6. Subdivisión" (hijo de raíz) -> conectado directamente mediante label "se subdivide en" a un único cuadro hijo con sus componentes o clases internas.
    - Eje "7. Vinculación" (hijo de raíz) -> conectado directamente mediante label "se vincula con" a un único cuadro hijo con las leyes y teorías complementarias.
    - Eje "8. Metodología" (hijo de raíz) -> conectado directamente mediante label "se aplica mediante" a un único cuadro hijo con las fases y pasos de aplicación.
-4. En Cartografía Conceptual NO uses emojis ni iconos en ningún nodo.
-5. Los cuadros hijos NO deben tener "subtitle" (deja "subtitle": null).`;
+${req.includeImages !== false ? `4. ILUSTRACIONES VISUALES REPRESENTATIVAS PARA LOS 8 PUNTOS:
+   Para CADA UNO de los 8 cuadros de contenido hijos, DEBES incluir la propiedad "imagePrompt" con una descripción precisa en inglés (de 6 a 12 palabras) que represente de forma exacta y visual lo descrito en ese punto (ej: para ejemplificación un caso real fotográfico, para noción un diagrama o vista satelital/conceptual de alta resolución, para metodología un procedimiento de campo o laboratorio).` : ''}
+5. En Cartografía Conceptual NO uses emojis ni iconos en ningún nodo.
+6. Los cuadros hijos NO deben tener "subtitle" (deja "subtitle": null).`;
       break;
 
     case 'concept':
@@ -1085,7 +1182,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto antes o después ni marca
       "id": "3",
       "text": "el argumento fluido que continúa naturalmente el conector sobre la línea sin cuadros intermediarios",
       "parentId": "2",
-      "label": "${isCartographic ? 'se define como' : 'se fundamenta en'}"${isCartographic ? '' : ',\n      "icon": "✨"'}
+      "label": "${isCartographic ? 'se define como' : 'se fundamenta en'}"${isCartographic ? ',\n      "imagePrompt": "scientific infrared satellite map pacific ocean heat anomaly"' : ',\n      "icon": "✨"'}
     }
   ]
 }`;
@@ -1202,6 +1299,22 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
           isRootNode
         );
 
+        const rootIdInParsed = parsed.nodes[0]?.id ? String(parsed.nodes[0].id) : '1';
+        const isCartographicChild = isCartographic && pId && pId !== rootIdInParsed;
+        let imageUrl: string | undefined = undefined;
+        let imagePrompt: string | undefined = undefined;
+
+        if (isCartographic && req.includeImages !== false && isCartographicChild) {
+          imagePrompt = n.imagePrompt ? String(n.imagePrompt).trim() : undefined;
+          if (!imagePrompt) {
+            imagePrompt = `${req.topic} ${naturalized.text.slice(0, 70)}`;
+          }
+          imageUrl = buildAiImageUrl(imagePrompt, idx * 37 + 101);
+        } else if (n.imageUrl) {
+          imageUrl = String(n.imageUrl);
+          imagePrompt = n.imagePrompt ? String(n.imagePrompt).trim() : undefined;
+        }
+
         nodes.push({
           id,
           text: naturalized.text,
@@ -1214,6 +1327,8 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
           icon: isCartographic ? undefined : n.icon,
           shape: n.shape,
           flowType: n.flowType,
+          imageUrl,
+          imagePrompt,
           isRoot: isRootNode,
         });
 
@@ -1297,6 +1412,19 @@ async function generateWithOpenAi(req: AiGenerationRequest, themeId: ThemeId) {
       isRootNode
     );
 
+    const isCartographic = req.type === 'cartographic';
+    const isCartographicChild = isCartographic && pId && pId !== '1';
+    let imageUrl: string | undefined = undefined;
+    let imagePrompt: string | undefined = undefined;
+
+    if (isCartographic && req.includeImages !== false && isCartographicChild) {
+      imagePrompt = n.imagePrompt ? String(n.imagePrompt).trim() : `${req.topic} ${naturalized.text.slice(0, 70)} photographic illustration`;
+      imageUrl = buildAiImageUrl(imagePrompt, idx * 37 + 101);
+    } else if (n.imageUrl) {
+      imageUrl = String(n.imageUrl);
+      imagePrompt = n.imagePrompt ? String(n.imagePrompt).trim() : undefined;
+    }
+
     nodes.push({
       id,
       text: naturalized.text,
@@ -1307,6 +1435,8 @@ async function generateWithOpenAi(req: AiGenerationRequest, themeId: ThemeId) {
       width: 140,
       height: 46,
       icon: req.type === 'cartographic' ? undefined : n.icon,
+      imageUrl,
+      imagePrompt,
       isRoot: isRootNode,
     });
     if (pId) {
