@@ -5,7 +5,11 @@ import type {
   OrganizerType,
   ThemeId,
 } from '../types/organizer';
-import { generateOrganizer } from './aiService';
+import {
+  generateOrganizer,
+  buildAiImageUrl,
+  getCartographicImageCaption,
+} from './aiService';
 
 export interface CartographicAxisDef {
   name: string;
@@ -101,6 +105,7 @@ export function buildCartographicProjectNodes(
   CARTOGRAPHIC_EIGHT_AXES.forEach((axis, idx) => {
     const axisId = `axis-${actualRootId}-${idx + 1}`;
     const childId = `content-${actualRootId}-${idx + 1}`;
+    const imgId = `img-${actualRootId}-${idx + 1}`;
 
     const axisNode: OrganizerNode = {
       id: axisId,
@@ -127,7 +132,24 @@ export function buildCartographicProjectNodes(
       depth: 2,
     };
 
-    nodes.push(axisNode, childNode);
+    const promptText = `${rootNode.text} ${axis.name} ${axis.childContent.slice(0, 50)} documentary photograph`;
+    const imgNode: OrganizerNode = {
+      id: imgId,
+      parentId: childId,
+      text: getCartographicImageCaption(axis.name),
+      subtitle: undefined,
+      x: 0,
+      y: 0,
+      width: 220,
+      height: 148,
+      depth: 3,
+      isImageNode: true,
+      imageUrl: buildAiImageUrl(promptText, (idx + 1) * 73 + 101),
+      imagePrompt: promptText,
+      shape: 'rounded',
+    };
+
+    nodes.push(axisNode, childNode, imgNode);
 
     edges.push({
       id: `edge-${actualRootId}-${axisId}`,
@@ -140,6 +162,13 @@ export function buildCartographicProjectNodes(
       from: axisId,
       to: childId,
       label: axis.connector,
+    });
+
+    edges.push({
+      id: `edge-${childId}-${imgId}`,
+      from: childId,
+      to: imgId,
+      label: 'se ilustra mediante',
     });
   });
 

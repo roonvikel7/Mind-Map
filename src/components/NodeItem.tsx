@@ -199,6 +199,89 @@ const NodeItemInner: React.FC<NodeItemProps> = ({
   const isSmallScreen =
     typeof window !== 'undefined' && window.innerWidth < 768;
 
+  // Renderizado especial de tarjeta de imagen externa enlazada a un punto
+  if (node.isImageNode) {
+    return (
+      <div
+        data-node-id={node.id}
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: `${w}px`,
+          height: `${h}px`,
+          transform: `translate3d(${left}px, ${top}px, 0)`,
+          zIndex: isSelected ? 35 : 12,
+        }}
+        className="group select-none"
+        onPointerDown={e => {
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          e.stopPropagation();
+          onSelect(node.id);
+          if (!isConnectMode) onStartDrag(e, node);
+        }}
+      >
+        <div
+          style={{
+            borderColor: isSelected ? '#EA580C' : branchColor,
+            borderWidth: isSelected ? '2.5px' : '1.8px',
+          }}
+          className={`w-full h-full rounded-2xl bg-white overflow-hidden flex flex-col ${
+            isSelected
+              ? 'edraw-node-shadow-selected ring-4 ring-orange-500/20'
+              : 'edraw-node-shadow'
+          } ${
+            isConnectMode
+              ? 'cursor-crosshair ring-2 ring-amber-400/70 hover:scale-[1.02]'
+              : 'cursor-grab active:cursor-grabbing hover:shadow-lg'
+          } transition-all`}
+        >
+          {/* Imagen ilustrativa externa en alta resolución */}
+          <div className="w-full flex-1 min-h-0 bg-stone-100 relative group/img overflow-hidden">
+            <img
+              src={imgSrc || node.imageUrl}
+              alt={node.text}
+              loading="lazy"
+              onError={() => {
+                if (imgSrc && !imgSrc.includes('picsum.photos')) {
+                  const seed = Math.abs(
+                    node.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+                  );
+                  setImgSrc(`https://picsum.photos/seed/${seed}/480/280`);
+                }
+              }}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105 pointer-events-none"
+            />
+            <div className="absolute top-1.5 right-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity">
+              <button
+                type="button"
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => {
+                  e.stopPropagation();
+                  window.open(imgSrc || node.imageUrl, '_blank');
+                }}
+                title="Abrir imagen en tamaño completo"
+                className="p-1 rounded-lg bg-stone-900/80 hover:bg-stone-900 text-white shadow-sm"
+              >
+                <ExternalLink className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+
+          {/* Franja de pie de foto limpia y formal */}
+          <div className="px-2.5 py-1.5 bg-stone-50/95 border-t border-stone-100 flex items-center justify-between gap-1 shrink-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs shrink-0">🖼️</span>
+              <span className="text-[10.5px] font-bold text-stone-800 truncate">
+                {node.text}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-node-id={node.id}
@@ -317,27 +400,19 @@ const NodeItemInner: React.FC<NodeItemProps> = ({
           borderRadius: borderRadiusStyle,
           color: textColor,
           paddingLeft:
-            node.imageUrl
-              ? '10px'
-              : shape === 'diamond'
+            shape === 'diamond'
               ? `${Math.round(w * 0.16)}px`
               : shape === 'underline'
               ? '8px'
               : `${typo.padX}px`,
           paddingRight:
-            node.imageUrl
-              ? '10px'
-              : shape === 'diamond'
+            shape === 'diamond'
               ? `${Math.round(w * 0.16)}px`
               : shape === 'underline'
               ? '8px'
               : `${typo.padX}px`,
-          paddingTop: node.imageUrl ? '8px' : undefined,
-          paddingBottom: node.imageUrl ? '10px' : undefined,
         }}
-        className={`relative flex ${
-          node.imageUrl ? 'flex-col justify-start' : 'items-center'
-        } ${
+        className={`relative flex items-center ${
           isPolygonShape || shape === 'underline'
             ? ''
             : isSelected
@@ -353,46 +428,11 @@ const NodeItemInner: React.FC<NodeItemProps> = ({
             : 'justify-start text-left'
         }`}
       >
-        {/* Ilustración visual contextual para los 8 puntos de Cartografía o nodos destacados */}
-        {node.imageUrl && (
-          <div className="w-full h-[96px] mb-2 rounded-lg overflow-hidden bg-stone-100/90 border border-stone-200/70 relative group/img shrink-0">
-            <img
-              src={imgSrc || node.imageUrl}
-              alt={node.text}
-              loading="lazy"
-              onError={() => {
-                if (imgSrc && !imgSrc.includes('picsum.photos')) {
-                  const seed = Math.abs(
-                    node.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-                  );
-                  setImgSrc(`https://picsum.photos/seed/${seed}/480/280`);
-                }
-              }}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105 pointer-events-none"
-            />
-            <div className="absolute top-1 right-1 opacity-0 group-hover/img:opacity-100 transition-opacity">
-              <button
-                type="button"
-                onPointerDown={e => e.stopPropagation()}
-                onClick={e => {
-                  e.stopPropagation();
-                  window.open(imgSrc || node.imageUrl, '_blank');
-                }}
-                title="Ver imagen en tamaño completo"
-                className="p-1 rounded-md bg-stone-900/75 hover:bg-stone-900 text-white shadow-sm"
-              >
-                <ExternalLink className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Barra de acento lateral estilo Edraw en tarjetas blancas */}
         {!isRoot &&
           !node.bgColor &&
           theme.topicFillMode === 'white-accent' &&
-          (shape === 'rounded' || shape === 'rectangle') &&
-          !node.imageUrl && (
+          (shape === 'rounded' || shape === 'rectangle') && (
             <span
               style={{ backgroundColor: branchColor }}
               className="absolute left-1.5 top-2 bottom-2 w-1 rounded-full"

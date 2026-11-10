@@ -532,7 +532,8 @@ function layoutCartographic(
       kidNode.cartographicSector = dirSign === -1 ? 'top' : 'bottom';
       kidNode.y = cursorEdgeY + dirSign * (kidNode.height / 2);
 
-      const nextEdgeY = kidNode.y + dirSign * (kidNode.height / 2 + 28);
+      // Separación vertical amplia para permitir que la píldora conectora "se ilustra mediante" flote holgada
+      const nextEdgeY = kidNode.y + dirSign * (kidNode.height / 2 + 76);
       stackVerticalCartographicSubtree(kidId, nextEdgeY, dirSign);
       cursorEdgeY = nextEdgeY;
     }

@@ -80,6 +80,7 @@ export interface OrganizerNode {
   // Ilustración visual contextual generada por IA o añadida por el usuario
   imageUrl?: string;
   imagePrompt?: string;
+  isImageNode?: boolean; // Cuadro/tarjeta de imagen externa enlazada a un punto o concepto
 }
 
 export interface CanvasImage {

@@ -152,6 +152,16 @@ export function measureNodeDimensions(
   organizerType: OrganizerType,
   themeId: ThemeId = 'vitality-warm'
 ): { width: number; height: number; lines: string[]; resolvedShape: OrganizerNode['shape'] } {
+  // Nodos especiales de imagen externa enlazada a un punto
+  if (node.isImageNode) {
+    return {
+      width: 220,
+      height: 148,
+      lines: [node.text || 'Ilustración'],
+      resolvedShape: 'rounded',
+    };
+  }
+
   const isRoot = Boolean(node.isRoot || depth === 0);
   const typo = getNodeTypography(depth, isRoot);
   const resolvedShape = resolveEffectiveShape(node, depth, organizerType, themeId);
@@ -196,12 +206,6 @@ export function measureNodeDimensions(
     isRoot ? 54 : depth === 1 ? 44 : 38,
     Math.ceil(textBlockH + typo.padY * 2)
   );
-
-  // Si el nodo incluye una ilustración visual, reservar altura y ancho para el banner
-  if (node.imageUrl) {
-    width = Math.max(width, 210);
-    height += 105;
-  }
 
   if (resolvedShape === 'underline') {
     width = Math.max(96, Math.ceil(contentW + 20));

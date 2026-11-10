@@ -47,6 +47,22 @@ export function buildAiImageUrl(prompt: string, seed?: number): string {
   return `https://picsum.photos/seed/${encodeURIComponent(words || 'concept')}-${s}/480/280`;
 }
 
+/**
+ * Genera un pie o título representativo formal para la tarjeta de imagen externa de cada uno de los 8 ejes
+ */
+export function getCartographicImageCaption(parentAxisText: string): string {
+  const t = parentAxisText.toLowerCase();
+  if (t.includes('ejemplificaci') || t.includes('1.')) return 'Ilustración: Caso aplicado';
+  if (t.includes('noci') || t.includes('2.')) return 'Gráfico: Concepto esencial';
+  if (t.includes('categorizaci') || t.includes('3.')) return 'Taxonomía: Campo disciplinar';
+  if (t.includes('caracter') || t.includes('4.')) return 'Detalle: Rasgos distintivos';
+  if (t.includes('diferenciaci') || t.includes('5.')) return 'Comparativa: Diferencias';
+  if (t.includes('subdivisi') || t.includes('6.')) return 'Estructura: Componentes';
+  if (t.includes('vinculaci') || t.includes('7.')) return 'Red: Disciplinas vinculadas';
+  if (t.includes('metodolog') || t.includes('8.')) return 'Protocolo: Fases de aplicación';
+  return 'Ilustración: Representación visual';
+}
+
 const BUILTIN_KNOWLEDGE: Record<
   string,
   {
@@ -622,13 +638,9 @@ function buildFromTemplate(
     const parentId = rn.parentIndex !== null ? `${prefix}-${rn.parentIndex}` : null;
     const isCartoChild = isCarto && rn.parentIndex !== null && rn.parentIndex !== 0;
 
-    let imageUrl = rn.imageUrl;
-    let imagePrompt = rn.imagePrompt;
-
-    if (isCarto && includeImages && isCartoChild && !imageUrl) {
-      imagePrompt = rn.imagePrompt || `${title} ${rn.text.slice(0, 70)} photographic scientific illustration`;
-      imageUrl = buildAiImageUrl(imagePrompt, index * 41 + 101);
-    }
+    // Para cartografía conceptual: el cuadro de texto del eje permanece limpio (sin imagen interior).
+    // Las imágenes se generan como un nodo exterior independiente enlazado con "se ilustra mediante".
+    const hasExternalImage = isCarto && includeImages && isCartoChild;
 
     nodes.push({
       id,
@@ -645,8 +657,8 @@ function buildFromTemplate(
       priority: rn.priority,
       progress: rn.progress,
       notes: rn.notes,
-      imageUrl,
-      imagePrompt,
+      imageUrl: hasExternalImage ? undefined : rn.imageUrl,
+      imagePrompt: hasExternalImage ? undefined : rn.imagePrompt,
       isRoot: index === 0,
     });
 
@@ -656,6 +668,39 @@ function buildFromTemplate(
         from: parentId,
         to: id,
         label: rn.label,
+      });
+    }
+
+    // Nuevo enlace externo para la imagen del punto
+    if (hasExternalImage) {
+      const parentAxis = rn.parentIndex !== null ? rawNodes[rn.parentIndex] : null;
+      const caption = getCartographicImageCaption(parentAxis?.text || '');
+      const promptText =
+        rn.imagePrompt ||
+        `${title} ${rn.text.slice(0, 70)} high resolution conceptual photo`;
+      const imgUrl =
+        rn.imageUrl || buildAiImageUrl(promptText, index * 41 + 101);
+      const imgId = `${id}-img`;
+
+      nodes.push({
+        id: imgId,
+        text: caption,
+        parentId: id,
+        isImageNode: true,
+        imageUrl: imgUrl,
+        imagePrompt: promptText,
+        x: 0,
+        y: 0,
+        width: 220,
+        height: 148,
+        shape: 'rounded',
+      });
+
+      edges.push({
+        id: `e-${imgId}`,
+        from: id,
+        to: imgId,
+        label: 'se ilustra mediante',
       });
     }
   });
@@ -1080,7 +1125,7 @@ TIPO: Cartografía Conceptual (Metodología Pedagógica de los 8 Ejes de Sergio 
    - Eje "7. Vinculación" (hijo de raíz) -> conectado directamente mediante label "se vincula con" a un único cuadro hijo con las leyes y teorías complementarias.
    - Eje "8. Metodología" (hijo de raíz) -> conectado directamente mediante label "se aplica mediante" a un único cuadro hijo con las fases y pasos de aplicación.
 ${req.includeImages !== false ? `4. ILUSTRACIONES VISUALES REPRESENTATIVAS PARA LOS 8 PUNTOS:
-   Para CADA UNO de los 8 cuadros de contenido hijos, DEBES incluir la propiedad "imagePrompt" con una descripción precisa en inglés (de 6 a 12 palabras) que represente de forma exacta y visual lo descrito en ese punto (ej: para ejemplificación un caso real fotográfico, para noción un diagrama o vista satelital/conceptual de alta resolución, para metodología un procedimiento de campo o laboratorio).` : ''}
+   Para CADA UNO de los 8 cuadros de contenido hijos, DEBES incluir la propiedad "imagePrompt" con una descripción precisa en inglés (de 6 a 12 palabras) que represente de forma exacta y visual lo descrito en ese punto (ej: para ejemplificación un caso real fotográfico, para noción un diagrama o vista satelital/conceptual de alta resolución, para metodología un procedimiento de campo o laboratorio). La plataforma generará automáticamente un nuevo enlace visual exterior ("se ilustra mediante") conectado a ese cuadro con la imagen correspondiente.` : ''}
 5. En Cartografía Conceptual NO uses emojis ni iconos en ningún nodo.
 6. Los cuadros hijos NO deben tener "subtitle" (deja "subtitle": null).`;
       break;
@@ -1301,19 +1346,7 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
 
         const rootIdInParsed = parsed.nodes[0]?.id ? String(parsed.nodes[0].id) : '1';
         const isCartographicChild = isCartographic && pId && pId !== rootIdInParsed;
-        let imageUrl: string | undefined = undefined;
-        let imagePrompt: string | undefined = undefined;
-
-        if (isCartographic && req.includeImages !== false && isCartographicChild) {
-          imagePrompt = n.imagePrompt ? String(n.imagePrompt).trim() : undefined;
-          if (!imagePrompt) {
-            imagePrompt = `${req.topic} ${naturalized.text.slice(0, 70)}`;
-          }
-          imageUrl = buildAiImageUrl(imagePrompt, idx * 37 + 101);
-        } else if (n.imageUrl) {
-          imageUrl = String(n.imageUrl);
-          imagePrompt = n.imagePrompt ? String(n.imagePrompt).trim() : undefined;
-        }
+        const hasExternalImage = isCartographic && req.includeImages !== false && isCartographicChild;
 
         nodes.push({
           id,
@@ -1327,8 +1360,8 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
           icon: isCartographic ? undefined : n.icon,
           shape: n.shape,
           flowType: n.flowType,
-          imageUrl,
-          imagePrompt,
+          imageUrl: hasExternalImage ? undefined : (n.imageUrl ? String(n.imageUrl) : undefined),
+          imagePrompt: hasExternalImage ? undefined : (n.imagePrompt ? String(n.imagePrompt).trim() : undefined),
           isRoot: isRootNode,
         });
 
@@ -1338,6 +1371,39 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
             from: pId,
             to: id,
             label: naturalized.label,
+          });
+        }
+
+        // Nuevo enlace externo para la imagen representativa del punto
+        if (hasExternalImage) {
+          const parentNode = parsed.nodes.find((pn: any) => String(pn.id) === pId);
+          const caption = getCartographicImageCaption(parentNode ? String(parentNode.text || '') : '');
+          let promptDesc = n.imagePrompt ? String(n.imagePrompt).trim() : '';
+          if (!promptDesc) {
+            promptDesc = `${req.topic} ${naturalized.text.slice(0, 70)} high resolution conceptual photo`;
+          }
+          const imgUrl = n.imageUrl ? String(n.imageUrl) : buildAiImageUrl(promptDesc, idx * 37 + 101);
+          const imgNodeId = `${id}-img`;
+
+          nodes.push({
+            id: imgNodeId,
+            text: caption,
+            parentId: id,
+            isImageNode: true,
+            imageUrl: imgUrl,
+            imagePrompt: promptDesc,
+            x: 0,
+            y: 0,
+            width: 220,
+            height: 148,
+            shape: 'rounded',
+          });
+
+          edges.push({
+            id: `eg-${imgNodeId}`,
+            from: id,
+            to: imgNodeId,
+            label: 'se ilustra mediante',
           });
         }
       });
@@ -1414,16 +1480,7 @@ async function generateWithOpenAi(req: AiGenerationRequest, themeId: ThemeId) {
 
     const isCartographic = req.type === 'cartographic';
     const isCartographicChild = isCartographic && pId && pId !== '1';
-    let imageUrl: string | undefined = undefined;
-    let imagePrompt: string | undefined = undefined;
-
-    if (isCartographic && req.includeImages !== false && isCartographicChild) {
-      imagePrompt = n.imagePrompt ? String(n.imagePrompt).trim() : `${req.topic} ${naturalized.text.slice(0, 70)} photographic illustration`;
-      imageUrl = buildAiImageUrl(imagePrompt, idx * 37 + 101);
-    } else if (n.imageUrl) {
-      imageUrl = String(n.imageUrl);
-      imagePrompt = n.imagePrompt ? String(n.imagePrompt).trim() : undefined;
-    }
+    const hasExternalImage = isCartographic && req.includeImages !== false && isCartographicChild;
 
     nodes.push({
       id,
@@ -1435,12 +1492,42 @@ async function generateWithOpenAi(req: AiGenerationRequest, themeId: ThemeId) {
       width: 140,
       height: 46,
       icon: req.type === 'cartographic' ? undefined : n.icon,
-      imageUrl,
-      imagePrompt,
+      imageUrl: hasExternalImage ? undefined : (n.imageUrl ? String(n.imageUrl) : undefined),
+      imagePrompt: hasExternalImage ? undefined : (n.imagePrompt ? String(n.imagePrompt).trim() : undefined),
       isRoot: isRootNode,
     });
     if (pId) {
       edges.push({ id: `eo-${id}`, from: pId, to: id, label: naturalized.label });
+    }
+
+    if (hasExternalImage) {
+      const parentNode = parsed.nodes.find((pn: any) => String(pn.id) === pId);
+      const caption = getCartographicImageCaption(parentNode ? String(parentNode.text || '') : '');
+      const promptDesc =
+        n.imagePrompt ? String(n.imagePrompt).trim() : `${req.topic} ${naturalized.text.slice(0, 70)} high resolution conceptual photo`;
+      const imgUrl = n.imageUrl ? String(n.imageUrl) : buildAiImageUrl(promptDesc, idx * 37 + 101);
+      const imgNodeId = `${id}-img`;
+
+      nodes.push({
+        id: imgNodeId,
+        text: caption,
+        parentId: id,
+        isImageNode: true,
+        imageUrl: imgUrl,
+        imagePrompt: promptDesc,
+        x: 0,
+        y: 0,
+        width: 220,
+        height: 148,
+        shape: 'rounded',
+      });
+
+      edges.push({
+        id: `eo-${imgNodeId}`,
+        from: id,
+        to: imgNodeId,
+        label: 'se ilustra mediante',
+      });
     }
   });
 
