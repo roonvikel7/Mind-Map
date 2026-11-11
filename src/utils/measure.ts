@@ -152,16 +152,6 @@ export function measureNodeDimensions(
   organizerType: OrganizerType,
   themeId: ThemeId = 'vitality-warm'
 ): { width: number; height: number; lines: string[]; resolvedShape: OrganizerNode['shape'] } {
-  // Nodos especiales de imagen externa enlazada a un punto
-  if (node.isImageNode) {
-    return {
-      width: 220,
-      height: 148,
-      lines: [node.text || 'Ilustración'],
-      resolvedShape: 'rounded',
-    };
-  }
-
   const isRoot = Boolean(node.isRoot || depth === 0);
   const typo = getNodeTypography(depth, isRoot);
   const resolvedShape = resolveEffectiveShape(node, depth, organizerType, themeId);

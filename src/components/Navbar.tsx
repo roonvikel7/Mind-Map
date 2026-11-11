@@ -16,6 +16,7 @@ import {
   RotateCcw,
   RotateCw,
   Settings,
+  Share2,
   Sparkles,
   Trash2,
   Undo2,
@@ -55,6 +56,9 @@ interface NavbarProps {
   onChangeCartographicDirection?: (dir: 'clockwise' | 'counterclockwise') => void;
   onAddImageFile?: (file: File) => void;
   onOpenCreateChooser?: () => void;
+  onOpenShare?: () => void;
+  isSharedRoomActive?: boolean;
+  activeCollaboratorsCount?: number;
 }
 
 const CATEGORY_ORDER: OrganizerCategory[] = [
@@ -91,6 +95,9 @@ const NavbarComponent: React.FC<NavbarProps> = ({
   onChangeCartographicDirection,
   onAddImageFile,
   onOpenCreateChooser,
+  onOpenShare,
+  isSharedRoomActive = false,
+  activeCollaboratorsCount = 1,
 }) => {
   const [projectsMenuOpen, setProjectsMenuOpen] = useState(false);
   const [typeMenuOpen, setTypeMenuOpen] = useState(false);
@@ -730,6 +737,36 @@ const NavbarComponent: React.FC<NavbarProps> = ({
             </div>
           )}
         </div>
+
+        {/* Botón Primordial: Compartir y Colaborar Multidispositivo */}
+        {onOpenShare && (
+          <button
+            type="button"
+            onClick={() => {
+              closeAllMenus();
+              onOpenShare();
+            }}
+            title="Compartir enlace único para editar en varios dispositivos en tiempo real"
+            className={`ios-btn flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xs shrink-0 transition-all ${
+              isSharedRoomActive
+                ? 'bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-300 text-emerald-950 ring-2 ring-emerald-400/20'
+                : 'bg-white hover:bg-orange-50 border border-stone-200/90 hover:border-orange-300 text-stone-800'
+            }`}
+          >
+            <Share2
+              className={`w-3.5 h-3.5 shrink-0 ${
+                isSharedRoomActive ? 'text-emerald-600 animate-pulse' : 'text-orange-600'
+              }`}
+            />
+            <span className="hidden sm:inline">Compartir</span>
+            {isSharedRoomActive && (
+              <span className="flex items-center gap-1 text-[10.5px] font-extrabold text-emerald-700 bg-emerald-200/60 px-1.5 py-0.2 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                <span>{activeCollaboratorsCount > 1 ? `${activeCollaboratorsCount}` : 'En vivo'}</span>
+              </span>
+            )}
+          </button>
+        )}
 
         {/* Botón Primordial: Exportar 8K */}
         <button

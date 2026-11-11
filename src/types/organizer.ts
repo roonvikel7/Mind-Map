@@ -77,10 +77,9 @@ export interface OrganizerNode {
   ribAnchorX?: number;    // X exacto sobre la espina diagonal para sub-causas Ishikawa
   milestoneIndex?: number;
   cartographicSector?: 'top' | 'right' | 'bottom' | 'left';
-  // Ilustración visual contextual generada por IA o añadida por el usuario
+  // Ilustración visual contextual añadida por el usuario
   imageUrl?: string;
   imagePrompt?: string;
-  isImageNode?: boolean; // Cuadro/tarjeta de imagen externa enlazada a un punto o concepto
 }
 
 export interface CanvasImage {
@@ -121,8 +120,17 @@ export interface OrganizerProject {
   canvasBg?: CanvasBgStyle;
   rainbowBranches?: boolean;
   cartographicDirection?: 'clockwise' | 'counterclockwise'; // Sentido horario o antihorario
+  shareRoomId?: string; // ID de sala compartida única para edición multidispositivo en la nube
   createdAt: number;
   updatedAt: number;
+}
+
+export interface CollaboratorInfo {
+  id: string;
+  name: string;
+  color: string;
+  device: 'desktop' | 'mobile';
+  lastSeen: number;
 }
 
 export interface AiGenerationRequest {
@@ -132,5 +140,4 @@ export interface AiGenerationRequest {
   depth?: 'compact' | 'standard' | 'deep';
   apiKey?: string;
   provider?: 'local' | 'gemini' | 'openai';
-  includeImages?: boolean; // Generar imágenes contextuales para los puntos (en especial Cartografía)
 }

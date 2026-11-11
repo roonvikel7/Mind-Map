@@ -26,6 +26,13 @@ import {
   isCartographicStructure,
   TemplateCard,
 } from './utils/templates';
+import {
+  broadcastProjectUpdate,
+  CollaborationStatus,
+  connectToRoom,
+  decompressProjectFromHash,
+  disconnectFromRoom,
+} from './utils/collaboration';
 import { Navbar } from './components/Navbar';
 import { LeftSidebar } from './components/LeftSidebar';
 import { RightInspector } from './components/RightInspector';
@@ -47,6 +54,8 @@ const loadSettingsModal = () =>
   import('./components/SettingsModal').then(m => ({ default: m.SettingsModal }));
 const loadPresentationView = () =>
   import('./components/PresentationView').then(m => ({ default: m.PresentationView }));
+const loadShareModal = () =>
+  import('./components/ShareModal').then(m => ({ default: m.ShareModal }));
 
 const AiModal = lazy(loadAiModal);
 const TemplatesModal = lazy(loadTemplatesModal);
@@ -55,6 +64,7 @@ const NodeNotesModal = lazy(loadNodeNotesModal);
 const EdgeLabelModal = lazy(loadEdgeLabelModal);
 const SettingsModal = lazy(loadSettingsModal);
 const PresentationView = lazy(loadPresentationView);
+const ShareModal = lazy(loadShareModal);
 
 export function App() {
   const [projects, setProjects] = useState<OrganizerProject[]>([]);
@@ -87,6 +97,9 @@ export function App() {
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [presentationOpen, setPresentationOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [collabStatus, setCollabStatus] = useState<CollaborationStatus>('disconnected');
+  const [activeCollaboratorsCount, setActiveCollaboratorsCount] = useState<number>(1);
   const [notesNodeId, setNotesNodeId] = useState<string | null>(null);
   const [editingEdge, setEditingEdge] = useState<{
     id: string;
@@ -110,11 +123,56 @@ export function App() {
     };
     window.addEventListener('resize', handleViewportChange);
 
-    loadInitialProjects().then(({ projects: loaded, activeId }) => {
-      setProjects(loaded);
-      setActiveProjectId(activeId);
-      // Al inicio o cuando el usuario abra la web, mostrar el selector para escoger qué crear
-      setCreateChooserOpen(true);
+    loadInitialProjects().then(async ({ projects: loaded, activeId }) => {
+      // Detección de enlace compartido para edición multidispositivo (?room=... y/o #d=...)
+      let targetProjects = loaded;
+      let targetActiveId = activeId;
+      let openedFromShare = false;
+
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomFromUrl = urlParams.get('room') || urlParams.get('share');
+        const hashFromUrl = window.location.hash;
+
+        let projectFromShare: OrganizerProject | null = null;
+        if (hashFromUrl && (hashFromUrl.startsWith('#d=') || hashFromUrl.startsWith('#'))) {
+          projectFromShare = await decompressProjectFromHash(hashFromUrl);
+        }
+
+        if (projectFromShare) {
+          if (roomFromUrl) projectFromShare.shareRoomId = roomFromUrl;
+          projectFromShare.updatedAt = Date.now();
+
+          const existIdx = loaded.findIndex(
+            p => p.id === projectFromShare!.id || (roomFromUrl && p.shareRoomId === roomFromUrl)
+          );
+          if (existIdx !== -1) {
+            targetProjects = [...loaded];
+            targetProjects[existIdx] = { ...targetProjects[existIdx], ...projectFromShare };
+          } else {
+            targetProjects = [projectFromShare, ...loaded];
+          }
+          targetActiveId = projectFromShare.id;
+          openedFromShare = true;
+          saveProjects(targetProjects);
+          saveActiveProjectId(targetActiveId);
+          showToast(`¡Mapa compartido «${projectFromShare.title}» cargado en tu dispositivo!`);
+        } else if (roomFromUrl) {
+          const existing = loaded.find(p => p.shareRoomId === roomFromUrl);
+          if (existing) {
+            targetActiveId = existing.id;
+            openedFromShare = true;
+          }
+        }
+      }
+
+      setProjects(targetProjects);
+      setActiveProjectId(targetActiveId);
+
+      // Si no viene de un enlace compartido, mostrar el selector para escoger qué crear
+      if (!openedFromShare) {
+        setCreateChooserOpen(true);
+      }
 
       // Precarga en tiempo ocioso para que abrir cualquier pestaña o modal sea en 0ms
       const preloadChunks = () => {
@@ -125,6 +183,7 @@ export function App() {
         void loadEdgeLabelModal();
         void loadSettingsModal();
         void loadPresentationView();
+        void loadShareModal();
       };
       const w = window as Window & {
         requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
@@ -204,17 +263,90 @@ export function App() {
       if (!currentProj) return;
       const targetId = currentProj.id;
       setProjects(prev => {
-        const updated = prev.map(p =>
-          p.id === targetId
-            ? { ...p, ...patch, updatedAt: Date.now() }
-            : p
-        );
+        let updatedProj: OrganizerProject | null = null;
+        const updated = prev.map(p => {
+          if (p.id === targetId) {
+            updatedProj = { ...p, ...patch, updatedAt: Date.now() };
+            return updatedProj;
+          }
+          return p;
+        });
         saveProjects(updated);
+        // Sincronizar en tiempo real con los demás dispositivos de la sala
+        if (updatedProj && (updatedProj as OrganizerProject).shareRoomId) {
+          broadcastProjectUpdate(updatedProj as OrganizerProject);
+        }
         return updated;
       });
     },
     []
   );
+
+  // Asegura la existencia de una sala de colaboración para el mapa activo
+  const handleEnsureShareRoom = useCallback(async (): Promise<string> => {
+    const currentProj = activeProjectRef.current;
+    if (!currentProj) return '';
+
+    if (currentProj.shareRoomId) {
+      return currentProj.shareRoomId;
+    }
+
+    const newRoomId = `room_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    commitProjectPatch({ shareRoomId: newRoomId });
+    return newRoomId;
+  }, [commitProjectPatch]);
+
+  // Genera un nuevo enlace único para desvincular o rotar la sala
+  const handleRegenerateShareRoom = useCallback(async (): Promise<string> => {
+    const newRoomId = `room_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    commitProjectPatch({ shareRoomId: newRoomId });
+    showToast('¡Nueva sala y enlace de edición generados!');
+    return newRoomId;
+  }, [commitProjectPatch, showToast]);
+
+  // Conexión y sincronización de sala compartida en tiempo real (MQTT sobre WebSockets)
+  useEffect(() => {
+    if (!activeProject || !activeProject.shareRoomId) {
+      disconnectFromRoom();
+      setCollabStatus('disconnected');
+      return;
+    }
+
+    const roomId = activeProject.shareRoomId;
+
+    connectToRoom(
+      roomId,
+      activeProject,
+      (remoteProject) => {
+        // Al recibir actualización de otro dispositivo en tiempo real
+        setProjects(prev => {
+          const idx = prev.findIndex(p => p.id === remoteProject.id);
+          if (idx === -1) {
+            const updated = [remoteProject, ...prev];
+            saveProjects(updated);
+            return updated;
+          }
+          // Verificar si el cambio remoto es más reciente
+          const current = prev[idx];
+          if ((remoteProject.updatedAt || 0) >= (current.updatedAt || 0)) {
+            const updated = [...prev];
+            updated[idx] = { ...current, ...remoteProject };
+            saveProjects(updated);
+            return updated;
+          }
+          return prev;
+        });
+      },
+      (status, activeCount) => {
+        setCollabStatus(status);
+        setActiveCollaboratorsCount(activeCount);
+      }
+    );
+
+    return () => {
+      // Dejamos la sesión abierta para reconexión fluida
+    };
+  }, [activeProject?.id, activeProject?.shareRoomId]);
 
   const handleUndo = useCallback(() => {
     if (historyPast.length === 0 || !activeProject) return;
@@ -862,8 +994,7 @@ export function App() {
     topic: string,
     type: OrganizerType,
     details?: string,
-    depth: 'standard' | 'deep' = 'deep',
-    includeImages?: boolean
+    depth: 'standard' | 'deep' = 'deep'
   ) => {
     const apiSettings = loadApiSettings();
     const effectiveProvider = apiSettings.geminiApiKey?.trim()
@@ -880,13 +1011,7 @@ export function App() {
         : undefined;
 
     if (effectiveProvider === 'gemini' && apiKey) {
-      showToast(
-        type === 'cartographic' && includeImages !== false
-          ? `Generando Cartografía con ilustraciones IA para «${topic}» con Gemini...`
-          : `Generando organizador sobre «${topic}» con Google Gemini API...`
-      );
-    } else if (type === 'cartographic' && includeImages !== false) {
-      showToast(`Generando Cartografía con ilustraciones visuales para «${topic}»...`);
+      showToast(`Generando organizador sobre «${topic}» con Google Gemini API...`);
     }
 
     const themeToUse: ThemeId = activeProject?.theme || 'vitality-warm';
@@ -898,7 +1023,6 @@ export function App() {
         depth,
         apiKey,
         provider: effectiveProvider,
-        includeImages,
       },
       themeToUse
     );
@@ -1205,6 +1329,9 @@ export function App() {
         onChangeCartographicDirection={handleChangeCartographicDirection}
         onAddImageFile={handleAddImageFile}
         onOpenCreateChooser={handleOpenCreateChooser}
+        onOpenShare={() => setShareModalOpen(true)}
+        isSharedRoomActive={collabStatus === 'connected'}
+        activeCollaboratorsCount={activeCollaboratorsCount}
       />
 
       {/* Área Central: Biblioteca Izquierda + Lienzo Infinito + Inspector Derecho */}
@@ -1381,6 +1508,18 @@ export function App() {
           <SettingsModal
             isOpen={settingsOpen}
             onClose={() => setSettingsOpen(false)}
+          />
+        )}
+
+        {shareModalOpen && (
+          <ShareModal
+            isOpen={shareModalOpen}
+            onClose={() => setShareModalOpen(false)}
+            project={activeProject}
+            collabStatus={collabStatus}
+            activeCollaboratorsCount={activeCollaboratorsCount}
+            onEnsureShareRoom={handleEnsureShareRoom}
+            onRegenerateShareRoom={handleRegenerateShareRoom}
           />
         )}
 

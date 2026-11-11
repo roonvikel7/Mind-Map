@@ -3,7 +3,6 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
-  Image as ImageIcon,
   KeyRound,
   Loader2,
   Sparkles,
@@ -21,8 +20,7 @@ interface AiModalProps {
     topic: string,
     type: OrganizerType,
     details?: string,
-    depth?: 'standard' | 'deep',
-    includeImages?: boolean
+    depth?: 'standard' | 'deep'
   ) => Promise<void>;
 }
 
@@ -44,7 +42,6 @@ export const AiModal: React.FC<AiModalProps> = ({
   const [selectedType, setSelectedType] = useState<OrganizerType>('mindmap');
   const [details, setDetails] = useState('');
   const [depth, setDepth] = useState<'standard' | 'deep'>('deep');
-  const [includeImages, setIncludeImages] = useState(true);
   const [loading, setLoading] = useState(false);
 
   // Estado de clave y conexión de Google Gemini
@@ -118,8 +115,7 @@ export const AiModal: React.FC<AiModalProps> = ({
         topic.trim(),
         selectedType,
         details.trim() || undefined,
-        depth,
-        selectedType === 'cartographic' ? includeImages : false
+        depth
       );
       setTopic('');
       setDetails('');
@@ -320,34 +316,6 @@ export const AiModal: React.FC<AiModalProps> = ({
               })}
             </div>
           </div>
-
-          {/* Opción inteligente: Generar ilustraciones visuales con IA en los 8 puntos (Cartografía) */}
-          {selectedType === 'cartographic' && (
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-orange-50/90 to-amber-50/90 border border-orange-200/80 shadow-2xs transition-all">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-orange-500/15 text-orange-600 flex items-center justify-center shrink-0">
-                  <ImageIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-stone-800">
-                    Ilustraciones IA en los 8 puntos
-                  </div>
-                  <div className="text-[11px] text-stone-500">
-                    Genera una imagen representativa para cada eje conceptual
-                  </div>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input
-                  type="checkbox"
-                  checked={includeImages}
-                  onChange={e => setIncludeImages(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-10 h-5.5 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-orange-600"></div>
-              </label>
-            </div>
-          )}
 
           {/* Apuntes opcionales o esquema indentado */}
           <div>
