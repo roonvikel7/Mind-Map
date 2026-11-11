@@ -233,19 +233,21 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
           {/* Enlace único para compartir */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-stone-700 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
                 <Globe2 className="w-3.5 h-3.5 text-orange-600" />
                 Enlace Único de Edición
-              </span>
-              <span className="text-[10.5px] font-normal text-stone-500">
-                Cualquiera con el enlace puede editar
-              </span>
-            </label>
+              </label>
+              {shareUrl && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+                  ⚡ Corto ({shareUrl.length} letras)
+                </span>
+              )}
+            </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-stone-200 bg-stone-50 text-xs font-mono text-stone-600 truncate select-all">
-                {shareUrl || 'Generando enlace único...'}
+              <div className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-stone-200 bg-stone-50 text-xs font-mono text-stone-700 break-all select-all font-medium">
+                {shareUrl || 'Generando enlace único corto...'}
               </div>
 
               <button
@@ -271,6 +273,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 )}
               </button>
             </div>
+            <p className="text-[10.5px] text-stone-500">
+              Ocupa menos de una línea. Cualquiera que abra este enlace podrá editar contigo al instante.
+            </p>
           </div>
 
           {/* Botones de acción rápida: Escaneo móvil QR y Compartir nativo */}

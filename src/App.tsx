@@ -32,6 +32,7 @@ import {
   connectToRoom,
   decompressProjectFromHash,
   disconnectFromRoom,
+  generateShortRoomId,
 } from './utils/collaboration';
 import { Navbar } from './components/Navbar';
 import { LeftSidebar } from './components/LeftSidebar';
@@ -124,14 +125,15 @@ export function App() {
     window.addEventListener('resize', handleViewportChange);
 
     loadInitialProjects().then(async ({ projects: loaded, activeId }) => {
-      // Detección de enlace compartido para edición multidispositivo (?room=... y/o #d=...)
+      // Detección de enlace compartido para edición multidispositivo (?r=..., ?room=..., y/o #d=...)
       let targetProjects = loaded;
       let targetActiveId = activeId;
       let openedFromShare = false;
 
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
-        const roomFromUrl = urlParams.get('room') || urlParams.get('share');
+        const roomFromUrl =
+          urlParams.get('r') || urlParams.get('room') || urlParams.get('share');
         const hashFromUrl = window.location.hash;
 
         let projectFromShare: OrganizerProject | null = null;
@@ -158,10 +160,30 @@ export function App() {
           saveActiveProjectId(targetActiveId);
           showToast(`¡Mapa compartido «${projectFromShare.title}» cargado en tu dispositivo!`);
         } else if (roomFromUrl) {
+          // Enlace corto limpio (?r=xyz) sin datos pesados en la URL
           const existing = loaded.find(p => p.shareRoomId === roomFromUrl);
           if (existing) {
             targetActiveId = existing.id;
             openedFromShare = true;
+          } else {
+            // Dispositivo receptor abriendo el mapa por primera vez
+            const pendingProject: OrganizerProject = {
+              id: `room_proj_${roomFromUrl}`,
+              title: 'Sincronizando mapa...',
+              type: 'concept',
+              theme: 'vitality-warm',
+              nodes: [],
+              edges: [],
+              createdAt: Date.now(),
+              updatedAt: 0,
+              shareRoomId: roomFromUrl,
+            };
+            targetProjects = [pendingProject, ...loaded];
+            targetActiveId = pendingProject.id;
+            openedFromShare = true;
+            saveProjects(targetProjects);
+            saveActiveProjectId(targetActiveId);
+            showToast('Conectando a la sala en tiempo real...');
           }
         }
       }
@@ -282,25 +304,26 @@ export function App() {
     []
   );
 
-  // Asegura la existencia de una sala de colaboración para el mapa activo
+  // Asegura la existencia de una sala de colaboración con ID ultra-corto para el mapa activo
   const handleEnsureShareRoom = useCallback(async (): Promise<string> => {
     const currentProj = activeProjectRef.current;
     if (!currentProj) return '';
 
-    if (currentProj.shareRoomId) {
+    // Si ya tiene un roomId ultra-corto (<= 8 caracteres), conservarlo
+    if (currentProj.shareRoomId && currentProj.shareRoomId.length <= 8) {
       return currentProj.shareRoomId;
     }
 
-    const newRoomId = `room_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const newRoomId = generateShortRoomId();
     commitProjectPatch({ shareRoomId: newRoomId });
     return newRoomId;
   }, [commitProjectPatch]);
 
-  // Genera un nuevo enlace único para desvincular o rotar la sala
+  // Genera un nuevo enlace ultra-corto para rotar la sala
   const handleRegenerateShareRoom = useCallback(async (): Promise<string> => {
-    const newRoomId = `room_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const newRoomId = generateShortRoomId();
     commitProjectPatch({ shareRoomId: newRoomId });
-    showToast('¡Nueva sala y enlace de edición generados!');
+    showToast('¡Nuevo enlace corto de edición generado!');
     return newRoomId;
   }, [commitProjectPatch, showToast]);
 
@@ -320,17 +343,20 @@ export function App() {
       (remoteProject) => {
         // Al recibir actualización de otro dispositivo en tiempo real
         setProjects(prev => {
-          const idx = prev.findIndex(p => p.id === remoteProject.id);
+          const idx = prev.findIndex(
+            p => p.id === remoteProject.id || p.shareRoomId === roomId
+          );
           if (idx === -1) {
-            const updated = [remoteProject, ...prev];
+            const updated = [{ ...remoteProject, shareRoomId: roomId }, ...prev];
             saveProjects(updated);
             return updated;
           }
-          // Verificar si el cambio remoto es más reciente
+          // Verificar si el proyecto local era un placeholder vacío o el remoto es más reciente
           const current = prev[idx];
-          if ((remoteProject.updatedAt || 0) >= (current.updatedAt || 0)) {
+          const isLocalEmpty = !current.nodes || current.nodes.length === 0;
+          if (isLocalEmpty || (remoteProject.updatedAt || 0) >= (current.updatedAt || 0)) {
             const updated = [...prev];
-            updated[idx] = { ...current, ...remoteProject };
+            updated[idx] = { ...current, ...remoteProject, shareRoomId: roomId };
             saveProjects(updated);
             return updated;
           }
@@ -340,7 +366,8 @@ export function App() {
       (status, activeCount) => {
         setCollabStatus(status);
         setActiveCollaboratorsCount(activeCount);
-      }
+      },
+      () => activeProjectRef.current
     );
 
     return () => {
@@ -1419,6 +1446,23 @@ export function App() {
         {toast && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 max-w-[90vw] text-center px-4 py-2 rounded-full bg-stone-900 text-white text-xs font-bold shadow-lg pointer-events-none">
             {toast}
+          </div>
+        )}
+
+        {/* Indicador de sincronización inicial para dispositivos receptores */}
+        {activeProject?.shareRoomId && (!activeProject.nodes || activeProject.nodes.length === 0) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-stone-50/80 backdrop-blur-xs z-40 pointer-events-none animate-in fade-in duration-200">
+            <div className="flex flex-col items-center gap-3 p-6 rounded-3xl bg-white shadow-xl border border-stone-200/90 max-w-xs text-center">
+              <div className="w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/20">
+                <span className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-stone-900">Sincronizando mapa</h4>
+                <p className="text-xs text-stone-500 mt-1">
+                  Descargando datos en vivo de la sala <span className="font-mono font-bold text-orange-600">#{activeProject.shareRoomId}</span>...
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>

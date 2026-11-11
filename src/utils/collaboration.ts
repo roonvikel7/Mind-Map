@@ -161,7 +161,61 @@ export async function decompressProjectFromHash(hash: string): Promise<Organizer
 }
 
 /**
- * Construye el enlace de compartición único con room ID y snapshot comprimido
+ * Genera un ID de sala único y ultra-corto (6 caracteres alfanuméricos)
+ * Ej: 'k7x9p2', 'm4b8c1'
+ */
+export function generateShortRoomId(): string {
+  const chars = '23456789abcdefghjkmnpqrstuvwxyz';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+/**
+ * Publica una snapshot completa con bandera retain: true en el broker MQTT
+ * para que cualquier dispositivo que abra el enlace corto reciba el mapa
+ */
+export function broadcastProjectSnapshotImmediate(roomId: string, project: OrganizerProject) {
+  if (!roomId || !project || !project.nodes || project.nodes.length === 0) return;
+  const topic = `synapse_map/v1/${roomId}`;
+  const myInfo = getMyCollaboratorInfo();
+  const payload = JSON.stringify({
+    type: 'STATE_SNAPSHOT',
+    sender: myInfo,
+    project: {
+      ...project,
+      shareRoomId: roomId,
+      updatedAt: project.updatedAt || Date.now(),
+    },
+    timestamp: Date.now(),
+  });
+
+  if (session.client && session.client.connected && session.roomId === roomId) {
+    session.client.publish(topic, payload, { qos: 1, retain: true });
+    return;
+  }
+
+  try {
+    const tempClient = mqtt.connect(BROKER_SERVERS[0], {
+      clientId: `snap_${myInfo.id}_${Math.random().toString(36).slice(2, 6)}`,
+      clean: true,
+      connectTimeout: 4000,
+    });
+    tempClient.on('connect', () => {
+      tempClient.publish(topic, payload, { qos: 1, retain: true }, () => {
+        tempClient.end(false);
+      });
+    });
+  } catch (err) {
+    console.warn('Error publicando snapshot retenida en broker:', err);
+  }
+}
+
+/**
+ * Construye el enlace de compartición único ultra-corto (menos de 50 caracteres, < 1 línea)
+ * Formato: https://mindmap-chi-nine.vercel.app/?r=k7x9p2
  */
 export async function buildShareUrl(project: OrganizerProject, roomId: string): Promise<string> {
   const origin =
@@ -170,10 +224,13 @@ export async function buildShareUrl(project: OrganizerProject, roomId: string): 
       : 'https://mindmap-chi-nine.vercel.app';
   const path = typeof window !== 'undefined' ? window.location.pathname : '/';
 
-  const hashData = await compressProjectToHash(project);
-  const hashPart = hashData ? `#d=${hashData}` : '';
+  // Asegurar que el estado actual quede retenido en el broker para nuevos suscriptores
+  if (project && project.nodes && project.nodes.length > 0) {
+    broadcastProjectSnapshotImmediate(roomId, project);
+  }
 
-  return `${origin}${path}?room=${encodeURIComponent(roomId)}${hashPart}`;
+  // Enlace ultra-corto de menos de una sola línea
+  return `${origin}${path}?r=${encodeURIComponent(roomId)}`;
 }
 
 export type CollaborationStatus =
@@ -190,6 +247,7 @@ interface CollabClientSession {
   collaborators: Map<string, CollaboratorInfo>;
   onProjectUpdate?: (project: OrganizerProject) => void;
   onStatusChange?: (status: CollaborationStatus, count: number) => void;
+  getCurrentProject?: () => OrganizerProject | null;
   heartbeatTimer?: ReturnType<typeof setInterval>;
 }
 
@@ -207,11 +265,13 @@ export function connectToRoom(
   roomId: string,
   initialProject: OrganizerProject,
   onRemoteProjectUpdate: (project: OrganizerProject) => void,
-  onStatusChange?: (status: CollaborationStatus, activeCount: number) => void
+  onStatusChange?: (status: CollaborationStatus, activeCount: number) => void,
+  getCurrentProject?: () => OrganizerProject | null
 ) {
   if (session.roomId === roomId && session.client?.connected) {
     session.onProjectUpdate = onRemoteProjectUpdate;
     session.onStatusChange = onStatusChange;
+    session.getCurrentProject = getCurrentProject;
     return;
   }
 
@@ -221,6 +281,7 @@ export function connectToRoom(
   session.roomId = roomId;
   session.onProjectUpdate = onRemoteProjectUpdate;
   session.onStatusChange = onStatusChange;
+  session.getCurrentProject = getCurrentProject;
   session.status = 'connecting';
   session.collaborators.clear();
 
@@ -249,7 +310,7 @@ export function connectToRoom(
       // Suscribirse al topic único de la sala
       client.subscribe(topic, { qos: 1 }, err => {
         if (!err) {
-          // Anunciar presencia y solicitar sincronización si somos nuevos
+          // Anunciar presencia
           client.publish(
             topic,
             JSON.stringify({
@@ -260,8 +321,8 @@ export function connectToRoom(
             { qos: 0 }
           );
 
-          // Si el mapa local tiene contenido, enviar una snapshot inicial
-          if (initialProject && initialProject.nodes.length > 0) {
+          // Si el mapa local tiene contenido, enviar una snapshot inicial retenida
+          if (initialProject && initialProject.nodes && initialProject.nodes.length > 0) {
             client.publish(
               topic,
               JSON.stringify({
@@ -271,6 +332,18 @@ export function connectToRoom(
                 timestamp: initialProject.updatedAt || Date.now(),
               }),
               { qos: 1, retain: true }
+            );
+          } else {
+            // Si el dispositivo está vacío (abriendo enlace corto por primera vez),
+            // solicitar sincronización activa a los demás dispositivos en línea
+            client.publish(
+              topic,
+              JSON.stringify({
+                type: 'SYNC_REQUEST',
+                sender: myInfo,
+                timestamp: Date.now(),
+              }),
+              { qos: 1 }
             );
           }
         }
@@ -343,6 +416,21 @@ export function connectToRoom(
               }),
               { qos: 0 }
             );
+
+            // Si el cliente actual tiene el mapa cargado, responder además con la snapshot
+            const cur = session.getCurrentProject ? session.getCurrentProject() : initialProject;
+            if (cur && cur.nodes && cur.nodes.length > 0) {
+              client.publish(
+                topic,
+                JSON.stringify({
+                  type: 'STATE_SNAPSHOT',
+                  sender: myInfo,
+                  project: cur,
+                  timestamp: cur.updatedAt || Date.now(),
+                }),
+                { qos: 1, retain: true }
+              );
+            }
           }
           return;
         }
@@ -354,6 +442,26 @@ export function connectToRoom(
               lastSeen: Date.now(),
             });
             session.onStatusChange?.('connected', session.collaborators.size);
+          }
+          return;
+        }
+
+        // 2. Solicitud explícita de sincronización de un nuevo dispositivo
+        if (msg.type === 'SYNC_REQUEST') {
+          if (msg.sender?.id !== myId) {
+            const cur = session.getCurrentProject ? session.getCurrentProject() : initialProject;
+            if (cur && cur.nodes && cur.nodes.length > 0) {
+              client.publish(
+                topic,
+                JSON.stringify({
+                  type: 'STATE_SNAPSHOT',
+                  sender: myInfo,
+                  project: cur,
+                  timestamp: cur.updatedAt || Date.now(),
+                }),
+                { qos: 1, retain: true }
+              );
+            }
           }
           return;
         }
