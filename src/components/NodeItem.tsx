@@ -80,6 +80,21 @@ const NodeItemInner: React.FC<NodeItemProps> = ({
   const shape = resolveEffectiveShape(node, depth, organizerType, themeId);
   const branchColor = node.color || theme.palette[0];
 
+  const effectiveTextAlign: 'left' | 'center' | 'right' | 'justify' =
+    node.textAlign ||
+    (isRoot || shape === 'diamond' || shape === 'circle' || shape === 'pill'
+      ? 'center'
+      : 'left');
+
+  const alignContainerClass =
+    effectiveTextAlign === 'center'
+      ? 'justify-center text-center'
+      : effectiveTextAlign === 'right'
+      ? 'justify-end text-right'
+      : effectiveTextAlign === 'justify'
+      ? 'justify-start text-justify'
+      : 'justify-start text-left';
+
   const w = node.width || 148;
   const h = node.height || 48;
   const left = node.x - w / 2;
@@ -332,11 +347,7 @@ const NodeItemInner: React.FC<NodeItemProps> = ({
           isConnectMode
             ? 'cursor-crosshair ring-2 ring-amber-400/70 hover:scale-[1.03]'
             : 'cursor-grab active:cursor-grabbing'
-        } ${
-          isRoot || shape === 'diamond' || shape === 'circle' || shape === 'pill'
-            ? 'justify-center text-center'
-            : 'justify-start text-left'
-        }`}
+        } ${alignContainerClass}`}
       >
         {/* Barra de acento lateral estilo Edraw en tarjetas blancas */}
         {!isRoot &&
@@ -413,6 +424,7 @@ const NodeItemInner: React.FC<NodeItemProps> = ({
                   fontWeight: typo.fontWeight,
                   lineHeight: `${typo.lineHeight}px`,
                   color: textColor,
+                  textAlign: effectiveTextAlign,
                 }}
                 className="w-full bg-transparent resize-none outline-none border-b border-orange-400 p-0 m-0 text-inherit"
               />
@@ -422,12 +434,28 @@ const NodeItemInner: React.FC<NodeItemProps> = ({
                   fontSize: `${typo.fontSize}px`,
                   fontWeight: typo.fontWeight,
                   lineHeight: `${typo.lineHeight}px`,
+                  textAlign: effectiveTextAlign,
+                  textJustify: effectiveTextAlign === 'justify' ? 'inter-word' : undefined,
+                  hyphens: effectiveTextAlign === 'justify' ? 'auto' : undefined,
+                  wordBreak: 'break-word',
                 }}
-                className="whitespace-pre-wrap break-words"
+                className={`w-full ${
+                  effectiveTextAlign === 'justify'
+                    ? 'whitespace-normal text-justify'
+                    : 'whitespace-pre-wrap break-words'
+                }`}
               >
-                {node.lines && node.lines.length > 0
-                  ? node.lines.join('\n')
-                  : node.text}
+                {effectiveTextAlign === 'justify'
+                  ? (node.text.includes('\n')
+                      ? node.text.split('\n').map((para, pIdx) => (
+                          <p key={pIdx} className={pIdx > 0 ? 'mt-1' : ''}>
+                            {para}
+                          </p>
+                        ))
+                      : node.text)
+                  : (node.lines && node.lines.length > 0
+                      ? node.lines.join('\n')
+                      : node.text)}
               </div>
             )}
 

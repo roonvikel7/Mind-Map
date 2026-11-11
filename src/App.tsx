@@ -693,6 +693,33 @@ export function App() {
     [activeProject, commitProjectPatch, pushHistory]
   );
 
+  // Aplicar alineación (ej: Justificado) a todos los cuadros explicativos del mapa actual
+  const handleApplyGlobalTextAlign = useCallback(
+    (align: 'left' | 'center' | 'right' | 'justify') => {
+      if (!activeProject) return;
+      pushHistory(activeProject.nodes, activeProject.edges);
+      const updatedNodes = activeProject.nodes.map(n => {
+        if (n.isRoot && align === 'justify') return n;
+        return { ...n, textAlign: align };
+      });
+      const relaid = applyLayout(
+        updatedNodes,
+        activeProject.edges,
+        activeProject.type,
+        activeProject.theme,
+        false,
+        activeProject.cartographicDirection || 'clockwise'
+      );
+      commitProjectPatch({ nodes: relaid.nodes, edges: relaid.edges });
+      showToast(
+        align === 'justify'
+          ? '¡Todos los cuadros del mapa han sido justificados!'
+          : `Alineación «${align}» aplicada a los cuadros.`
+      );
+    },
+    [activeProject, commitProjectPatch, pushHistory, showToast]
+  );
+
   // Contraer / Expandir subrama
   const handleToggleCollapse = useCallback(
     (nodeId: string) => {
@@ -1038,7 +1065,10 @@ export function App() {
         : undefined;
 
     if (effectiveProvider === 'gemini' && apiKey) {
-      showToast(`Generando organizador sobre «${topic}» con Google Gemini API...`);
+      const isPro = (apiSettings.geminiTier || 'pro') === 'pro';
+      showToast(
+        `Generando con Google Gemini ${isPro ? 'Pro' : 'Flash'} sobre «${topic}»...`
+      );
     }
 
     const themeToUse: ThemeId = activeProject?.theme || 'vitality-warm';
@@ -1050,6 +1080,7 @@ export function App() {
         depth,
         apiKey,
         provider: effectiveProvider,
+        geminiTier: apiSettings.geminiTier || 'pro',
       },
       themeToUse
     );
@@ -1418,6 +1449,7 @@ export function App() {
           onDeleteEdge={handleDeleteEdge}
           onExpandAi={handleExpandAi}
           onOpenNotes={handleOpenNotes}
+          onUpdateNode={handleUpdateNode}
           onEditEdgeLabel={handleEditEdgeLabel}
           onAutoAlign={handleAutoAlign}
           onUndo={handleUndo}
@@ -1439,6 +1471,7 @@ export function App() {
           onToggleRainbowBranches={handleToggleRainbowBranches}
           onExpandOrCollapseAll={handleExpandOrCollapseAll}
           onChangeCartographicDirection={handleChangeCartographicDirection}
+          onApplyGlobalTextAlign={handleApplyGlobalTextAlign}
           onClose={handleCloseRight}
         />
 

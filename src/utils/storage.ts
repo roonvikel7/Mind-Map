@@ -17,6 +17,7 @@ export interface ApiSettings {
   geminiApiKey: string;
   openaiApiKey: string;
   defaultProvider: 'local' | 'gemini' | 'openai';
+  geminiTier?: 'pro' | 'flash' | 'auto';
 }
 
 function normalizeThemeId(raw?: string): ThemeId {
@@ -185,6 +186,9 @@ export function loadApiSettings(): ApiSettings {
         parsed.geminiApiKey = defaultKey;
         parsed.defaultProvider = defaultKey ? 'gemini' : 'local';
       }
+      if (!parsed.geminiTier) {
+        parsed.geminiTier = 'pro';
+      }
       return parsed;
     }
   } catch (_) {}
@@ -192,6 +196,7 @@ export function loadApiSettings(): ApiSettings {
     geminiApiKey: defaultKey,
     openaiApiKey: '',
     defaultProvider: defaultKey ? 'gemini' : 'local',
+    geminiTier: 'pro',
   };
 }
 

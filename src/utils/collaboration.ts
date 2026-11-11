@@ -84,6 +84,7 @@ export async function compressProjectToHash(project: OrganizerProject): Promise<
         color: n.color,
         bgColor: n.bgColor,
         textColor: n.textColor,
+        textAlign: n.textAlign,
         flowType: n.flowType,
         priority: n.priority,
         progress: n.progress,

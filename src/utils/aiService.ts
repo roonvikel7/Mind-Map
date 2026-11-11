@@ -1174,18 +1174,43 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto antes o después ni marca
 }`;
 }
 
-export const GEMINI_PREFERRED_MODELS = [
-  'gemini-flash-lite-latest',
-  'gemini-3.5-flash-lite',
-  'gemini-3-flash-preview',
-  'gemini-3.5-flash',
-  'gemini-flash-latest',
+export type GeminiTier = 'pro' | 'flash' | 'auto';
+
+// Modelos Pro con razonamiento avanzado (diseñados para planes Pro / Pay-As-You-Go de Google)
+export const GEMINI_PRO_MODELS = [
+  'gemini-2.5-pro',
+  'gemini-1.5-pro',
+  'gemini-pro-latest',
 ];
 
-/** Valida rápidamente si una clave de API de Gemini es funcional */
-export async function testGeminiApiKey(apiKey: string): Promise<{
+// Modelos Flash para respuestas rápidas
+export const GEMINI_FLASH_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-1.5-flash',
+  'gemini-flash-latest',
+  'gemini-flash-lite-latest',
+];
+
+export function getGeminiCandidateModels(tier: GeminiTier = 'auto'): string[] {
+  if (tier === 'pro') {
+    return [...GEMINI_PRO_MODELS, ...GEMINI_FLASH_MODELS];
+  }
+  if (tier === 'flash') {
+    return [...GEMINI_FLASH_MODELS];
+  }
+  return [...GEMINI_PRO_MODELS, ...GEMINI_FLASH_MODELS];
+}
+
+export const GEMINI_PREFERRED_MODELS = getGeminiCandidateModels('pro');
+
+/** Valida rápidamente si una clave de API de Gemini es funcional e identifica si accede a versión Pro */
+export async function testGeminiApiKey(
+  apiKey: string,
+  preferredTier: GeminiTier = 'pro'
+): Promise<{
   success: boolean;
   model?: string;
+  isPro?: boolean;
   error?: string;
 }> {
   const key = apiKey.trim();
@@ -1193,7 +1218,7 @@ export async function testGeminiApiKey(apiKey: string): Promise<{
     return { success: false, error: 'Por favor ingresa una clave de API válida.' };
   }
 
-  const models = GEMINI_PREFERRED_MODELS;
+  const models = getGeminiCandidateModels(preferredTier);
   let lastErr = '';
 
   for (const model of models) {
@@ -1211,7 +1236,8 @@ export async function testGeminiApiKey(apiKey: string): Promise<{
       );
 
       if (res.ok) {
-        return { success: true, model };
+        const isPro = GEMINI_PRO_MODELS.includes(model);
+        return { success: true, model, isPro };
       }
 
       const errBody = await res.json().catch(() => null);
@@ -1228,7 +1254,7 @@ export async function testGeminiApiKey(apiKey: string): Promise<{
 
 async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
   const prompt = buildGeminiPrompt(req);
-  const models = GEMINI_PREFERRED_MODELS;
+  const models = getGeminiCandidateModels(req.geminiTier || 'pro');
   let lastError: Error | null = null;
   const isCartographic = req.type === 'cartographic';
 
@@ -1414,10 +1440,11 @@ async function expandNodeWithGemini(
   lineageContext: string,
   type: OrganizerType,
   projectTitle: string | undefined,
-  apiKey: string
+  apiKey: string,
+  tier: GeminiTier = 'pro'
 ): Promise<Array<{ text: string; subtitle?: string; label?: string; icon?: string }>> {
   const isCartographic = type === 'cartographic';
-  const models = GEMINI_PREFERRED_MODELS;
+  const models = getGeminiCandidateModels(tier);
 
   const prompt = `Eres un redactor académico y pedagógico experto en organizadores visuales y mapas estructurados estilo EdrawMax.
 El usuario está profundizando el tema "${projectTitle || 'Diagrama'}" sobre el nodo:
@@ -1653,7 +1680,8 @@ export async function expandNodeWithAi(
         lineageContext,
         type,
         projectTitle,
-        apiSettings.geminiApiKey.trim()
+        apiSettings.geminiApiKey.trim(),
+        apiSettings.geminiTier || 'pro'
       );
     } catch (err) {
       console.warn('Gemini expand falló, usando motor semántico local:', err);

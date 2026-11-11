@@ -43,11 +43,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setTestingKey(true);
     setTestResult(null);
     try {
-      const res = await testGeminiApiKey(settings.geminiApiKey);
+      const res = await testGeminiApiKey(
+        settings.geminiApiKey,
+        settings.geminiTier || 'pro'
+      );
       if (res.success) {
         setTestResult({
           success: true,
-          msg: `¡Conexión verificada con Google Gemini (${res.model})!`,
+          msg: `¡Conexión verificada con Google Gemini (${res.model}${res.isPro ? ' • Versión Pro Activa' : ''})!`,
         });
       } else {
         setTestResult({
@@ -200,6 +203,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {testResult.msg}
                 </div>
               )}
+
+              <div className="pt-2">
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                  Versión / Nivel de tu Plan Gemini
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSettings(s => ({ ...s, geminiTier: 'pro' }))}
+                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                      (settings.geminiTier ?? 'pro') === 'pro'
+                        ? 'bg-amber-50/90 border-amber-400 text-amber-950 ring-2 ring-amber-400/20 shadow-xs'
+                        : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <span>👑 Versión Pro</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-200/80 text-amber-900 font-extrabold">Plan Pro</span>
+                    </div>
+                    <p className="text-[10.5px] text-stone-500 mt-1 leading-snug">
+                      gemini-2.5-pro y gemini-1.5-pro con razonamiento avanzado y profundidad profesional.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSettings(s => ({ ...s, geminiTier: 'flash' }))}
+                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                      settings.geminiTier === 'flash'
+                        ? 'bg-orange-50 border-orange-400 text-orange-950 ring-2 ring-orange-400/20 shadow-xs'
+                        : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <span>⚡ Versión Flash</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-stone-100 text-stone-700 font-semibold">Rápido</span>
+                    </div>
+                    <p className="text-[10.5px] text-stone-500 mt-1 leading-snug">
+                      gemini-2.5-flash optimizado para velocidad instantánea en milisegundos.
+                    </p>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

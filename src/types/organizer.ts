@@ -62,6 +62,7 @@ export interface OrganizerNode {
   color?: string;         // Color acento/rama
   bgColor?: string;       // Relleno personalizado opcional
   textColor?: string;     // Color de texto personalizado opcional
+  textAlign?: 'left' | 'center' | 'right' | 'justify'; // Alineación del texto (incluye justificado editorial)
   shape?: NodeShape;
   icon?: string;
   priority?: 1 | 2 | 3 | 4 | 5;          // Marcadores P1..P5 estilo EdrawMax
@@ -140,4 +141,5 @@ export interface AiGenerationRequest {
   depth?: 'compact' | 'standard' | 'deep';
   apiKey?: string;
   provider?: 'local' | 'gemini' | 'openai';
+  geminiTier?: 'pro' | 'flash' | 'auto'; // 'pro' = Plan Pro con razonamiento profundo (gemini-2.5-pro / gemini-1.5-pro)
 }

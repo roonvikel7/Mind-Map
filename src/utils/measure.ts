@@ -197,6 +197,11 @@ export function measureNodeDimensions(
     Math.ceil(textBlockH + typo.padY * 2)
   );
 
+  if (node.textAlign === 'justify' && lines.length > 1) {
+    // Para bloques justificados estilo editorial, aseguramos ancho proporcionado para que no se aprieten las palabras
+    width = Math.max(width, Math.min(typo.maxTextWidth + typo.padX * 2, 260));
+  }
+
   if (resolvedShape === 'underline') {
     width = Math.max(96, Math.ceil(contentW + 20));
     height = Math.max(32, Math.ceil(textBlockH + 12));

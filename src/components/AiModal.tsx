@@ -46,7 +46,8 @@ export const AiModal: React.FC<AiModalProps> = ({
 
   // Estado de clave y conexión de Google Gemini
   const [geminiApiKey, setGeminiApiKey] = useState('');
-  const [activeModel, setActiveModel] = useState('gemini-2.5-flash');
+  const [geminiTier, setGeminiTier] = useState<'pro' | 'flash' | 'auto'>('pro');
+  const [activeModel, setActiveModel] = useState('gemini-2.5-pro');
   const [showKeyConfig, setShowKeyConfig] = useState(false);
   const [testingKey, setTestingKey] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; msg: string } | null>(null);
@@ -55,6 +56,8 @@ export const AiModal: React.FC<AiModalProps> = ({
     if (isOpen) {
       const settings = loadApiSettings();
       setGeminiApiKey(settings.geminiApiKey || '');
+      setGeminiTier(settings.geminiTier || 'pro');
+      setActiveModel((settings.geminiTier || 'pro') === 'pro' ? 'gemini-2.5-pro' : 'gemini-2.5-flash');
       setTestResult(null);
     }
   }, [isOpen]);
@@ -72,17 +75,18 @@ export const AiModal: React.FC<AiModalProps> = ({
     setTestingKey(true);
     setTestResult(null);
     try {
-      const res = await testGeminiApiKey(geminiApiKey);
+      const res = await testGeminiApiKey(geminiApiKey, geminiTier);
       if (res.success) {
         if (res.model) setActiveModel(res.model);
         setTestResult({
           success: true,
-          msg: `¡Clave verificada con éxito (${res.model})!`,
+          msg: `¡Clave verificada con éxito (${res.model}${res.isPro ? ' • Versión Pro Activa' : ''})!`,
         });
         const current = loadApiSettings();
         saveApiSettings({
           ...current,
           geminiApiKey: geminiApiKey.trim(),
+          geminiTier,
           defaultProvider: 'gemini',
         });
       } else {
@@ -94,6 +98,16 @@ export const AiModal: React.FC<AiModalProps> = ({
     } finally {
       setTestingKey(false);
     }
+  };
+
+  const handleTierChange = (newTier: 'pro' | 'flash' | 'auto') => {
+    setGeminiTier(newTier);
+    setActiveModel(newTier === 'pro' ? 'gemini-2.5-pro' : 'gemini-2.5-flash');
+    const current = loadApiSettings();
+    saveApiSettings({
+      ...current,
+      geminiTier: newTier,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -171,11 +185,17 @@ export const AiModal: React.FC<AiModalProps> = ({
                 />
                 <span className="text-xs font-bold text-stone-800 truncate">
                   {geminiApiKey.trim()
-                    ? 'Google Gemini API Conectado'
+                    ? geminiTier === 'pro'
+                      ? '👑 Google Gemini Pro Conectado'
+                      : 'Google Gemini API Conectado'
                     : 'Motor Semántico Local'}
                 </span>
-                <span className="hidden sm:inline text-[10px] px-2 py-0.5 rounded-full bg-white text-stone-600 font-semibold border border-stone-200">
-                  {geminiApiKey.trim() ? activeModel : 'Autónomo'}
+                <span className={`hidden sm:inline text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                  geminiTier === 'pro'
+                    ? 'bg-amber-100/90 text-amber-900 border-amber-300'
+                    : 'bg-white text-stone-600 border-stone-200'
+                }`}>
+                  {geminiApiKey.trim() ? (geminiTier === 'pro' ? `👑 ${activeModel}` : activeModel) : 'Autónomo'}
                 </span>
               </div>
               <button
@@ -254,6 +274,53 @@ export const AiModal: React.FC<AiModalProps> = ({
                     {testResult.msg}
                   </div>
                 )}
+
+                {/* Selector de Nivel / Versión Pro de Gemini */}
+                <div className="pt-2">
+                  <div className="text-[11px] font-bold text-stone-700 mb-1.5 flex items-center justify-between">
+                    <span>Versión de Gemini a Utilizar</span>
+                    <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/70">
+                      {geminiTier === 'pro' ? '👑 Modo Plan Pro Activado' : '⚡ Modo Flash Rápido'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleTierChange('pro')}
+                      className={`p-2.5 rounded-xl border text-left transition-all ${
+                        geminiTier === 'pro'
+                          ? 'bg-amber-50/90 border-amber-400 text-amber-950 ring-2 ring-amber-400/20 shadow-xs'
+                          : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                        <span>👑 Versión Pro</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-200/80 text-amber-900 font-extrabold">Recomendado</span>
+                      </div>
+                      <p className="text-[10.5px] text-stone-500 mt-0.5 leading-snug">
+                        gemini-2.5-pro / gemini-1.5-pro. Máxima profundidad analítica y argumentación académica formal.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleTierChange('flash')}
+                      className={`p-2.5 rounded-xl border text-left transition-all ${
+                        geminiTier === 'flash'
+                          ? 'bg-orange-50 border-orange-400 text-orange-950 ring-2 ring-orange-400/20 shadow-xs'
+                          : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                        <span>⚡ Versión Flash</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-stone-100 text-stone-700 font-semibold">Rápido</span>
+                      </div>
+                      <p className="text-[10.5px] text-stone-500 mt-0.5 leading-snug">
+                        gemini-2.5-flash. Generación instantánea en menos de 1 segundo para bocetos rápidos.
+                      </p>
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

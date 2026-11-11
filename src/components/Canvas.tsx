@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  AlignJustify,
   FileText,
   GitBranchPlus,
   GitCompareArrows,
@@ -57,6 +58,7 @@ interface CanvasProps {
   onDeleteEdge: (edgeId: string) => void;
   onExpandAi: (node: OrganizerNode) => void;
   onOpenNotes: (nodeId: string) => void;
+  onUpdateNode?: (nodeId: string, updates: Partial<OrganizerNode>) => void;
   onEditEdgeLabel: (edgeId: string, currentLabel: string) => void;
   onAutoAlign: () => void;
   onUndo: () => void;
@@ -105,6 +107,7 @@ const CanvasInner: React.FC<CanvasProps> = ({
   onDeleteEdge,
   onExpandAi,
   onOpenNotes,
+  onUpdateNode,
   onEditEdgeLabel,
   onAutoAlign,
   onUndo,
@@ -1458,6 +1461,33 @@ const CanvasInner: React.FC<CanvasProps> = ({
           >
             <FileText className="w-3.5 h-3.5" />
           </button>
+
+          {onUpdateNode && (
+            <button
+              type="button"
+              onClick={() => {
+                const isJustified = selectedNode.textAlign === 'justify';
+                onUpdateNode(selectedNode.id, {
+                  textAlign: isJustified ? 'left' : 'justify',
+                });
+              }}
+              title={
+                selectedNode.textAlign === 'justify'
+                  ? 'Texto justificado activo (clic para volver a alineación izquierda)'
+                  : 'Justificar texto del cuadro (alineación simétrica a ambos lados)'
+              }
+              className={`ios-btn flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold shrink-0 transition-colors ${
+                selectedNode.textAlign === 'justify'
+                  ? 'bg-orange-100 text-orange-800 font-bold ring-1 ring-orange-300'
+                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+              }`}
+            >
+              <AlignJustify className="w-3.5 h-3.5 text-orange-600" />
+              <span className="hidden sm:inline">
+                {selectedNode.textAlign === 'justify' ? 'Justificado' : 'Justificar'}
+              </span>
+            </button>
+          )}
 
           {!(selectedNode.isRoot || (selectedNode.depth || 0) === 0) && (
             <button
