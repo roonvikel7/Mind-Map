@@ -57,6 +57,8 @@ const loadPresentationView = () =>
   import('./components/PresentationView').then(m => ({ default: m.PresentationView }));
 const loadShareModal = () =>
   import('./components/ShareModal').then(m => ({ default: m.ShareModal }));
+const loadCanvaExportModal = () =>
+  import('./components/CanvaExportModal').then(m => ({ default: m.CanvaExportModal }));
 
 const AiModal = lazy(loadAiModal);
 const TemplatesModal = lazy(loadTemplatesModal);
@@ -66,6 +68,7 @@ const EdgeLabelModal = lazy(loadEdgeLabelModal);
 const SettingsModal = lazy(loadSettingsModal);
 const PresentationView = lazy(loadPresentationView);
 const ShareModal = lazy(loadShareModal);
+const CanvaExportModal = lazy(loadCanvaExportModal);
 
 export function App() {
   const [projects, setProjects] = useState<OrganizerProject[]>([]);
@@ -96,6 +99,7 @@ export function App() {
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [canvaOpen, setCanvaOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [presentationOpen, setPresentationOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -206,6 +210,7 @@ export function App() {
         void loadSettingsModal();
         void loadPresentationView();
         void loadShareModal();
+        void loadCanvaExportModal();
       };
       const w = window as Window & {
         requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
@@ -248,6 +253,7 @@ export function App() {
         if (aiModalOpen) setAiModalOpen(false);
         if (templatesOpen) setTemplatesOpen(false);
         if (exportOpen) setExportOpen(false);
+        if (canvaOpen) setCanvaOpen(false);
         if (settingsOpen) setSettingsOpen(false);
         if (notesNodeId) setNotesNodeId(null);
         if (editingEdge) setEditingEdge(null);
@@ -259,7 +265,7 @@ export function App() {
     };
     window.addEventListener('keydown', handleGlobalEsc);
     return () => window.removeEventListener('keydown', handleGlobalEsc);
-  }, [createChooserOpen, aiModalOpen, templatesOpen, exportOpen, settingsOpen, notesNodeId, editingEdge]);
+  }, [createChooserOpen, aiModalOpen, templatesOpen, exportOpen, canvaOpen, settingsOpen, notesNodeId, editingEdge]);
 
   const activeProject =
     projects.find(p => p.id === activeProjectId) || projects[0];
@@ -1326,6 +1332,7 @@ export function App() {
   const handleOpenAiModal = useCallback(() => setAiModalOpen(true), []);
   const handleOpenTemplates = useCallback(() => setTemplatesOpen(true), []);
   const handleOpenExport = useCallback(() => setExportOpen(true), []);
+  const handleOpenCanva = useCallback(() => setCanvaOpen(true), []);
   const handleOpenSettings = useCallback(() => setSettingsOpen(true), []);
   const handleOpenPresentation = useCallback(() => setPresentationOpen(true), []);
   const handleOpenCreateChooser = useCallback(() => setCreateChooserOpen(true), []);
@@ -1424,6 +1431,7 @@ export function App() {
         onOpenExport={handleOpenExport}
         onOpenSettings={handleOpenSettings}
         onOpenPresentation={handleOpenPresentation}
+        onOpenCanva={handleOpenCanva}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onChangeCartographicDirection={handleChangeCartographicDirection}
@@ -1603,6 +1611,15 @@ export function App() {
             isOpen={exportOpen}
             onClose={() => setExportOpen(false)}
             project={activeProject}
+            onOpenCanva={handleOpenCanva}
+          />
+        )}
+
+        {canvaOpen && (
+          <CanvaExportModal
+            isOpen={canvaOpen}
+            onClose={() => setCanvaOpen(false)}
+            project={activeProject}
           />
         )}
 
@@ -1649,6 +1666,7 @@ export function App() {
             isOpen={presentationOpen}
             onClose={() => setPresentationOpen(false)}
             project={activeProject}
+            onOpenCanva={handleOpenCanva}
           />
         )}
       </Suspense>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Maximize2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Presentation, X } from 'lucide-react';
 import { OrganizerNode, OrganizerProject } from '../types/organizer';
 import { generateStandaloneSvg } from '../utils/exporter';
 import { getThemeConfig, PRIORITY_BADGES } from '../utils/themes';
@@ -8,6 +8,7 @@ interface PresentationViewProps {
   isOpen: boolean;
   onClose: () => void;
   project: OrganizerProject;
+  onOpenCanva?: () => void;
 }
 
 interface SlideItem {
@@ -27,6 +28,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
   isOpen,
   onClose,
   project,
+  onOpenCanva,
 }) => {
   const [step, setStep] = useState(0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -138,15 +140,31 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
             {project.title}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shrink-0"
-        >
-          <X className="w-4 h-4" />
-          <span className="hidden sm:inline">Salir (Esc)</span>
-          <span className="sm:hidden">Salir</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {onOpenCanva && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenCanva();
+              }}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] hover:opacity-95 text-white text-xs font-extrabold shadow-xs shrink-0"
+            >
+              <Presentation className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Abrir en Canva</span>
+              <span className="sm:hidden">Canva</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shrink-0"
+          >
+            <X className="w-4 h-4" />
+            <span className="hidden sm:inline">Salir (Esc)</span>
+            <span className="sm:hidden">Salir</span>
+          </button>
+        </div>
       </div>
 
       {/* Cuerpo de presentación */}

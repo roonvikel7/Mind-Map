@@ -12,6 +12,7 @@ import {
   PanelRight,
   Play,
   Plus,
+  Presentation,
   Redo2,
   RotateCcw,
   RotateCw,
@@ -51,6 +52,7 @@ interface NavbarProps {
   onOpenExport: () => void;
   onOpenSettings: () => void;
   onOpenPresentation: () => void;
+  onOpenCanva?: () => void;
   onUndo: () => void;
   onRedo: () => void;
   onChangeCartographicDirection?: (dir: 'clockwise' | 'counterclockwise') => void;
@@ -90,6 +92,7 @@ const NavbarComponent: React.FC<NavbarProps> = ({
   onOpenExport,
   onOpenSettings,
   onOpenPresentation,
+  onOpenCanva,
   onUndo,
   onRedo,
   onChangeCartographicDirection,
@@ -638,6 +641,30 @@ const NavbarComponent: React.FC<NavbarProps> = ({
                     <div className="text-[10.5px] text-stone-400">Exponer diapositivas en vivo</div>
                   </div>
                 </button>
+
+                {onOpenCanva && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setToolsMenuOpen(false);
+                      onOpenCanva();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-cyan-50/80 text-left text-xs transition-colors"
+                  >
+                    <Presentation className="w-4 h-4 text-cyan-600 shrink-0" />
+                    <div>
+                      <div className="font-bold text-stone-800 flex items-center gap-1.5">
+                        <span>Abrir en Canva</span>
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-cyan-100 text-cyan-800">
+                          Editable
+                        </span>
+                      </div>
+                      <div className="text-[10.5px] text-stone-400">
+                        Exportar presentación .PPTX editable
+                      </div>
+                    </div>
+                  </button>
+                )}
               </div>
 
               <div className="border-t border-stone-100" />

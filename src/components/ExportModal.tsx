@@ -8,6 +8,7 @@ import {
   FileImage,
   FileJson,
   FileText,
+  Presentation,
   Printer,
   X,
 } from 'lucide-react';
@@ -27,12 +28,14 @@ interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   project: OrganizerProject;
+  onOpenCanva?: () => void;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
   isOpen,
   onClose,
   project,
+  onOpenCanva,
 }) => {
   const [transparentBg, setTransparentBg] = useState(false);
   const [includeGrid, setIncludeGrid] = useState(false);
@@ -205,6 +208,40 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               Selecciona el Formato de Descarga Directa
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Presentación Editable en Canva */}
+              {onOpenCanva && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenCanva();
+                  }}
+                  className="sm:col-span-2 flex items-center justify-between gap-3 p-3.5 rounded-2xl border-2 border-cyan-400/90 bg-gradient-to-r from-cyan-50/90 via-sky-50/80 to-violet-50/90 hover:from-cyan-100/80 hover:to-violet-100/80 text-left transition-all shadow-sm"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00C4CC] via-[#3B82F6] to-[#7D2AE8] text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <Presentation className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs font-extrabold text-stone-900">
+                          Presentación de Canva (Editable)
+                        </span>
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] text-white">
+                          CANVA .PPTX
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-stone-600 mt-0.5 leading-snug">
+                        Cuadros, textos, etiquetas y temas en diapositivas 16:9 editables al importar en Canva
+                      </div>
+                    </div>
+                  </div>
+                  <span className="hidden sm:inline-flex px-2.5 py-1 rounded-xl bg-white/90 border border-cyan-200 text-[11px] font-extrabold text-cyan-800 shrink-0">
+                    Configurar →
+                  </span>
+                </button>
+              )}
+
               {/* PNG 8K UHD */}
               <button
                 type="button"
@@ -281,7 +318,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     </span>
                   </div>
                   <div className="text-[11px] text-stone-500 mt-0.5 leading-snug">
-                    Calidad infinita matemática editable en Illustrator, Figma o Canva
+                    Vectores escalables para Illustrator, Figma o insertar como gráfico en Canva
                   </div>
                 </div>
               </button>
