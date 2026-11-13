@@ -96,104 +96,6 @@ export function cleanAndNaturalizeArgument(
   return { text, label: cleanLabel };
 }
 
-/** Limpia y normaliza una palabra o frase de enlace verbal según reglas de Novak (minúscula, concisa, sin puntuación final) */
-export function cleanConceptLinkLabel(rawLabel?: string): string | undefined {
-  if (!rawLabel) return undefined;
-  let clean = rawLabel
-    .trim()
-    .toLowerCase()
-    .replace(/^["'«»“”]+|["'«»“”]+$/g, '')
-    .replace(/[.:;!?]+$/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-
-  if (!clean) return undefined;
-
-  // Normalizar verbos sueltos frecuentes a frases de enlace naturales
-  const shortcuts: Record<string, string> = {
-    define: 'se define como',
-    clasifica: 'se clasifica en',
-    divide: 'se divide en',
-    caracteriza: 'se caracteriza por',
-    distingue: 'se distingue de',
-    vincula: 'se vincula con',
-    relaciona: 'se relaciona con',
-    aplica: 'se aplica en',
-    ejemplifica: 'se ejemplifica en',
-    compone: 'se compone de',
-    deriva: 'deriva de',
-    depende: 'depende de',
-  };
-  if (shortcuts[clean]) {
-    clean = shortcuts[clean];
-  }
-
-  return clean;
-}
-
-/**
- * Limpia y formatea un nodo de Mapa Conceptual auténtico de Novak:
- * - Concepto nominal breve con mayúscula inicial (sin emojis, sin puntos finales, sin prefijos con dos puntos)
- * - Preserva siglas o fórmulas cortas útiles, evitando oraciones largas de estilo párrafo
- */
-export function cleanConceptNodeText(
-  rawText: string,
-  label?: string,
-  isRoot?: boolean
-): { text: string; label?: string } {
-  if (!rawText) return { text: 'Concepto', label: cleanConceptLinkLabel(label) };
-
-  let text = rawText
-    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
-    .replace(/^["'«»“”]+|["'«»“”]+$/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-
-  if (isRoot) {
-    text = text.replace(/[:.;]+$/g, '').trim();
-    if (text.length > 0) {
-      text = text.charAt(0).toUpperCase() + text.slice(1);
-    }
-    return { text: text || 'Concepto Central', label: undefined };
-  }
-
-  // Quitar prefijos artificiales ("Concepto:", "Ejemplo:", etc.) y puntos finales
-  text = text.replace(/^[A-Za-zÁ-ÿ\s0-9'\-_/]{2,35}:\s*/i, '');
-  text = text.replace(/\s*:\s*/g, ', ');
-
-  // Conservar paréntesis muy cortos (fórmulas químicas o siglas <= 8 caracteres como H2O, CO2, IA, ADN) y eliminar aclaraciones largas
-  text = text.replace(/\s*\(([^)]+)\)\s*/g, (_m, inner) => {
-    const trimmed = inner.trim();
-    if (trimmed.length <= 8) {
-      return ` (${trimmed}) `;
-    }
-    return ' ';
-  });
-
-  text = text
-    .replace(/[.;,]+$/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-
-  const cleanLabel = cleanConceptLinkLabel(label);
-
-  // Evitar que el texto del concepto repita el conector entrante al principio
-  if (cleanLabel) {
-    const escaped = cleanLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const dupRegex = new RegExp(`^${escaped}\\s+`, 'i');
-    if (dupRegex.test(text)) {
-      text = text.replace(dupRegex, '').trim();
-    }
-  }
-
-  // Garantizar mayúscula inicial del concepto nominal
-  if (text.length > 0) {
-    text = text.charAt(0).toUpperCase() + text.slice(1);
-  }
-
-  return { text: text || 'Concepto', label: cleanLabel || 'comprende' };
-}
-
 export const CARTO_CANONICAL_CONNECTORS: Record<string, string> = {
   '1. ejemplificacion': 'se ejemplifica mediante',
   '1. ejemplificación': 'se ejemplifica mediante',
@@ -384,11 +286,8 @@ export function pruneRedundantConnectorNodes(
               assignedLabel = finalConnector || currentChildLabel;
             }
 
-            // Naturalizar el contenido del hijo respetando si es Mapa Conceptual de Novak o argumento continuo
-            const naturalized =
-              type === 'concept'
-                ? cleanConceptNodeText(childNode.text, assignedLabel, false)
-                : cleanAndNaturalizeArgument(childNode.text, assignedLabel, false);
+            // Naturalizar el contenido del hijo asegurando que no repita el conector
+            const naturalized = cleanAndNaturalizeArgument(childNode.text, assignedLabel, false);
             childNode.text = naturalized.text;
             childNode.subtitle = undefined; // Sin subtítulos robóticos
 

@@ -192,58 +192,75 @@ export function buildStarterProjectNodes(
     return buildCartographicProjectNodes(title, actualRootId, existingRoot);
   }
 
-  // 2. Mapa Conceptual Auténtico de Novak (Conceptos breves, palabras de enlace con verbo, ejemplos y enlaces cruzados)
+  // 2. Mapa Conceptual (Novak: Proposiciones, conceptos jerárquicos y conectores explícitos)
   if (type === 'concept') {
     const rootNode: OrganizerNode = {
       ...(existingRoot || {}),
       id: actualRootId,
       text: title,
-      subtitle: `¿Cómo se estructura y opera ${title}?`,
+      subtitle: 'Estructura Jerárquica Conceptual',
       x: 0,
       y: 0,
       width: Math.max(190, existingRoot?.width || 200),
       height: Math.max(56, existingRoot?.height || 60),
       isRoot: true,
       depth: 0,
-      icon: undefined,
+      icon: existingRoot?.icon || '🕸️',
     };
-
-    const p1 = `c1-${actualRootId}`;
-    const p2 = `c2-${actualRootId}`;
-    const p3 = `c3-${actualRootId}`;
-    const s11 = `sub1-1-${actualRootId}`;
-    const s12 = `sub1-2-${actualRootId}`;
-    const s21 = `sub2-1-${actualRootId}`;
-    const s22 = `sub2-2-${actualRootId}`;
-    const s31 = `sub3-1-${actualRootId}`;
-    const s32 = `sub3-2-${actualRootId}`;
 
     const concepts = [
       {
-        id: p1,
-        text: 'Fundamentos Teóricos',
-        connectorToChild: 'se sustenta en',
+        id: `c1-${actualRootId}`,
+        text: 'Concepto y Noción Fundamental',
+        icon: '💡',
+        connectorToChild: 'se define como',
         subtopics: [
-          { id: s11, text: 'Conceptos Nucleares', connector: 'integra' },
-          { id: s12, text: 'Principios Rectores', connector: 'establece' },
+          {
+            id: `sub1-1-${actualRootId}`,
+            text: 'Conjunto estructurado de conceptos vinculados mediante palabras de enlace claras',
+            connector: 'comprende',
+          },
+          {
+            id: `sub1-2-${actualRootId}`,
+            text: 'Representación explícita de proposiciones con coherencia lógica y analítica',
+            connector: 'generando',
+          },
         ],
       },
       {
-        id: p2,
-        text: 'Estructura Operativa',
-        connectorToChild: 'se organiza en',
+        id: `c2-${actualRootId}`,
+        text: 'Estructura y Organización',
+        icon: '🗂️',
+        connectorToChild: 'se estructura en',
         subtopics: [
-          { id: s21, text: 'Componentes Clave', connector: 'articula' },
-          { id: s22, text: 'Procesos Internos', connector: 'ejecuta' },
+          {
+            id: `sub2-1-${actualRootId}`,
+            text: 'Niveles jerárquicos ordenados de mayor generalidad a mayor especificidad',
+            connector: 'mediante',
+          },
+          {
+            id: `sub2-2-${actualRootId}`,
+            text: 'Enlaces cruzados que articulan dominios y disciplinas complementarias',
+            connector: 'e integra',
+          },
         ],
       },
       {
-        id: p3,
-        text: 'Aplicaciones Reales',
-        connectorToChild: 'se manifiesta en',
+        id: `c3-${actualRootId}`,
+        text: 'Propósito y Beneficios',
+        icon: '🚀',
+        connectorToChild: 'tiene como fin',
         subtopics: [
-          { id: s31, text: 'Casos Prácticos', connector: 'se ejemplifica en' },
-          { id: s32, text: 'Impacto Verificable', connector: 'genera' },
+          {
+            id: `sub3-1-${actualRootId}`,
+            text: 'Estimular el aprendizaje significativo y la asimilación profunda de ideas',
+            connector: 'para favorecer',
+          },
+          {
+            id: `sub3-2-${actualRootId}`,
+            text: 'Facilitar el pensamiento crítico y la síntesis analítica de contenidos',
+            connector: 'optimizando',
+          },
         ],
       },
     ];
@@ -258,9 +275,10 @@ export function buildStarterProjectNodes(
         text: c.text,
         x: 0,
         y: 0,
-        width: 158,
-        height: 44,
+        width: 175,
+        height: 50,
         depth: 1,
+        icon: c.icon,
       });
 
       edges.push({
@@ -277,8 +295,8 @@ export function buildStarterProjectNodes(
           text: s.text,
           x: 0,
           y: 0,
-          width: 152,
-          height: 40,
+          width: 185,
+          height: 52,
           depth: 2,
         });
 
@@ -290,26 +308,6 @@ export function buildStarterProjectNodes(
         });
       });
     });
-
-    // Enlaces cruzados reales (Novak: reconciliación integradora entre ramas distintas)
-    edges.push(
-      {
-        id: `cl-1-${actualRootId}`,
-        from: s12,
-        to: s22,
-        label: 'regulan',
-        isCrossLink: true,
-        color: '#D97706',
-      },
-      {
-        id: `cl-2-${actualRootId}`,
-        from: s21,
-        to: s31,
-        label: 'posibilitan',
-        isCrossLink: true,
-        color: '#D97706',
-      }
-    );
 
     return { nodes, edges };
   }

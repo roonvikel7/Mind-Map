@@ -271,30 +271,19 @@ const BUILTIN_KNOWLEDGE: Record<
     ],
   },
   fotosintesis: {
-    title: 'La Fotosíntesis',
+    title: 'Proceso de la Fotosíntesis',
     type: 'concept',
     nodes: [
-      {
-        text: 'La Fotosíntesis',
-        subtitle: '¿Cómo transforman las plantas la luz solar en energía química?',
-        parentIndex: null,
-      },
-      { text: 'Energía Luminosa', parentIndex: 0, label: 'requiere' },
-      { text: 'Clorofila', parentIndex: 1, label: 'es captada por' },
-      { text: 'Fase Luminosa', parentIndex: 2, label: 'impulsa' },
-      { text: 'ATP y NADPH', parentIndex: 3, label: 'produce' },
-      { text: 'Sustratos Inorgánicos', parentIndex: 0, label: 'absorbe' },
-      { text: 'Agua (H₂O)', parentIndex: 5, label: 'incluye' },
-      { text: 'Dióxido de Carbono (CO₂)', parentIndex: 5, label: 'incluye' },
-      { text: 'Ciclo de Calvin', parentIndex: 7, label: 'se fija en' },
-      { text: 'Productos Orgánicos', parentIndex: 0, label: 'sintetiza' },
-      { text: 'Glucosa (C₆H₁₂O₆)', parentIndex: 9, label: 'genera' },
-      { text: 'Oxígeno (O₂)', parentIndex: 9, label: 'libera' },
-    ],
-    crossLinks: [
-      { fromIndex: 4, toIndex: 8, label: 'alimenta' },
-      { fromIndex: 6, toIndex: 3, label: 'aporta electrones a' },
-      { fromIndex: 10, toIndex: 1, label: 'almacena' },
+      { text: 'La Fotosíntesis', subtitle: 'Proceso Anabólico Vegetal', parentIndex: null, icon: '🌱' },
+      { text: 'Energía Luminosa', parentIndex: 0, icon: '☀️', label: 'requiere' },
+      { text: 'Clorofila en Cloroplastos', parentIndex: 1, icon: '🍃', label: 'es captada por' },
+      { text: 'ATP y NADPH', parentIndex: 2, label: 'sintetiza en fase luminosa' },
+      { text: 'Sustratos Inorgánicos', parentIndex: 0, icon: '💧', label: 'transforma' },
+      { text: 'Agua (H₂O) Radicular', parentIndex: 4, label: 'absorbe' },
+      { text: 'Dióxido de Carbono (CO₂)', parentIndex: 4, label: 'fija mediante Ciclo de Calvin' },
+      { text: 'Productos Vitales', parentIndex: 0, icon: '🍎', label: 'libera y produce' },
+      { text: 'Glucosa (C₆H₁₂O₆)', parentIndex: 7, label: 'almacena energía en' },
+      { text: 'Oxígeno Molecular (O₂)', parentIndex: 7, label: 'oxigena la atmósfera con' },
     ],
   },
   ishikawa: {
@@ -862,29 +851,6 @@ function generateHeuristicOrganizer(req: AiGenerationRequest, themeId: ThemeId) 
     return buildFromTemplate(topic, type, seed, themeId);
   }
 
-  if (type === 'concept') {
-    const seed: TemplateSeedNode[] = [
-      {
-        text: topic,
-        subtitle: `¿Cómo se estructura y funciona ${topic}?`,
-        parentIndex: null,
-      },
-      { text: 'Base Teórica', parentIndex: 0, label: 'se fundamenta en' },
-      { text: 'Principios Rectores', parentIndex: 1, label: 'establece' },
-      { text: 'Conceptos Nucleares', parentIndex: 1, label: 'integra' },
-      { text: 'Estructura Interna', parentIndex: 0, label: 'se organiza en' },
-      { text: 'Componentes Clave', parentIndex: 4, label: 'comprende' },
-      { text: 'Procesos Dinámicos', parentIndex: 4, label: 'ejecuta' },
-      { text: 'Aplicaciones Reales', parentIndex: 0, label: 'se manifiesta en' },
-      { text: 'Casos Prácticos', parentIndex: 7, label: 'se ejemplifica en' },
-      { text: 'Impacto Verificable', parentIndex: 7, label: 'genera' },
-    ];
-    return buildFromTemplate(topic, type, seed, themeId, [
-      { fromIndex: 2, toIndex: 6, label: 'regulan' },
-      { fromIndex: 5, toIndex: 8, label: 'posibilitan' },
-    ]);
-  }
-
   const pillars =
     req.depth === 'deep'
       ? [
@@ -932,6 +898,7 @@ function generateHeuristicOrganizer(req: AiGenerationRequest, themeId: ThemeId) 
       id: `e-${pid}`,
       from: `${prefix}-root`,
       to: pid,
+      label: type === 'concept' ? p.rel : undefined,
     });
 
     for (const item of p.items) {
@@ -949,6 +916,7 @@ function generateHeuristicOrganizer(req: AiGenerationRequest, themeId: ThemeId) 
         id: `e-${sid}`,
         from: pid,
         to: sid,
+        label: type === 'concept' ? 'incluye' : undefined,
       });
     }
   }
@@ -1052,113 +1020,15 @@ function cleanJsonResponse(rawText: string): any {
 
 export {
   cleanAndNaturalizeArgument,
-  cleanConceptLinkLabel,
-  cleanConceptNodeText,
   pruneRedundantConnectorNodes,
 } from './graphCleaners';
 import {
   cleanAndNaturalizeArgument,
-  cleanConceptLinkLabel,
-  cleanConceptNodeText,
   pruneRedundantConnectorNodes,
 } from './graphCleaners';
 
 function buildGeminiPrompt(req: AiGenerationRequest): string {
   const isCartographic = req.type === 'cartographic';
-  const promptInstructionsBlock =
-    req.details && req.details.trim()
-      ? `PROMPT E INDICACIONES OBLIGATORIAS DEL USUARIO (Investiga en tu conocimiento e integra fielmente CADA tema, enfoque, ejemplo, autor, época o criterio solicitado aquí sin omitir ninguno):
-"""
-${req.details.trim()}
-"""`
-      : 'Indicaciones adicionales: Ninguna (desarrolla el tema de forma profunda, completa y profesional).';
-
-  // Prompt dedicado al Mapa Conceptual auténtico de Joseph D. Novak & Alberto J. Cañas (IHMC)
-  if (req.type === 'concept') {
-    const isDeep = (req.depth || 'deep') === 'deep';
-    return `Actúa como especialista universitario en cartografía del conocimiento y metodología científica de Joseph D. Novak y Alberto J. Cañas (IHMC - CmapTools).
-Diseña un VERDADERO MAPA CONCEPTUAL jerárquico en español cuyo CONCEPTO SUPRAORDINADO CENTRAL (nodo raíz "1") sea exactamente: "${req.topic}".
-
-${promptInstructionsBlock}
-Profundidad: ${isDeep ? 'deep (15 a 22 conceptos en 4 niveles jerárquicos con ejemplos concretos en la base)' : 'standard (10 a 14 conceptos en 3 niveles jerárquicos claros)'}.
-
-REGLAS CIENTÍFICAS OBLIGATORIAS DE NOVAK Y CAÑAS (PROHIBIDO DESVIARSE):
-1. PREGUNTA DE ENFOQUE (Focus Question):
-   - El nodo raíz ("id": "1") DEBE llevar en "subtitle" la Pregunta de Enfoque concisa que delimita el mapa (ej. "¿Cómo funciona X y qué factores lo determinan?").
-   - TODOS los demás nodos deben tener "subtitle": null (CERO subtítulos en cuadros secundarios).
-2. CONCEPTOS BREVES EN LOS NODOS (REGLA DE ORO - PROHIBIDO PÁRRAFOS U ORACIONES):
-   - Cada nodo representa UN SOLO CONCEPTO como sustantivo o sintagma nominal breve de **1 a 4 palabras** (máximo 5 en términos compuestos técnicos), con Mayúscula Inicial académica.
-   - Ejemplos CORRECTOS: "La Fotosíntesis", "Energía Luminosa", "Clorofila", "Fase Luminosa", "Ciclo de Calvin", "Glucosa", "Mitocondria", "Aprendizaje Significativo".
-   - Ejemplos TERMINANTEMENTE PROHIBIDOS: "es un proceso mediante el cual las plantas...", "Definición conceptual: ...", oraciones con verbo conjugado dentro del cuadro, listas separadas por comas largas o puntos finales.
-   - El verbo y la relación NUNCA van dentro del nodo: van EXCLUSIVAMENTE en "label" de la conexión.
-3. CERO EMOJIS NI ICONOS:
-   - NO incluyas el campo "icon" ni pongas emojis en ningún nodo del Mapa Conceptual (estética académica sobria tipo CmapTools).
-4. PALABRAS O FRASES DE ENLACE CON VERBO OBLIGATORIO ("label"):
-   - Toda arista padre->hijo DEBE llevar en "label" una palabra o frase de enlace concisa en minúscula (1 a 4 palabras) que CONTENGA UN VERBO o relación lógica explícita (ej. "se divide en", "requiere", "es captada por", "produce", "impulsa", "regula", "depende de", "se ejemplifica en", "origina", "transforma").
-   - PROHIBIDO conectores vagos como "se relaciona con", "tiene" o "trata de".
-   - PROHIBIDO crear nodos puente cuyo texto sea un conector ("como", "por", "es"); el enlace va siempre en "label".
-5. VALIDACIÓN PROPOSICIONAL RIGUROSA:
-   - Cada unidad [Concepto Origen] + [label] + [Concepto Destino] DEBE formar al leerse en voz alta una proposición gramaticalmente impecable y científicamente verdadera en español.
-   - Ejemplo: [Energía Luminosa] + "es captada por" + [Clorofila] -> "Energía Luminosa es captada por Clorofila".
-6. JERARQUÍA PIRAMIDAL DEDUCTIVA (DE LO GENERAL ARRIBA A LO ESPECÍFICO ABAJO):
-   - Nivel 0 (Cima): Concepto supraordinado "${req.topic}".
-   - Nivel 1 (3 a 4 nodos): Conceptos generales más inclusivos.
-   - Nivel 2 (5 a 8 nodos): Conceptos subordinados intermedios (mecanismos, procesos, categorías).
-   - Nivel 3 (base): Conceptos específicos y **ejemplos concretos reales** conectados mediante "se ejemplifica en" o "como".
-7. ENLACES CRUZADOS (CROSS-LINKS) OBLIGATORIOS ("crossLinks"):
-   - Todo mapa conceptual auténtico muestra reconciliación integradora mediante **2 a 4 enlaces cruzados** que vinculan conceptos situados en **ramas distintas** del mapa (nunca repitas un enlace padre->hijo directo).
-   - Cada objeto en "crossLinks" lleva { "from": "id_origen", "to": "id_destino", "label": "frase de enlace verbal" } y su lectura [from] + [label] + [to] debe formar otra proposición válida y reveladora.
-
-Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional ni bloques markdown) siguiendo exactamente esta estructura:
-{
-  "title": "${req.topic}",
-  "nodes": [
-    {
-      "id": "1",
-      "text": "${req.topic}",
-      "subtitle": "¿Cómo se estructura, opera y manifiesta ${req.topic}?",
-      "parentId": null
-    },
-    {
-      "id": "2",
-      "text": "Concepto General A",
-      "parentId": "1",
-      "label": "se fundamenta en"
-    },
-    {
-      "id": "3",
-      "text": "Concepto Subordinado",
-      "parentId": "2",
-      "label": "produce"
-    },
-    {
-      "id": "4",
-      "text": "Ejemplo Concreto",
-      "parentId": "3",
-      "label": "se ejemplifica en"
-    },
-    {
-      "id": "5",
-      "text": "Concepto General B",
-      "parentId": "1",
-      "label": "requiere"
-    },
-    {
-      "id": "6",
-      "text": "Mecanismo Específico",
-      "parentId": "5",
-      "label": "opera mediante"
-    }
-  ],
-  "crossLinks": [
-    {
-      "from": "3",
-      "to": "6",
-      "label": "impulsa"
-    }
-  ]
-}`;
-  }
 
   const naturalLanguageDirectives = `
 NORMAS ESTRICTAS DE REDACCIÓN NATURAL Y LENGUAJE FORMAL (OBLIGATORIAS):
@@ -1212,6 +1082,16 @@ TIPO: Cartografía Conceptual (Metodología Pedagógica de los 8 Ejes de Sergio 
    - Eje "8. Metodología" (hijo de raíz) -> conectado directamente mediante label "se aplica mediante" a un único cuadro hijo con las fases y pasos de aplicación.
 4. En Cartografía Conceptual NO uses emojis ni iconos en ningún nodo.
 5. Los cuadros hijos NO deben tener "subtitle" (deja "subtitle": null).`;
+      break;
+
+    case 'concept':
+      typeGuidance = `
+TIPO: Mapa Conceptual de Joseph Novak.
+REGLAS:
+1. Conceptos y proposiciones argumentativas claras sin dos puntos ni paréntesis.
+2. Cada conector entre nodos DEBE tener en "label" una proposición o verbo relacionador claro en minúscula (ej. "comprende", "produce", "depende de", "se clasifica en", "se manifiesta mediante", "requiere de").
+3. Estructura piramidal con 3 o 4 niveles jerárquicos donde cada conexión se lee como una oración completa.
+4. Los cuadros secundarios NO deben tener "subtitle" (deja "subtitle": null).`;
       break;
 
     case 'timeline':
@@ -1455,6 +1335,7 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
   const models = getGeminiCandidateModels(req.geminiTier || 'hydrogen');
   let lastError: Error | null = null;
   let skipStrictPro = false;
+  const isCartographic = req.type === 'cartographic';
 
   for (const model of models) {
     if (skipStrictPro && GEMINI_STRICT_PRO_MODELS.includes(model)) {
@@ -1501,7 +1382,69 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
         continue;
       }
 
-      return buildAiGeneratedGraph(parsed, req, themeId, model);
+      const nodes: OrganizerNode[] = [];
+      const edges: OrganizerEdge[] = [];
+
+      parsed.nodes.forEach((n: any, idx: number) => {
+        const id = String(n.id || `g-${idx}`);
+        const pId = n.parentId ? String(n.parentId) : null;
+        const isRootNode = !pId || idx === 0;
+
+        // Limpiar y naturalizar texto argumentativo y conector textual (cero dos puntos, cero paréntesis y cero subtítulos robóticos en cuadros)
+        const naturalized = cleanAndNaturalizeArgument(
+          String(n.text || 'Tema'),
+          n.label,
+          isRootNode
+        );
+
+        nodes.push({
+          id,
+          text: naturalized.text,
+          subtitle: isRootNode ? (n.subtitle ? String(n.subtitle).trim() : undefined) : undefined,
+          parentId: pId,
+          x: 0,
+          y: 0,
+          width: 140,
+          height: 46,
+          icon: isCartographic ? undefined : n.icon,
+          shape: n.shape,
+          flowType: n.flowType,
+          imageUrl: n.imageUrl ? String(n.imageUrl) : undefined,
+          imagePrompt: n.imagePrompt ? String(n.imagePrompt).trim() : undefined,
+          isRoot: isRootNode,
+        });
+
+        if (pId) {
+          edges.push({
+            id: `eg-${id}`,
+            from: pId,
+            to: id,
+            label: naturalized.label,
+          });
+        }
+      });
+
+      if (Array.isArray(parsed.crossLinks)) {
+        parsed.crossLinks.forEach((cl: any, clIdx: number) => {
+          if (cl.from && cl.to) {
+            edges.push({
+              id: `cl-${clIdx}-${Date.now().toString(36)}`,
+              from: String(cl.from),
+              to: String(cl.to),
+              label: cl.label || 'se relaciona con',
+              isCrossLink: true,
+              color: '#D97706',
+            });
+          }
+        });
+      }
+
+      return {
+        title: parsed.title || req.topic,
+        type: req.type,
+        modelUsed: model,
+        ...applyLayout(nodes, edges, req.type, themeId, true),
+      };
     } catch (err: any) {
       lastError = err;
       console.warn(`Error llamando a Gemini con modelo ${model}:`, err);
@@ -1509,102 +1452,6 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
   }
 
   throw lastError || new Error('No se pudo conectar con los modelos de Google Gemini.');
-}
-
-/** Construye nodos y aristas validados respetando las reglas estructurales de Novak para Mapas Conceptuales */
-function buildAiGeneratedGraph(
-  parsed: any,
-  req: AiGenerationRequest,
-  themeId: ThemeId,
-  modelUsed?: string
-) {
-  const isCartographic = req.type === 'cartographic';
-  const isConcept = req.type === 'concept';
-  const nodes: OrganizerNode[] = [];
-  const edges: OrganizerEdge[] = [];
-  const validIds = new Set<string>();
-  const hierPairs = new Set<string>();
-
-  parsed.nodes.forEach((n: any, idx: number) => {
-    const id = String(n.id || `g-${idx}`);
-    const pId = n.parentId ? String(n.parentId) : null;
-    const isRootNode = !pId || idx === 0;
-
-    const cleaned = isConcept
-      ? cleanConceptNodeText(String(n.text || 'Concepto'), n.label, isRootNode)
-      : cleanAndNaturalizeArgument(String(n.text || 'Tema'), n.label, isRootNode);
-
-    const rootSubtitle = isRootNode
-      ? n.subtitle
-        ? String(n.subtitle).trim()
-        : isConcept
-        ? `¿Cómo se estructura y funciona ${req.topic}?`
-        : undefined
-      : undefined;
-
-    validIds.add(id);
-    nodes.push({
-      id,
-      text: cleaned.text,
-      subtitle: rootSubtitle,
-      parentId: pId,
-      x: 0,
-      y: 0,
-      width: 140,
-      height: 46,
-      icon: isCartographic || isConcept ? undefined : n.icon,
-      shape: n.shape,
-      flowType: n.flowType,
-      imageUrl: n.imageUrl ? String(n.imageUrl) : undefined,
-      imagePrompt: n.imagePrompt ? String(n.imagePrompt).trim() : undefined,
-      isRoot: isRootNode,
-    });
-
-    if (pId) {
-      hierPairs.add(`${pId}->${id}`);
-      edges.push({
-        id: `eg-${id}`,
-        from: pId,
-        to: id,
-        label: cleaned.label || (isConcept ? 'comprende' : undefined),
-      });
-    }
-  });
-
-  if (Array.isArray(parsed.crossLinks)) {
-    parsed.crossLinks.forEach((cl: any, clIdx: number) => {
-      const from = cl?.from ? String(cl.from) : '';
-      const to = cl?.to ? String(cl.to) : '';
-      if (
-        !from ||
-        !to ||
-        from === to ||
-        !validIds.has(from) ||
-        !validIds.has(to) ||
-        hierPairs.has(`${from}->${to}`)
-      ) {
-        return;
-      }
-      const cleanCrossLabel = isConcept
-        ? cleanConceptLinkLabel(cl.label) || 'impacta en'
-        : cl.label || 'se vincula con';
-      edges.push({
-        id: `cl-${clIdx}-${Date.now().toString(36)}`,
-        from,
-        to,
-        label: cleanCrossLabel,
-        isCrossLink: true,
-        color: '#D97706',
-      });
-    });
-  }
-
-  return {
-    title: parsed.title || req.topic,
-    type: req.type,
-    modelUsed,
-    ...applyLayout(nodes, edges, req.type, themeId, true),
-  };
 }
 
 async function generateWithOpenAi(req: AiGenerationRequest, themeId: ThemeId) {
@@ -1621,9 +1468,7 @@ async function generateWithOpenAi(req: AiGenerationRequest, themeId: ThemeId) {
         {
           role: 'system',
           content:
-            req.type === 'concept'
-              ? 'Genera un Mapa Conceptual de Joseph Novak en español en JSON con {"title": "...", "nodes": [{"id":"1","text":"Concepto Corto","subtitle":"¿Pregunta de enfoque?","parentId":null,"label":"verbo conector"}], "crossLinks": [{"from":"2","to":"5","label":"verbo conector"}]}'
-              : 'Genera un organizador visual en español en JSON con {"title": "...", "nodes": [{"id":"1","text":"...","subtitle":"...","parentId":null,"icon":"💡","label":"..."}]}',
+            'Genera un organizador visual en español en JSON con {"title": "...", "nodes": [{"id":"1","text":"...","subtitle":"...","parentId":null,"icon":"💡","label":"..."}]}',
         },
         {
           role: 'user',
@@ -1637,10 +1482,46 @@ async function generateWithOpenAi(req: AiGenerationRequest, themeId: ThemeId) {
   const data = await response.json();
   const parsed = cleanJsonResponse(data.choices[0].message.content);
 
-  return buildAiGeneratedGraph(parsed, req, themeId, 'gpt-4o-mini');
+  const nodes: OrganizerNode[] = [];
+  const edges: OrganizerEdge[] = [];
+  parsed.nodes.forEach((n: any, idx: number) => {
+    const id = String(n.id || `o-${idx}`);
+    const pId = n.parentId ? String(n.parentId) : null;
+    const isRootNode = !pId || idx === 0;
+
+    const naturalized = cleanAndNaturalizeArgument(
+      String(n.text || 'Tema'),
+      n.label,
+      isRootNode
+    );
+
+    nodes.push({
+      id,
+      text: naturalized.text,
+      subtitle: isRootNode ? (n.subtitle ? String(n.subtitle).trim() : undefined) : undefined,
+      parentId: pId,
+      x: 0,
+      y: 0,
+      width: 140,
+      height: 46,
+      icon: req.type === 'cartographic' ? undefined : n.icon,
+      imageUrl: n.imageUrl ? String(n.imageUrl) : undefined,
+      imagePrompt: n.imagePrompt ? String(n.imagePrompt).trim() : undefined,
+      isRoot: isRootNode,
+    });
+    if (pId) {
+      edges.push({ id: `eo-${id}`, from: pId, to: id, label: naturalized.label });
+    }
+  });
+
+  return {
+    title: parsed.title || req.topic,
+    type: req.type,
+    ...applyLayout(nodes, edges, req.type, themeId, true),
+  };
 }
 
-/** Consulta a Google Gemini para ramificar inteligentemente un nodo */
+/** Consulta a Google Gemini para ramificar inteligentemente un nodo con argumentos naturales y formales */
 async function expandNodeWithGemini(
   node: OrganizerNode,
   lineageContext: string,
@@ -1650,29 +1531,9 @@ async function expandNodeWithGemini(
   tier: GeminiTier = 'hydrogen'
 ): Promise<Array<{ text: string; subtitle?: string; label?: string; icon?: string }>> {
   const isCartographic = type === 'cartographic';
-  const isConcept = type === 'concept';
   const models = getGeminiCandidateModels(tier);
 
-  const prompt = isConcept
-    ? `Eres especialista universitario en Mapas Conceptuales auténticos según Joseph D. Novak y Alberto J. Cañas (IHMC).
-El usuario desea desplegar 2 o 3 subconceptos subordinados directos bajo el concepto "${node.text}" dentro del mapa conceptual "${projectTitle || 'Mapa Conceptual'}".
-Contexto de la rama: "${lineageContext}".
-
-REGLAS CIENTÍFICAS OBLIGATORIAS:
-1. Cada nuevo nodo DEBE ser un concepto nominal breve de 1 a 4 palabras con Mayúscula Inicial (ej. "Ciclo de Calvin", "Energía Química", "Ejemplo Concreto"). PROHIBIDO oraciones largas, definiciones completas o verbos dentro del cuadro.
-2. En "label" coloca una palabra o frase de enlace verbal en minúscula (ej. "se divide en", "produce", "requiere", "se ejemplifica en", "impulsa") de manera que [${node.text}] + [label] + [text] forme una proposición con sentido completo.
-3. CERO emojis ni iconos, CERO subtítulos.
-
-Devuelve ÚNICAMENTE un JSON válido con este formato:
-{
-  "branches": [
-    {
-      "text": "Subconcepto Corto",
-      "label": "se divide en"
-    }
-  ]
-}`
-    : `Eres un redactor académico y pedagógico experto en organizadores visuales y mapas estructurados estilo EdrawMax.
+  const prompt = `Eres un redactor académico y pedagógico experto en organizadores visuales y mapas estructurados estilo EdrawMax.
 El usuario está profundizando el tema "${projectTitle || 'Diagrama'}" sobre el nodo:
 - Texto del nodo: "${node.text}"
 ${node.subtitle ? `- Subtítulo actual: "${node.subtitle}"` : ''}
@@ -1729,14 +1590,16 @@ Devuelve ÚNICAMENTE un objeto JSON válido con este formato:
       const parsed = cleanJsonResponse(raw);
       if (Array.isArray(parsed.branches) && parsed.branches.length > 0) {
         return parsed.branches.map((b: any) => {
-          const cleaned = isConcept
-            ? cleanConceptNodeText(String(b.text || 'Subconcepto'), b.label, false)
-            : cleanAndNaturalizeArgument(String(b.text || 'Subtema'), b.label, false);
+          const naturalized = cleanAndNaturalizeArgument(
+            String(b.text || 'Subtema'),
+            b.label,
+            false
+          );
           return {
-            text: cleaned.text,
+            text: naturalized.text,
             subtitle: undefined,
-            label: cleaned.label,
-            icon: isCartographic || isConcept ? undefined : b.icon,
+            label: naturalized.label,
+            icon: isCartographic ? undefined : b.icon,
           };
         });
       }
@@ -1847,9 +1710,9 @@ function generateLocalSemanticBranches(
 
   if (type === 'concept') {
     return [
-      { text: 'Componentes Esenciales', label: 'comprende' },
-      { text: 'Mecanismos Internos', label: 'opera mediante' },
-      { text: 'Casos Aplicados', label: 'se ejemplifica en' },
+      { text: `los componentes esenciales y principios rectores del sistema`, label: 'comprende' },
+      { text: `las reglas formativas y normativas que dirigen su comportamiento`, label: 'determina' },
+      { text: `un impacto concreto y verificable en la resolución de problemáticas del área`, label: 'conduce a' },
     ];
   }
 
@@ -1924,19 +1787,16 @@ export async function expandNodeWithAi(
   const newEdges = [...currentEdges];
   const stamp = Date.now();
   const isCartographic = type === 'cartographic';
-  const isConcept = type === 'concept';
 
   branches.forEach((branch, idx) => {
     const newId = `node-ai-${stamp}-${idx}`;
     const branchColor = node.color || PALETTES[idx % PALETTES.length];
 
-    const cleaned = isConcept
-      ? cleanConceptNodeText(branch.text, branch.label, false)
-      : cleanAndNaturalizeArgument(branch.text, branch.label, false);
+    const naturalized = cleanAndNaturalizeArgument(branch.text, branch.label, false);
 
     newNodes.push({
       id: newId,
-      text: cleaned.text,
+      text: naturalized.text,
       subtitle: undefined, // Cero subtítulos robóticos en cuadros de contenido
       parentId: node.id,
       x: node.x,
@@ -1944,7 +1804,7 @@ export async function expandNodeWithAi(
       width: 140,
       height: 44,
       color: branchColor,
-      icon: isCartographic || isConcept ? undefined : branch.icon,
+      icon: isCartographic ? undefined : branch.icon,
     });
 
     newEdges.push({
@@ -1952,7 +1812,7 @@ export async function expandNodeWithAi(
       from: node.id,
       to: newId,
       color: branchColor,
-      label: cleaned.label || (isConcept ? 'comprende' : undefined),
+      label: naturalized.label || (type === 'concept' ? 'comprende' : undefined),
     });
   });
 

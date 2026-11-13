@@ -30,18 +30,13 @@ export function measureStringPx(text: string, fontSize: number, fontWeight: numb
   return ctx.measureText(text).width;
 }
 
-export function getNodeTypography(
-  depth: number,
-  isRoot: boolean,
-  organizerType?: OrganizerType
-): NodeTypographySpec {
-  const isConcept = organizerType === 'concept';
+export function getNodeTypography(depth: number, isRoot: boolean): NodeTypographySpec {
   if (isRoot || depth === 0) {
     return {
       fontSize: 15.5,
       fontWeight: 700,
       lineHeight: 22,
-      maxTextWidth: isConcept ? 230 : 215,
+      maxTextWidth: 215,
       padX: 24,
       padY: 15,
     };
@@ -51,7 +46,7 @@ export function getNodeTypography(
       fontSize: 13.5,
       fontWeight: 600,
       lineHeight: 19,
-      maxTextWidth: isConcept ? 168 : 192,
+      maxTextWidth: 192,
       padX: 18,
       padY: 12,
     };
@@ -60,7 +55,7 @@ export function getNodeTypography(
     fontSize: 13,
     fontWeight: 500,
     lineHeight: 18,
-    maxTextWidth: isConcept ? 160 : 182,
+    maxTextWidth: 182,
     padX: 15,
     padY: 9.5,
   };
@@ -158,7 +153,7 @@ export function measureNodeDimensions(
   themeId: ThemeId = 'vitality-warm'
 ): { width: number; height: number; lines: string[]; resolvedShape: OrganizerNode['shape'] } {
   const isRoot = Boolean(node.isRoot || depth === 0);
-  const typo = getNodeTypography(depth, isRoot, organizerType);
+  const typo = getNodeTypography(depth, isRoot);
   const resolvedShape = resolveEffectiveShape(node, depth, organizerType, themeId);
 
   const lines = wrapTextLines(node.text, typo.maxTextWidth, typo.fontSize, typo.fontWeight);
