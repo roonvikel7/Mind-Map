@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlignCenter,
   AlignJustify,
@@ -46,6 +46,7 @@ interface RightInspectorProps {
   onExpandOrCollapseAll: (collapse: boolean) => void;
   onChangeCartographicDirection?: (direction: 'clockwise' | 'counterclockwise') => void;
   onApplyGlobalTextAlign?: (align: 'left' | 'center' | 'right' | 'justify') => void;
+  onClearAllIcons?: () => void;
   onClose?: () => void;
 }
 
@@ -78,6 +79,7 @@ const RightInspectorComponent: React.FC<RightInspectorProps> = ({
   onExpandOrCollapseAll,
   onChangeCartographicDirection,
   onApplyGlobalTextAlign,
+  onClearAllIcons,
   onClose,
 }) => {
   const [tab, setTab] = useState<'theme' | 'format'>('theme');
@@ -86,6 +88,10 @@ const RightInspectorComponent: React.FC<RightInspectorProps> = ({
   const [advancedNodeOpen, setAdvancedNodeOpen] = useState(false);
 
   const activeTheme = getThemeConfig(project.theme);
+  const iconsCount = useMemo(
+    () => project.nodes.filter(n => Boolean(n.icon)).length,
+    [project.nodes]
+  );
 
   useEffect(() => {
     if (selectedNode?.id || selectedImage?.id) {
@@ -382,6 +388,23 @@ const RightInspectorComponent: React.FC<RightInspectorProps> = ({
                 </div>
               )}
             </div>
+
+            {onClearAllIcons && (
+              <button
+                type="button"
+                disabled={iconsCount === 0}
+                onClick={onClearAllIcons}
+                className="ios-btn w-full flex items-center justify-between px-3 py-2.5 rounded-2xl border border-red-200/80 bg-red-50/70 hover:bg-red-50 text-red-700 text-xs font-bold transition-all disabled:opacity-45 disabled:bg-stone-50 disabled:border-stone-200 disabled:text-stone-400"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Eliminar todos los iconos</span>
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/90 border border-current/15 font-extrabold">
+                  {iconsCount}
+                </span>
+              </button>
+            )}
           </>
         ) : selectedImage ? (
           <div className="space-y-3">

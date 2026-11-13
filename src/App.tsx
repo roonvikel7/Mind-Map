@@ -720,6 +720,34 @@ export function App() {
     [activeProject, commitProjectPatch, pushHistory, showToast]
   );
 
+  // Eliminar todos los iconos de los cuadros del mapa actual manteniendo historial Deshacer
+  const handleClearAllIcons = useCallback(() => {
+    if (!activeProject) return;
+    const countWithIcons = activeProject.nodes.filter(n => Boolean(n.icon)).length;
+    if (countWithIcons === 0) {
+      showToast('Este mapa no tiene iconos en ningún cuadro.');
+      return;
+    }
+    pushHistory(activeProject.nodes, activeProject.edges);
+    const updatedNodes = activeProject.nodes.map(n =>
+      n.icon ? { ...n, icon: undefined } : n
+    );
+    const relaid = applyLayout(
+      updatedNodes,
+      activeProject.edges,
+      activeProject.type,
+      activeProject.theme,
+      false,
+      activeProject.cartographicDirection || 'clockwise'
+    );
+    commitProjectPatch({ nodes: relaid.nodes, edges: relaid.edges });
+    showToast(
+      countWithIcons === 1
+        ? 'Se eliminó el icono de 1 cuadro.'
+        : `Se eliminaron los iconos de ${countWithIcons} cuadros.`
+    );
+  }, [activeProject, commitProjectPatch, pushHistory, showToast]);
+
   // Contraer / Expandir subrama
   const handleToggleCollapse = useCallback(
     (nodeId: string) => {
@@ -1429,6 +1457,7 @@ export function App() {
           onExpandAi={handleExpandAi}
           onStartCrossLink={handleSidebarStartCrossLink}
           onUpdateNode={handleUpdateNode}
+          onClearAllIcons={handleClearAllIcons}
           onToggleCollapse={handleToggleCollapse}
           onAddImageFile={handleAddImageFile}
           onOpenTemplates={handleOpenTemplates}
@@ -1486,6 +1515,7 @@ export function App() {
           onExpandOrCollapseAll={handleExpandOrCollapseAll}
           onChangeCartographicDirection={handleChangeCartographicDirection}
           onApplyGlobalTextAlign={handleApplyGlobalTextAlign}
+          onClearAllIcons={handleClearAllIcons}
           onClose={handleCloseRight}
         />
 
