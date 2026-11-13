@@ -611,9 +611,11 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
         const sCount = siblingKids.length;
 
         let t = 0.52;
-        if (sCount > 1) {
-          // Escalonado suave alternado entre 0.44 y 0.64
-          t = sIndex % 2 === 0 ? 0.44 : 0.64;
+        if (sCount === 2) {
+          t = sIndex === 0 ? 0.42 : 0.64;
+        } else if (sCount >= 3) {
+          const ladder = [0.38, 0.54, 0.70];
+          t = ladder[sIndex % ladder.length];
         }
 
         const oneMinusT = 1 - t;
@@ -642,7 +644,7 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
           color: branchColor,
           strokeWidth: 2.15,
           arrowEnd: { x: x2, y: y2 + 2, angleDeg: 90, color: branchColor },
-          label: e.label || 'se relaciona con',
+          label: e.label || 'incluye',
           labelX: lx,
           labelY: ly,
         });
@@ -785,8 +787,9 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
   }
 
   /* --------------------------------------------------------------------------
-   * B. RELACIONES CRUZADAS LIBRES (Estilo EdrawMax <Relationship>)
+   * B. RELACIONES CRUZADAS LIBRES (Estilo EdrawMax <Relationship> y Cross-Links de Novak)
    * -------------------------------------------------------------------------- */
+  let crossIdx = 0;
   for (const e of project.edges) {
     if (!e.isCrossLink) continue;
     const from = nodeMap.get(e.from);
@@ -814,12 +817,14 @@ export function buildProjectSceneGeometry(project: OrganizerProject): SceneVecto
     const midX = (x1 + x2) / 2;
     const midY = (y1 + y2) / 2;
     const dist = Math.hypot(x2 - x1, y2 - y1) || 1;
-    // Arco perpendicular elegante para no cruzar por encima de conectores rectos
+    // Arco perpendicular elegante alternando orientación y amplitud para separar múltiples enlaces cruzados
     const nx = -(y2 - y1) / dist;
     const ny = (x2 - x1) / dist;
-    const bulge = Math.min(90, Math.max(42, dist * 0.24));
-    const ctrlX = midX + nx * bulge;
-    const ctrlY = midY + ny * bulge;
+    const signFlip = crossIdx % 2 === 0 ? 1 : -1;
+    const bulge = Math.min(110, Math.max(46, dist * 0.24)) + Math.floor(crossIdx / 2) * 18;
+    const ctrlX = midX + nx * bulge * signFlip;
+    const ctrlY = midY + ny * bulge * signFlip;
+    crossIdx++;
 
     expandBounds(ctrlX, ctrlY);
 

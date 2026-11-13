@@ -203,7 +203,7 @@ export function applyLayout(
       layoutVerticalTree(root.id, nodeMap, visibleChildren, 98, 58);
       break;
     case 'concept':
-      layoutVerticalTree(root.id, nodeMap, visibleChildren, 150, 88);
+      layoutVerticalTree(root.id, nodeMap, visibleChildren, 148, 120);
       break;
     case 'flowchart':
       layoutVerticalTree(root.id, nodeMap, visibleChildren, 120, 80);
