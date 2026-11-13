@@ -45,12 +45,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     try {
       const res = await testGeminiApiKey(
         settings.geminiApiKey,
-        settings.geminiTier || 'pro'
+        settings.geminiTier || 'hydrogen'
       );
       if (res.success) {
         setTestResult({
           success: true,
-          msg: `¡Conexión verificada con Google Gemini (${res.model}${res.isPro ? ' • Versión Pro Activa' : ''})!`,
+          msg: res.fallbackNote
+            ? `¡Conexión verificada con ${res.model}! ${res.fallbackNote}`
+            : `¡Conexión verificada con Google Gemini (${res.model}${res.isPro ? ' • Versión Pro Activa' : ''})!`,
         });
       } else {
         setTestResult({
@@ -206,24 +208,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="pt-2">
                 <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                  Versión / Nivel de tu Plan Gemini
+                  Motor y Versión de Gemini
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSettings(s => ({ ...s, geminiTier: 'hydrogen' }))}
+                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                      (settings.geminiTier ?? 'hydrogen') === 'hydrogen' || settings.geminiTier === 'auto'
+                        ? 'bg-orange-50/90 border-orange-400 text-orange-950 ring-2 ring-orange-400/20 shadow-xs'
+                        : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 font-bold text-xs">
+                      <span>🚀 Gemini 4 Hydrogen</span>
+                    </div>
+                    <span className="inline-block mt-1 text-[9.5px] px-1.5 py-0.5 rounded-full bg-orange-200/80 text-orange-900 font-extrabold">
+                      Recomendado
+                    </span>
+                    <p className="text-[10px] text-stone-500 mt-1 leading-snug">
+                      Nueva generación <code className="font-mono">gemini-4-hydrogen</code> con respaldo inteligente.
+                    </p>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setSettings(s => ({ ...s, geminiTier: 'pro' }))}
                     className={`p-2.5 rounded-xl border text-left transition-all ${
-                      (settings.geminiTier ?? 'pro') === 'pro'
+                      settings.geminiTier === 'pro'
                         ? 'bg-amber-50/90 border-amber-400 text-amber-950 ring-2 ring-amber-400/20 shadow-xs'
                         : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                    <div className="flex items-center justify-between gap-1 font-bold text-xs">
                       <span>👑 Versión Pro</span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-200/80 text-amber-900 font-extrabold">Plan Pro</span>
                     </div>
-                    <p className="text-[10.5px] text-stone-500 mt-1 leading-snug">
-                      gemini-2.5-pro y gemini-1.5-pro con razonamiento avanzado y profundidad profesional.
+                    <span className="inline-block mt-1 text-[9.5px] px-1.5 py-0.5 rounded-full bg-amber-200/80 text-amber-900 font-extrabold">
+                      Plan Pro
+                    </span>
+                    <p className="text-[10px] text-stone-500 mt-1 leading-snug">
+                      <code className="font-mono">gemini-3.1-pro-preview</code> y <code className="font-mono">4-carbon</code> con respaldo rápido.
                     </p>
                   </button>
 
@@ -232,16 +256,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onClick={() => setSettings(s => ({ ...s, geminiTier: 'flash' }))}
                     className={`p-2.5 rounded-xl border text-left transition-all ${
                       settings.geminiTier === 'flash'
-                        ? 'bg-orange-50 border-orange-400 text-orange-950 ring-2 ring-orange-400/20 shadow-xs'
+                        ? 'bg-emerald-50/90 border-emerald-400 text-emerald-950 ring-2 ring-emerald-400/20 shadow-xs'
                         : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 font-bold text-xs">
-                      <span>⚡ Versión Flash</span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-stone-100 text-stone-700 font-semibold">Rápido</span>
+                    <div className="flex items-center justify-between gap-1 font-bold text-xs">
+                      <span>⚡ Flash 3 Rápido</span>
                     </div>
-                    <p className="text-[10.5px] text-stone-500 mt-1 leading-snug">
-                      gemini-2.5-flash optimizado para velocidad instantánea en milisegundos.
+                    <span className="inline-block mt-1 text-[9.5px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
+                      Ultra rápido
+                    </span>
+                    <p className="text-[10px] text-stone-500 mt-1 leading-snug">
+                      <code className="font-mono">gemini-3-flash-preview</code> optimizado para máxima velocidad.
                     </p>
                   </button>
                 </div>

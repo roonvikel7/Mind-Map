@@ -17,7 +17,7 @@ export interface ApiSettings {
   geminiApiKey: string;
   openaiApiKey: string;
   defaultProvider: 'local' | 'gemini' | 'openai';
-  geminiTier?: 'pro' | 'flash' | 'auto';
+  geminiTier?: 'hydrogen' | 'pro' | 'flash' | 'auto';
 }
 
 function normalizeThemeId(raw?: string): ThemeId {
@@ -169,8 +169,8 @@ function getDefaultGeminiKey(): string {
   try {
     const envKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
     if (typeof envKey === 'string' && envKey.trim()) return envKey.trim();
-    if (typeof window !== 'undefined' && typeof window.atob === 'function') {
-      return window.atob('QVEuQWI4Uk42SzMyODVNdXpoQ01jUGdBcWMySXV4ek8yakNuMXR0R2NRUHNNenl5NlBqUmc=');
+    if (typeof atob === 'function') {
+      return atob('QVEuQWI4Uk42SzMyODVNdXpoQ01jUGdBcWMySXV4ek8yakNuMXR0R2NRUHNNenl5NlBqUmc=');
     }
   } catch (_) {}
   return '';
@@ -187,7 +187,7 @@ export function loadApiSettings(): ApiSettings {
         parsed.defaultProvider = defaultKey ? 'gemini' : 'local';
       }
       if (!parsed.geminiTier) {
-        parsed.geminiTier = 'pro';
+        parsed.geminiTier = 'hydrogen';
       }
       return parsed;
     }
@@ -196,7 +196,7 @@ export function loadApiSettings(): ApiSettings {
     geminiApiKey: defaultKey,
     openaiApiKey: '',
     defaultProvider: defaultKey ? 'gemini' : 'local',
-    geminiTier: 'pro',
+    geminiTier: 'hydrogen',
   };
 }
 

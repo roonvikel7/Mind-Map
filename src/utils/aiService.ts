@@ -573,6 +573,7 @@ export async function generateOrganizer(
   type: OrganizerType;
   nodes: OrganizerNode[];
   edges: OrganizerEdge[];
+  modelUsed?: string;
 }> {
   const normTopic = req.topic
     .toLowerCase()
@@ -580,7 +581,12 @@ export async function generateOrganizer(
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
 
-  // 1. Integración con Google Gemini o OpenAI si el usuario configuró su clave
+  // 0. Si el usuario eligió explícitamente el modo "Esquema Literal", estructurar sus viñetas al instante
+  if (req.promptMode === 'outline' && req.details && req.details.trim()) {
+    return parseTextToOrganizer(req.topic.trim(), req.details, req.type, themeId);
+  }
+
+  // 1. Integración con Google Gemini u OpenAI aplicando el título arriba y el prompt abajo
   if (req.apiKey && (req.provider === 'gemini' || !req.provider || req.provider === 'local')) {
     try {
       return await generateWithGemini(req, themeId);
@@ -595,12 +601,19 @@ export async function generateOrganizer(
     }
   }
 
-  // 2. Si el usuario ingresó un esquema/apuntes multilínea, estructurarlo fielmente
-  if (req.details && req.details.trim().includes('\n')) {
+  // 2. Respaldo literal solo si el usuario pegó una lista de viñetas/guiones sin elegir modo IA libre
+  const looksLikeBulletOutline =
+    req.details &&
+    req.details.trim().includes('\n') &&
+    req.details
+      .trim()
+      .split('\n')
+      .filter(l => /^\s*[-*•\d]+[.)]?\s+/.test(l)).length >= 2;
+  if (req.promptMode !== 'prompt' && looksLikeBulletOutline && req.details) {
     return parseTextToOrganizer(req.topic.trim(), req.details, req.type, themeId);
   }
 
-  // 3. Base de conocimiento curada de alta calidad (solo si coincide con exactitud y no hay detalles)
+  // 3. Base de conocimiento curada de alta calidad (solo si coincide con exactitud y no hay indicaciones)
   if (!req.details || !req.details.trim()) {
     for (const [key, preset] of Object.entries(BUILTIN_KNOWLEDGE)) {
       if (normTopic === key || normTopic.startsWith(key) || key.startsWith(normTopic)) {
@@ -1141,8 +1154,15 @@ REGLAS:
   }
 
   return `Actúa como diseñador experto en organizadores visuales y arquitectura conceptual de información estilo EdrawMax.
-Genera un organizador visual completo, profundo, analítico y pedagógico en español sobre el tema: "${req.topic}".
-Detalles adicionales del usuario: ${req.details || 'Ninguno (desarrolla de forma profunda y profesional)'}.
+Genera un organizador visual completo, profundo, analítico y pedagógico en español cuyo TÍTULO CENTRAL EXACTO en el nodo raíz sea: "${req.topic}".
+${
+  req.details && req.details.trim()
+    ? `PROMPT E INDICACIONES OBLIGATORIAS DEL USUARIO (Investiga en tu conocimiento e integra fielmente CADA tema, enfoque, ejemplo, estructura, época o criterio solicitado aquí sin omitir ninguno):
+"""
+${req.details.trim()}
+"""`
+    : 'Indicaciones adicionales: Ninguna (desarrolla el tema de forma profunda, completa y profesional).'
+}
 Profundidad: ${req.depth || 'deep'}.
 
 ${naturalLanguageDirectives}
@@ -1174,43 +1194,85 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto antes o después ni marca
 }`;
 }
 
-export type GeminiTier = 'pro' | 'flash' | 'auto';
+export type GeminiTier = 'hydrogen' | 'pro' | 'flash' | 'auto';
 
-// Modelos Pro con razonamiento avanzado (diseñados para planes Pro / Pay-As-You-Go de Google)
-export const GEMINI_PRO_MODELS = [
-  'gemini-2.5-pro',
-  'gemini-1.5-pro',
-  'gemini-pro-latest',
-];
-
-// Modelos Flash para respuestas rápidas
-export const GEMINI_FLASH_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-1.5-flash',
-  'gemini-flash-latest',
+// Modelo insignia Gemini 4 Hydrogen con cascada ultra-rápida verificada
+export const GEMINI_HYDROGEN_MODELS = [
+  'gemini-4-hydrogen',
   'gemini-flash-lite-latest',
+  'gemini-3.5-flash',
+  'gemini-3-flash-preview',
 ];
 
-export function getGeminiCandidateModels(tier: GeminiTier = 'auto'): string[] {
+// Modelos Pro reales (requieren Plan Pro / facturación activa; con respaldo instantáneo a Hydrogen/Flash)
+export const GEMINI_PRO_MODELS = [
+  'gemini-3.1-pro-preview',
+  'gemini-4-carbon',
+  'gemini-pro-latest',
+  'gemini-4-hydrogen',
+  'gemini-flash-lite-latest',
+  'gemini-3.5-flash',
+];
+
+// Modelos Flash ligeros para respuesta inmediata
+export const GEMINI_FLASH_MODELS = [
+  'gemini-flash-lite-latest',
+  'gemini-3.5-flash',
+  'gemini-3-flash-preview',
+  'gemini-4-hydrogen',
+];
+
+// Modelos estrictamente del Plan Pro (para distinguir acceso real a Pro vs respaldo)
+export const GEMINI_STRICT_PRO_MODELS = [
+  'gemini-3.1-pro-preview',
+  'gemini-pro-latest',
+  'gemini-4-carbon',
+];
+
+export function getGeminiCandidateModels(tier: GeminiTier = 'hydrogen'): string[] {
   if (tier === 'pro') {
-    return [...GEMINI_PRO_MODELS, ...GEMINI_FLASH_MODELS];
+    return [...GEMINI_PRO_MODELS];
   }
   if (tier === 'flash') {
     return [...GEMINI_FLASH_MODELS];
   }
-  return [...GEMINI_PRO_MODELS, ...GEMINI_FLASH_MODELS];
+  return [...GEMINI_HYDROGEN_MODELS];
 }
 
-export const GEMINI_PREFERRED_MODELS = getGeminiCandidateModels('pro');
+export const GEMINI_PREFERRED_MODELS = getGeminiCandidateModels('hydrogen');
 
-/** Valida rápidamente si una clave de API de Gemini es funcional e identifica si accede a versión Pro */
+/** Ejecuta fetch con tiempo límite estricto mediante AbortController para evitar bloqueos indefinidos */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Calcula el tiempo máximo de espera por modelo para equilibrar razonamiento profundo y fluidez */
+function getModelTimeoutMs(model: string): number {
+  if (model === 'gemini-4-hydrogen') return 38000;
+  if (GEMINI_STRICT_PRO_MODELS.includes(model)) return 28000;
+  if (model === 'gemini-3-flash-preview') return 15000;
+  return 12000;
+}
+
+/** Valida rápidamente si una clave de API de Gemini es funcional e identifica el modelo disponible */
 export async function testGeminiApiKey(
   apiKey: string,
-  preferredTier: GeminiTier = 'pro'
+  preferredTier: GeminiTier = 'hydrogen'
 ): Promise<{
   success: boolean;
   model?: string;
   isPro?: boolean;
+  fallbackNote?: string;
   error?: string;
 }> {
   const key = apiKey.trim();
@@ -1220,10 +1282,14 @@ export async function testGeminiApiKey(
 
   const models = getGeminiCandidateModels(preferredTier);
   let lastErr = '';
+  let proQuotaBlocked = false;
 
   for (const model of models) {
+    if (proQuotaBlocked && GEMINI_STRICT_PRO_MODELS.includes(model)) {
+      continue;
+    }
     try {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
         {
           method: 'POST',
@@ -1232,20 +1298,32 @@ export async function testGeminiApiKey(
             contents: [{ parts: [{ text: 'Responde exclusivamente con el JSON: {"status":"ok"}' }] }],
             generationConfig: { responseMimeType: 'application/json' },
           }),
-        }
+        },
+        7000
       );
 
       if (res.ok) {
-        const isPro = GEMINI_PRO_MODELS.includes(model);
-        return { success: true, model, isPro };
+        const isPro = GEMINI_STRICT_PRO_MODELS.includes(model);
+        const fallbackNote =
+          preferredTier === 'pro' && !isPro && proQuotaBlocked
+            ? `Tu clave no tiene cuota de facturación Pro activa (HTTP 429); se usará ${model} automáticamente para no bloquear tus mapas.`
+            : undefined;
+        return { success: true, model, isPro, fallbackNote };
       }
 
       const errBody = await res.json().catch(() => null);
-      lastErr =
+      const errMsg =
         errBody?.error?.message ||
         `Error HTTP ${res.status}: ${res.statusText}`;
+      if (GEMINI_STRICT_PRO_MODELS.includes(model) && res.status === 429) {
+        proQuotaBlocked = true;
+      }
+      lastErr = errMsg;
     } catch (e: any) {
-      lastErr = e?.message || 'Error de conexión con los servidores de Google.';
+      lastErr =
+        e?.name === 'AbortError'
+          ? `Tiempo agotado al probar ${model}`
+          : e?.message || 'Error de conexión con los servidores de Google.';
     }
   }
 
@@ -1254,13 +1332,17 @@ export async function testGeminiApiKey(
 
 async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
   const prompt = buildGeminiPrompt(req);
-  const models = getGeminiCandidateModels(req.geminiTier || 'pro');
+  const models = getGeminiCandidateModels(req.geminiTier || 'hydrogen');
   let lastError: Error | null = null;
+  let skipStrictPro = false;
   const isCartographic = req.type === 'cartographic';
 
   for (const model of models) {
+    if (skipStrictPro && GEMINI_STRICT_PRO_MODELS.includes(model)) {
+      continue;
+    }
     try {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(req.apiKey!)}`,
         {
           method: 'POST',
@@ -1272,12 +1354,16 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
               temperature: 0.35,
             },
           }),
-        }
+        },
+        getModelTimeoutMs(model)
       );
 
       if (!response.ok) {
         const errBody = await response.json().catch(() => null);
         const msg = errBody?.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+        if (GEMINI_STRICT_PRO_MODELS.includes(model) && response.status === 429 && msg.includes('limit: 0')) {
+          skipStrictPro = true;
+        }
         lastError = new Error(msg);
         console.warn(`Modelo ${model} devolvió error:`, msg);
         continue;
@@ -1356,6 +1442,7 @@ async function generateWithGemini(req: AiGenerationRequest, themeId: ThemeId) {
       return {
         title: parsed.title || req.topic,
         type: req.type,
+        modelUsed: model,
         ...applyLayout(nodes, edges, req.type, themeId, true),
       };
     } catch (err: any) {
@@ -1441,7 +1528,7 @@ async function expandNodeWithGemini(
   type: OrganizerType,
   projectTitle: string | undefined,
   apiKey: string,
-  tier: GeminiTier = 'pro'
+  tier: GeminiTier = 'hydrogen'
 ): Promise<Array<{ text: string; subtitle?: string; label?: string; icon?: string }>> {
   const isCartographic = type === 'cartographic';
   const models = getGeminiCandidateModels(tier);
@@ -1474,7 +1561,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido con este formato:
   let lastErr: Error | null = null;
   for (const model of models) {
     try {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
         {
           method: 'POST',
@@ -1486,7 +1573,8 @@ Devuelve ÚNICAMENTE un objeto JSON válido con este formato:
               temperature: 0.35,
             },
           }),
-        }
+        },
+        getModelTimeoutMs(model)
       );
 
       if (!response.ok) {
@@ -1681,7 +1769,7 @@ export async function expandNodeWithAi(
         type,
         projectTitle,
         apiSettings.geminiApiKey.trim(),
-        apiSettings.geminiTier || 'pro'
+        apiSettings.geminiTier || 'hydrogen'
       );
     } catch (err) {
       console.warn('Gemini expand falló, usando motor semántico local:', err);

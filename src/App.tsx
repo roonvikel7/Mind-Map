@@ -1048,7 +1048,8 @@ export function App() {
     topic: string,
     type: OrganizerType,
     details?: string,
-    depth: 'standard' | 'deep' = 'deep'
+    depth: 'standard' | 'deep' = 'deep',
+    promptMode: 'prompt' | 'outline' = 'prompt'
   ) => {
     const apiSettings = loadApiSettings();
     const effectiveProvider = apiSettings.geminiApiKey?.trim()
@@ -1064,10 +1065,20 @@ export function App() {
         ? apiSettings.openaiApiKey
         : undefined;
 
+    const selectedTier = apiSettings.geminiTier || 'hydrogen';
     if (effectiveProvider === 'gemini' && apiKey) {
-      const isPro = (apiSettings.geminiTier || 'pro') === 'pro';
+      const tierLabel =
+        promptMode === 'outline'
+          ? 'Esquema Literal'
+          : selectedTier === 'pro'
+          ? 'Gemini Pro'
+          : selectedTier === 'flash'
+          ? 'Gemini 3 Flash'
+          : 'Gemini 4 Hydrogen';
       showToast(
-        `Generando con Google Gemini ${isPro ? 'Pro' : 'Flash'} sobre «${topic}»...`
+        promptMode === 'outline'
+          ? `Estructurando esquema sobre «${topic}»...`
+          : `Generando con ${tierLabel} sobre «${topic}»...`
       );
     }
 
@@ -1077,10 +1088,11 @@ export function App() {
         topic,
         type,
         details,
+        promptMode,
         depth,
         apiKey,
         provider: effectiveProvider,
-        geminiTier: apiSettings.geminiTier || 'pro',
+        geminiTier: selectedTier,
       },
       themeToUse
     );
@@ -1111,7 +1123,9 @@ export function App() {
     setHistoryPast([]);
     setHistoryFuture([]);
     showToast(
-      effectiveProvider === 'gemini' && apiKey
+      result.modelUsed
+        ? `¡Organizador «${newProj.title}» creado con ${result.modelUsed}!`
+        : effectiveProvider === 'gemini' && apiKey
         ? `¡Organizador «${newProj.title}» creado con Google Gemini!`
         : `Organizador «${newProj.title}» creado con éxito.`
     );

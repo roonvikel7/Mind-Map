@@ -138,8 +138,9 @@ export interface AiGenerationRequest {
   topic: string;
   type: OrganizerType;
   details?: string;
+  promptMode?: 'prompt' | 'outline'; // 'prompt' = indicaciones para la IA; 'outline' = lista/esquema literal
   depth?: 'compact' | 'standard' | 'deep';
   apiKey?: string;
   provider?: 'local' | 'gemini' | 'openai';
-  geminiTier?: 'pro' | 'flash' | 'auto'; // 'pro' = Plan Pro con razonamiento profundo (gemini-2.5-pro / gemini-1.5-pro)
+  geminiTier?: 'hydrogen' | 'pro' | 'flash' | 'auto'; // 'hydrogen' = Gemini 4 Hydrogen, 'pro' = Plan Pro, 'flash' = Flash rápido
 }
